@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -x
+
+version=$1
+if [ -z $version ]; then
+    echo "Please provide the minikube version"
+    exit 1
+fi
+
+cd /tmp
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/$version/minikube-linux-amd64 && chmod +x minikube && mv minikube ~/.local/bin/

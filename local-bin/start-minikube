@@ -1,0 +1,3 @@
+#!/bin/bash
+
+minikube start --cpus 3 --memory 3000  --extra-config=apiserver.authorization-mode=RBAC
