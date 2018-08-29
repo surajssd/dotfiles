@@ -1,3 +1,4 @@
 #!/bin/bash
 
-minikube start --cpus 3 --memory 3000  --extra-config=apiserver.authorization-mode=RBAC
+minikube start --kubernetes-version v1.11.2 --cpus 3 --memory 3000  --extra-config=apiserver.authorization-mode=RBAC
+

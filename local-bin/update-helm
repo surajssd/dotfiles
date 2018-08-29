@@ -1,0 +1,15 @@
+#!/bin/bash
+
+version=$1
+if [ -z $version ]; then
+    echo "Please provide the helm version"
+    exit 1
+fi
+
+set -x
+
+cd /tmp
+
+curl -LO https://storage.googleapis.com/kubernetes-helm/helm-$version-linux-amd64.tar.gz
+tar -xvzf helm-$version-linux-amd64.tar.gz
+mv linux-amd64/helm ~/.local/bin/
