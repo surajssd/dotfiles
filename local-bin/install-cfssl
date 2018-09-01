@@ -1,0 +1,17 @@
+#!/bin/bash
+
+readonly version="R1.2"
+
+set -x
+
+mkdir -p /tmp/cfssl
+cd /tmp/cfssl
+
+curl -sSL \
+  -O "https://pkg.cfssl.org/${version}/cfssl_linux-amd64" \
+  -O "https://pkg.cfssl.org/${version}/cfssljson_linux-amd64"
+
+chmod +x cfssl_linux-amd64 cfssljson_linux-amd64
+
+mv -v cfssl_linux-amd64 ~/.local/bin/cfssl
+mv -v cfssljson_linux-amd64 ~/.local/bin/cfssljson
