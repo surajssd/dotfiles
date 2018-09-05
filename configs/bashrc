@@ -89,10 +89,16 @@ source <(helm completion bash)
 #=================================================================
 # Aliases of favourite bash commands with new tools
 
-alias ll="exa -Fl"
-alias ls="exa"
-alias grep="rg"
+which exa
+if [ $? -ne 0 ]; then
+    alias ll="exa -Fl"
+    alias ls="exa"
+fi
 
+which rg
+if [ $? -ne 0 ]; then
+    alias grep="rg"
+fi
 
 #=================================================================
 # To get around the problem in fedora and vscode
