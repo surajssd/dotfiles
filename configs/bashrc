@@ -89,14 +89,14 @@ source <(helm completion bash)
 #=================================================================
 # Aliases of favourite bash commands with new tools
 
-which exa
-if [ $? -ne 0 ]; then
+which exa > /dev/null 2>&1
+if [ $? -eq 0 ]; then
     alias ll="exa -Fl"
     alias ls="exa"
 fi
 
-which rg
-if [ $? -ne 0 ]; then
+which rg > /dev/null 2>&1
+if [ $? -eq 0 ]; then
     alias grep="rg"
 fi
 
