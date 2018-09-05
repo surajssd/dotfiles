@@ -1,6 +1,7 @@
 [user]
   name = Suraj Deshmukh
   email = surajd.service@gmail.com
+  signingkey = C696ABB83115815E
 [color]
   diff = auto
   status = auto
