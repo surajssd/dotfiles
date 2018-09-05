@@ -83,8 +83,10 @@ function change-ns() {
 }
 
 source <(kubectl completion bash)
-source <(helm completion bash)
-
+which helm > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    source <(helm completion bash)
+fi
 
 #=================================================================
 # Aliases of favourite bash commands with new tools
