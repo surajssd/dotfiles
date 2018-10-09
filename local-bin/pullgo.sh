@@ -45,4 +45,4 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-sudo ln -s /usr/local/go/bin/go /usr/local/sbin/go
+sudo ln -sf /usr/local/go/bin/go /usr/local/sbin/go
