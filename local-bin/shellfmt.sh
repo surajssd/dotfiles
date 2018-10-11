@@ -1,11 +1,15 @@
 #!/bin/bash
+#
+# This script helps you with checking if the shell script is valid with all the
+# conventions of bash scripting.
 
 set -euo pipefail
 
-err() {
+function err() {
   echo "$*" >&2
 }
 
+# if no cmd line flag provided this should error out
 if [[ $# -eq 0 ]]; then
   err "Please provide a filename, usage: shellfmt.sh <filename>"
   exit 1
