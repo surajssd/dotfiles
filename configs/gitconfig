@@ -15,4 +15,4 @@
     cmd = code --wait --diff $LOCAL $REMOTE
 [core]
   excludesfile = ~/.gitignore
-  editor = gedit
+  editor = code --wait
