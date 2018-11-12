@@ -1,12 +1,24 @@
 #!/bin/bash
 
-set -x
+set -euo pipefail
 
-version=$1
-if [ -z $version ]; then
-    echo "Please provide the minikube version"
-    exit 1
-fi
+function get_latest_release() {
+  version=$(curl --silent "https://api.github.com/repos/$1/releases/latest" |
+    grep '"tag_name":' |
+    sed -E 's/.*"([^"]+)".*/\1/')
+}
 
-cd /tmp
-curl -Lo minikube https://storage.googleapis.com/minikube/releases/$version/minikube-linux-amd64 && chmod +x minikube && mv minikube ~/.local/bin/
+# find what the latest version is
+get_latest_release kubernetes/minikube
+echo "Downloading minikube ${version}"
+
+# goto temp dir to download artifacts and then move it
+cd /tmp || exit 1
+
+# create this directory which is in path in linux distros
+# like fedora, centos and ubuntu.
+mkdir -p ~/.local/bin/
+curl --silent -Lo minikube https://storage.googleapis.com/minikube/releases/"${version}"/minikube-linux-amd64 &&
+  chmod +x minikube &&
+  mv minikube ~/.local/bin/
+echo "Downloaded successfully in ~/.local/bin/"
