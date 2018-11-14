@@ -23,8 +23,8 @@ get_latest_release
 echo "Latest golang ${version}"
 
 # if latest is already installed no need to download again
-if ls /usr/local/go > /dev/null 2>&1; then
-  if [[ $(go version) = *"${version}"* ]]; then
+if ls /usr/local/go >/dev/null 2>&1; then
+  if [[ $(go version) == *"${version}"* ]]; then
     echo "Latest $(go version) already installed!"
     exit 0
   fi
@@ -45,7 +45,7 @@ if ! curl --silent -LO "${url}"; then
 fi
 
 # if already go is present uninstall it
-if ls /usr/local/go > /dev/null 2>&1; then
+if ls /usr/local/go >/dev/null 2>&1; then
   echo "Uninstalling $(go version)"
   sudo rm -rf /usr/local/go
 fi
