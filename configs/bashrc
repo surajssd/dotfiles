@@ -9,7 +9,9 @@ fi
 # export SYSTEMD_PAGER=
 
 # User specific aliases and functions
-
+#=================================================================
+# Add '~/.locl/bin' to '$PATH'
+export PATH=$PATH:$HOME/.local/bin
 
 #=================================================================
 # Byobu prompt
