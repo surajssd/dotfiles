@@ -35,3 +35,11 @@ git clone https://github.com/surajssd/dotfiles
 cd dotfiles
 ./installers/install-all.sh
 ```
+
+### Update the configs with upstream
+
+When the scripts and configs on Github are updated, to update locally run following command, this pulls the latest changes and runs the installer again so that any new configs will also be installed.
+
+```bash
+make update
+```

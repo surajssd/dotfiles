@@ -9,3 +9,10 @@ install-configs:
 .PHONY: install-all
 install-all:
 	./installers/install-all.sh
+
+.PHONY: pull-master
+pull-master:
+	git pull --ff origin master
+
+.PHONY: update
+update: pull-master install-all
