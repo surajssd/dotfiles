@@ -16,3 +16,7 @@ pull-master:
 
 .PHONY: update
 update: pull-master install-all
+
+.PHONY: clone-private
+clone-private:
+	git clone git@github.com:surajssd/dotfilesprivate.git
