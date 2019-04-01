@@ -2,7 +2,7 @@
 
 minikube start \
 --kubernetes-version v1.13.3 \
---cpus 3 --memory 3000  \
+--cpus 3 --memory 4000  \
 --extra-config=apiserver.authorization-mode=RBAC \
 --extra-config=apiserver.enable-admission-plugins=Initializers,NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
 --v 10
