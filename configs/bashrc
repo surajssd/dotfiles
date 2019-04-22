@@ -52,6 +52,7 @@ export GOPATH=$HOME/go
 export GOBIN=$GOPATH/bin
 export PATH=$PATH:$GOBIN:/usr/local/go/bin
 export CDPATH=.:$GOPATH/src/github.com:$GOPATH/src
+export GO111MODULE=on
 
 
 #=================================================================
@@ -124,3 +125,9 @@ export MANPATH="$NPM_PACKAGES/share/man:$(manpath)"
 #=================================================================
 # GPG version
 export GPG=gpg2
+
+#=================================================================
+# custom date format
+function mydate() {
+    date '+%Y-%m-%d-%H-%M-%S'
+}
