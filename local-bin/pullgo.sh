@@ -1,5 +1,12 @@
 #!/bin/bash
 
+version=$1
+if [ -z $version ]; then
+    echo "Please provide the golang version, find it at https://golang.org/dl/"
+    echo "e.g. pullgo.sh 1.12.6"
+    exit 1
+fi
+
 set -euo pipefail
 
 # check if git is installed, if not install it
@@ -8,18 +15,6 @@ if ! [[ -x "$(command -v git)" ]]; then
   sudo dnf -y install git
 fi
 
-# referenced from https://github.com/udhos/update-golang/blob/master/update-golang.sh
-function get_latest_release() {
-  version=$(curl --silent https://storage.googleapis.com/golang |
-    grep -E -o 'go[0-9\.]+' |
-    grep -E -o '[0-9]\.[0-9]+(\.[0-9]+)?' |
-    sort -V |
-    uniq |
-    tail -1)
-}
-
-# find what the latest version is
-get_latest_release
 echo "Latest golang ${version}"
 
 # if latest is already installed no need to download again
