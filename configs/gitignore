@@ -13,3 +13,6 @@
 
 # session
 Session.vim
+
+# ignore the local scripts directory
+.scripts

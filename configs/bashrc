@@ -11,7 +11,7 @@ fi
 # User specific aliases and functions
 #=================================================================
 # Add '~/.locl/bin' to '$PATH'
-export PATH=$PATH:$HOME/.local/bin
+export PATH=$PATH:$HOME/.local/bin:.scripts
 
 #=================================================================
 # Byobu prompt
