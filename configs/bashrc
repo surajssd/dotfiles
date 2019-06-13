@@ -55,6 +55,8 @@ alias copy='xclip -select c'
 export GOPATH=$HOME/go
 export GOBIN=$GOPATH/bin
 export PATH=$PATH:$GOBIN:/usr/local/go/bin
+# for golang that is installed in $HOME/.local/bin/go
+export PATH=$PATH:$GOBIN:$HOME/.local/bin/go/bin
 export CDPATH=.:$GOPATH/src/github.com:$GOPATH/src
 export GO111MODULE=on
 
