@@ -32,18 +32,6 @@ alias gpum="git pull --ff upstream master"
 alias gpom="git pull --ff origin master"
 alias gcm="git checkout master"
 
-# To pull PR locally to check changes
-function pr() {
-    id=$1
-    if [ -z $id ]; then
-        echo "Need Pull request number as argument"
-        return 1
-    fi
-    git fetch upstream pull/${id}/head:pr_${id}
-    git checkout pr_${id}
-    git rebase master -i
-}
-
 #=================================================================
 # General aliases
 
