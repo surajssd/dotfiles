@@ -31,6 +31,8 @@ GIT_PROMPT_ONLY_IN_REPO=1
 alias gpum="git pull --ff upstream master"
 alias gpom="git pull --ff origin master"
 alias gcm="git checkout master"
+alias gs="git status"
+alias gcmt="git commit -s"
 
 #=================================================================
 # General aliases
