@@ -1,8 +1,17 @@
 #!/bin/bash
 
+kvm=$1
+if [[ "${kvm}" = "kvm" ]]; then
+  args="--vm-driver=kvm2"
+else
+  args=""
+fi
+
+set -euo pipefail
+
 minikube start \
---kubernetes-version v1.15.0 \
---cpus 3 --memory 4000  \
---extra-config=apiserver.authorization-mode=RBAC \
---extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
---v 10
+  --kubernetes-version v1.15.0 \
+  --cpus 3 --memory 4000 \
+  --extra-config=apiserver.authorization-mode=RBAC \
+  --extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
+  --v 10 "${args}"
