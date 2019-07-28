@@ -15,7 +15,7 @@ export PATH=$PATH:$HOME/.local/bin:.scripts
 
 #=================================================================
 # Byobu prompt
-[ -r /home/hummer/.byobu/prompt ] && . /home/hummer/.byobu/prompt   #byobu-prompt#
+[ -r $HOME/.byobu/prompt ] && . $HOME/.byobu/prompt   #byobu-prompt#
 
 
 #=================================================================
