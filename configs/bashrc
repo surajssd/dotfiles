@@ -62,7 +62,9 @@ alias kgs="kubectl get services"
 alias kge="kubectl get events"
 alias kgpvc="kubectl get pvc"
 alias kgpv="kubectl get pv"
-alias kc="kubectl create -f "
+alias kd="kubectl describe"
+alias kl="kubectl logs -f"
+alias kc="kubectl create -f"
 
 # find what the current namespace on the cluster is
 function current-ns() {
