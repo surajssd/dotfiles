@@ -123,3 +123,7 @@ export MANPATH="$NPM_PACKAGES/share/man:$(manpath)"
 #=================================================================
 # GPG version
 export GPG=gpg2
+
+#=================================================================
+# Vault bash completion
+complete -C $HOME/.local/bin/vault vault
