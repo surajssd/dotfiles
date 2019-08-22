@@ -133,3 +133,7 @@ export GPG=gpg2
 #=================================================================
 # Vault bash completion
 complete -C $HOME/.local/bin/vault vault
+
+#=================================================================
+# ssh aliases
+alias ssh="ssh -oStrictHostKeyChecking=no"
