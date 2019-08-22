@@ -83,7 +83,11 @@ function change-ns() {
     kubectl config set-context $(kubectl config current-context) --namespace $namespace
 }
 
-source <(kubectl completion bash)
+which kubectl > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    source <(kubectl completion bash)
+fi
+
 which helm > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     source <(helm completion bash)
