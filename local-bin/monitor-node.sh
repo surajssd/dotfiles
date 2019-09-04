@@ -10,6 +10,7 @@ docker run -d \
   --pid="host" \
   --restart="always" \
   -v "/:/host:ro,rslave" \
+  --name node-exporter \
   quay.io/prometheus/node-exporter \
   --path.rootfs=/host \
   --web.listen-address="127.0.0.1:9100"
@@ -21,6 +22,7 @@ curl -o /tmp/prom/prometheus-config.yaml https://raw.githubusercontent.com/suraj
 docker run -d \
   --net="host" \
   -v "/tmp/prom/:/prom:ro" \
+  --name prometheus \
   prom/prometheus \
   --web.listen-address="127.0.0.1:9090" \
   --config.file=/prom/prometheus-config.yaml
