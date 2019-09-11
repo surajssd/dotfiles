@@ -33,6 +33,7 @@ alias gpom="git pull --ff origin master"
 alias gcm="git checkout master"
 alias gs="git status"
 alias gcmt="git commit -s"
+alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 
 #=================================================================
 # General aliases
