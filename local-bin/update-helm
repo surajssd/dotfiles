@@ -2,7 +2,8 @@
 
 version=$1
 if [ -z $version ]; then
-    echo "Please provide the helm version"
+    echo "Please provide the helm version, find the latest one at: https://github.com/helm/helm/releases"
+    echo "update-helm v2.14.3"
     exit 1
 fi
 
