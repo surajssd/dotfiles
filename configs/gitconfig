@@ -11,6 +11,7 @@
   pager = true
 [diff]
     tool = default-difftool
+	noprefix = true
 [difftool "default-difftool"]
     cmd = code --wait --diff $LOCAL $REMOTE
 [core]
