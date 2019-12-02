@@ -7,6 +7,7 @@ if [ -z $version ]; then
     exit 1
 fi
 
+set -euo pipefail
 set -x
 
 cd /tmp
