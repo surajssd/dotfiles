@@ -2,6 +2,7 @@
 #
 # This script helps you with checking if the shell script is valid with all the
 # conventions of bash scripting.
+# shfmt can be downloaded from https://github.com/mvdan/sh/releases
 
 set -euo pipefail
 
