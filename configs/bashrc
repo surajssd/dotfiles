@@ -87,6 +87,7 @@ function change-ns() {
 which kubectl > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     source <(kubectl completion bash)
+    source <(kubectl completion bash | sed 's/kubectl/k/g')
 fi
 
 which helm > /dev/null 2>&1
