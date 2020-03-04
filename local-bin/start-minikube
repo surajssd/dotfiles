@@ -10,7 +10,7 @@ fi
 set -euo pipefail
 
 minikube start \
-  --kubernetes-version v1.16.3 \
+  --kubernetes-version v1.17.2 \
   --cpus 3 --memory 4000 \
   --extra-config=apiserver.authorization-mode=RBAC \
   --extra-config=apiserver.enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota \
