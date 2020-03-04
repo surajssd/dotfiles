@@ -99,6 +99,11 @@ which operator-sdk > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     source <(operator-sdk completion bash)
 fi
+
+which kubeadm > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    source <(kubeadm completion bash)
+fi
 #=================================================================
 # Aliases of favourite bash commands with new tools
 
