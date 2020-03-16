@@ -10,10 +10,10 @@
   ui = auto
   pager = true
 [diff]
-    tool = default-difftool
-	noprefix = true
+  tool = default-difftool
+  noprefix = true
 [difftool "default-difftool"]
-    cmd = code --wait --diff $LOCAL $REMOTE
+  cmd = code --wait --diff $LOCAL $REMOTE
 [core]
   excludesfile = ~/.gitignore
   editor = code --wait
