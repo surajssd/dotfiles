@@ -22,5 +22,5 @@ cd /tmp || exit 1
 mkdir -p ~/.local/bin/
 curl -OL https://github.com/golangci/golangci-lint/releases/download/${version}/golangci-lint-${onlyversion}-linux-amd64.tar.gz
 tar -xvzf golangci-lint-*-linux-amd64.tar.gz
-mv golangci-lint-1.23.8-linux-amd64/golangci-lint ~/.local/bin/
+mv golangci-lint-*-linux-amd64/golangci-lint ~/.local/bin/
 echo "Downloaded successfully in ~/.local/bin/"
