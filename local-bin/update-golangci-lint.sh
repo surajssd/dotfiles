@@ -11,7 +11,7 @@ function get_latest_release() {
 
 # find what the latest version is
 get_latest_release golangci/golangci-lint
-echo "Downloading minikube ${version}"
+echo "Downloading golagnci ${version}"
 onlyversion=$(echo ${version} | cut -d'v' -f2)
 
 # goto temp dir to download artifacts and then move it
