@@ -6,9 +6,8 @@
 
 set -euo pipefail
 
-function err() {
-  echo "$*" >&2
-}
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")"/util.sh
 
 # if no cmd line flag provided this should error out
 if [[ $# -eq 0 ]]; then

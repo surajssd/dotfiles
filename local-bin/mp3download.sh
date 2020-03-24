@@ -4,9 +4,8 @@
 
 set -euo pipefail
 
-function err() {
-  echo "$*" >&2
-}
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")"/util.sh
 
 url="$*"
 if [[ -z "${url}" ]]; then

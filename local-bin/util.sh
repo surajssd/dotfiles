@@ -8,3 +8,7 @@ function get_latest_release() {
     grep '"tag_name":' |
     sed -E 's/.*"([^"]+)".*/\1/')
 }
+
+function err() {
+  echo "$*" >&2
+}
