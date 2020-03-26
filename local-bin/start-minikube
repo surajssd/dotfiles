@@ -10,6 +10,6 @@ fi
 set -euo pipefail
 
 minikube start \
-  --kubernetes-version v1.17.4 \
+  --kubernetes-version v1.18.0 \
   --cpus 3 --memory 4000 \
   --v 10 "${args}"
