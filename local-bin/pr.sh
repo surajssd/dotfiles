@@ -17,5 +17,6 @@ fi
 
 set -euo pipefail
 
-git fetch "${remote}" "pull/${id}/head:pr_${remote}_${id}"
-git checkout "pr_${remote}_${id}"
+random="${RANDOM}${RANDOM}"
+git fetch "${remote}" "pull/${id}/head:pr_${id}_${remote}_${random}"
+git checkout "pr_${id}_${remote}_${random}"
