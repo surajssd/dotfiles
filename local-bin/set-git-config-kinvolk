@@ -3,3 +3,4 @@
 set -x
 
 git config user.email "suraj@kinvolk.io"
+git config user.signingkey "83E98295DF48CA1E"
