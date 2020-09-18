@@ -32,10 +32,10 @@ alias gpum="git pull --ff upstream master"
 alias gpom="git pull --ff origin master"
 alias gcm="git checkout master"
 alias gs="git status"
-alias gcmt="git commit -s"
+alias gcmt="git commit -s -S "
 alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
-alias grba="git rebase -i --autosquash "
-alias gca="git commit --amend --no-edit"
+alias grba="git rebase -S -i --autosquash "
+alias gca="git commit --amend --no-edit -S "
 
 #=================================================================
 # General aliases
