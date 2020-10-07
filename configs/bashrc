@@ -36,6 +36,7 @@ alias gcmt="git commit -s -S "
 alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 alias grba="git rebase -S -i --autosquash "
 alias gca="git commit --amend --no-edit -S "
+alias grbm="git rebase -S -i"
 
 #=================================================================
 # General aliases
