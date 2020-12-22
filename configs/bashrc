@@ -115,6 +115,9 @@ fi
 #=================================================================
 # Aliases of favourite bash commands with new tools
 
+# Use aliases in watch command
+alias watch='watch '
+
 # this is not default on distro not centos/fedora based
 alias ll="ls -l"
 which exa > /dev/null 2>&1
