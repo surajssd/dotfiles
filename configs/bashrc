@@ -112,6 +112,9 @@ which gh > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     eval "$(gh completion -s bash)"
 fi
+
+# Add krew to the PATH
+export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 #=================================================================
 # Aliases of favourite bash commands with new tools
 
