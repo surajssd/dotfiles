@@ -18,7 +18,7 @@ cd $(mktemp -d)
 
 echo "Downloading gh ${version}"
 curl --silent -LO https://github.com/cli/cli/releases/download/"${version}"/gh_"${onlyversion}"_linux_amd64.tar.gz && \
-  tar -xvzf gh_"${onlyversion}"_linux_amd64.tar.gz && \
+  tar -xzf gh_"${onlyversion}"_linux_amd64.tar.gz && \
   mv gh_"${onlyversion}"_linux_amd64/bin/gh ~/.local/bin
 
 echo "Downloaded successfully in ~/.local/bin/"
