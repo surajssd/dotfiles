@@ -30,13 +30,16 @@ GIT_PROMPT_ONLY_IN_REPO=1
 # GIT related
 alias gpum="git pull --ff upstream master"
 alias gpom="git pull --ff origin master"
-alias gcm="git checkout $(git symbolic-ref refs/remotes/origin/HEAD | cut -d/ -f4)"
 alias gs="git status"
 alias gcmt="git commit -s -S "
 alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
 alias grba="git rebase -S -i --autosquash "
 alias gca="git commit --amend --no-edit -S "
 alias grbm="git rebase -S -i"
+
+function gcm() {
+    git checkout $(git symbolic-ref refs/remotes/origin/HEAD | cut -d/ -f4)
+}
 
 #=================================================================
 # General aliases
