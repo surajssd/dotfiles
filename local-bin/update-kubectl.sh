@@ -1,8 +1,23 @@
 #!/usr/bin/env bash
 
-set -x
+set -euo pipefail
 
-cd /tmp
-curl -LO https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl && \
-chmod +x ./kubectl && \
-mv ./kubectl ~/.local/bin/
+# Detect OS
+os=$(uname)
+case $os in
+    Darwin)
+    brew install kubectl
+    ;;
+
+    Linux)
+    cd $(mktemp -d)
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+    chmod +x ./kubectl
+    mv ./kubectl ~/.local/bin/
+    ;;
+
+    *)
+    echo "unsupported OS: ${os}"
+    exit 1
+esac
+
