@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # fetches the pull request code from remote defined and the PR number given
 
 id=$1

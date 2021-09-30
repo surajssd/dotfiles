@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Start monitoring the node with node-exporter
 # And display the information as dashboard

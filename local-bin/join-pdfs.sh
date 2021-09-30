@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 files=$@
 if [ -z "${files}" ]; then

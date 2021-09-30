@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # The following script is taken from: https://krew.sigs.k8s.io/docs/user-guide/setup/install/
 

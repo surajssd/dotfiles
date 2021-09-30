@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # This script gives you custom date format like e.g.
 #
 # $ date.sh

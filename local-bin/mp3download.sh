@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # This script helps you to convert the YouTube video into mp3 file.
 

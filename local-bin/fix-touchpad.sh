@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # This is used to fix the touchpad as mentioned here:
 # https://askubuntu.com/q/1091635/246019
