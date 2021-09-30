@@ -1,5 +1,22 @@
 #!/usr/bin/env bash
 
+# Detect OS
+os=$(uname)
+case $os in
+    Darwin)
+    echo "Download from the website: https://golang.org/dl."
+    exit 0
+    ;;
+
+    Linux)
+    break
+    ;;
+
+    *)
+    echo "unsupported OS: ${os}"
+    exit 1
+esac
+
 version=$1
 if [ -z $version ]; then
     echo "Please provide the golang version, find it at https://golang.org/dl/"
