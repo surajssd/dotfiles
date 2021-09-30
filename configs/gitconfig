@@ -17,3 +17,5 @@
 [core]
   excludesfile = ~/.gitignore
   editor = code --wait
+[gpg]
+  program = gpg

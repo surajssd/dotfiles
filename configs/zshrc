@@ -1,0 +1,123 @@
+path+=('/Users/surajdeshmukh/.local/bin')
+
+#=================================================================
+# Oh my zsh config
+# Path to your oh-my-zsh installation.
+export ZSH="/Users/surajdeshmukh/.oh-my-zsh"
+
+# Set name of the theme to load --- if set to "random", it will
+# load a random theme each time oh-my-zsh is loaded, in which case,
+# to know which specific one was loaded, run: echo $RANDOM_THEME
+# See https://github.com/ohmyzsh/ohmyzsh/wiki/Themes
+ZSH_THEME="robbyrussell"
+
+# Which plugins would you like to load?
+# Standard plugins can be found in $ZSH/plugins/
+# Custom plugins may be added to $ZSH_CUSTOM/plugins/
+# Example format: plugins=(rails git textmate ruby lighthouse)
+# Add wisely, as too many plugins slow down shell startup.
+plugins=(git)
+
+source $ZSH/oh-my-zsh.sh
+
+#=================================================================
+# This is used to enable autocompletion of Git
+autoload -Uz compinit && compinit
+
+#=================================================================
+# my aliases
+
+# GIT related
+alias gpum="git pull --ff upstream master"
+alias gpom="git pull --ff origin master"
+alias gs="git status"
+alias gcmt="git commit -s -S "
+alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
+alias grba="git rebase -S -i --autosquash "
+alias gca="git commit --amend --no-edit -S "
+alias grbm="git rebase -S -i"
+
+function gcm() {
+    git checkout $(git symbolic-ref refs/remotes/origin/HEAD | cut -d/ -f4)
+}
+
+#=================================================================
+# All Kubernetes related stuff
+
+# k8s alias
+alias k=kubectl
+alias kg="kubectl get"
+alias kgp="kubectl get pods"
+alias kgs="kubectl get services"
+alias kge="kubectl get events"
+alias kgpvc="kubectl get pvc"
+alias kgpv="kubectl get pv"
+alias kd="kubectl describe"
+alias kl="kubectl logs -f"
+alias kc="kubectl create -f"
+
+# find what the current namespace on the cluster is
+function current-ns() {
+	kubectl get sa default -o jsonpath='{.metadata.namespace}'
+	echo
+}
+
+# changing namespace
+function change-ns() {
+    namespace=$1
+    if [ -z $namespace ]; then
+        echo "Please provide the namespace name: 'change-ns mywebapp'"
+        return 1
+    fi
+
+    kubectl config set-context $(kubectl config current-context) --namespace $namespace
+}
+
+which kubectl > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    source <(kubectl completion zsh)
+    source <(kubectl completion zsh | sed 's/kubectl/k/g')
+fi
+
+which helm > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    source <(helm completion zsh)
+fi
+
+which operator-sdk > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    source <(operator-sdk completion zsh)
+fi
+
+which kubeadm > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    source <(kubeadm completion zsh)
+fi
+
+which gh > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    eval "$(gh completion -s zsh)"
+fi
+
+#=================================================================
+# Aliases of favourite bash commands with new tools
+
+# Use aliases in watch command
+alias watch='watch '
+
+# this is not default on distro not centos/fedora based
+alias ll="ls -l"
+which exa > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    alias ll="exa -Fl"
+    alias ls="exa"
+fi
+
+which rg > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    alias grep="rg"
+fi
+
+#=================================================================
+# GPG
+export GPG_TTY=$(tty)
