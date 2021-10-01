@@ -2,6 +2,23 @@
 
 set -euo pipefail
 
+# Detect OS
+os=$(uname)
+case $os in
+    Darwin)
+    brew install gh
+    exit 0
+    ;;
+
+    Linux)
+    break
+    ;;
+
+    *)
+    echo "unsupported OS: ${os}"
+    exit 1
+esac
+
 # shellcheck source=/dev/null
 source "$(dirname "${BASH_SOURCE[0]}")"/util.sh
 
