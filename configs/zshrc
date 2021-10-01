@@ -1,4 +1,7 @@
-path+=('/Users/surajdeshmukh/.local/bin')
+# Add the dir ~/.local/bin and ~/go/bin to the PATH.
+# Former is used to download random binaries, custom scripts, etc.
+# Later contains the binaries built by local go code.
+export PATH=$PATH:$HOME/.local/bin:$HOME/go/bin
 
 #=================================================================
 # Oh my zsh config
