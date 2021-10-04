@@ -3,25 +3,26 @@
 # Detect OS
 os=$(uname)
 case $os in
-    Darwin)
-    echo "Download from the website: https://golang.org/dl."
-    exit 0
-    ;;
+Darwin)
+  echo "Download from the website: https://golang.org/dl."
+  exit 0
+  ;;
 
-    Linux)
-    break
-    ;;
+Linux)
+  # no op
+  ;;
 
-    *)
-    echo "unsupported OS: ${os}"
-    exit 1
+*)
+  echo "unsupported OS: ${os}"
+  exit 1
+  ;;
 esac
 
 version=$1
-if [ -z $version ]; then
-    echo "Please provide the golang version, find it at https://golang.org/dl/"
-    echo "e.g. pullgo.sh 1.12.6"
-    exit 1
+if [ -z "${version}" ]; then
+  echo "Please provide the golang version, find it at https://golang.org/dl/"
+  echo "e.g. pullgo.sh 1.12.6"
+  exit 1
 fi
 
 set -euo pipefail
