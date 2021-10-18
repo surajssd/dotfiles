@@ -2,6 +2,7 @@
 # Former is used to download random binaries, custom scripts, etc.
 # Later contains the binaries built by local go code.
 export PATH=$PATH:$HOME/.local/bin:$HOME/go/bin
+export PATH="/opt/homebrew/opt/go@1.16/bin:$PATH"
 
 #=================================================================
 # Oh my zsh config
