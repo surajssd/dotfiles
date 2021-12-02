@@ -104,6 +104,12 @@ if [ $? -eq 0 ]; then
     eval "$(gh completion -s zsh)"
 fi
 
+which kind > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    mkdir -p $ZSH/completions/
+    kind completion zsh > $ZSH/completions/_kind
+fi
+
 #=================================================================
 # Aliases of favourite bash commands with new tools
 
