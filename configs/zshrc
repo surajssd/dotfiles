@@ -94,11 +94,6 @@ if [ $? -eq 0 ]; then
     source <(helm completion zsh)
 fi
 
-which operator-sdk > /dev/null 2>&1
-if [ $? -eq 0 ]; then
-    source <(operator-sdk completion zsh)
-fi
-
 which kubeadm > /dev/null 2>&1
 if [ $? -eq 0 ]; then
     source <(kubeadm completion zsh)
