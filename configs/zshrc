@@ -28,10 +28,6 @@ plugins=(
 source $ZSH/oh-my-zsh.sh
 
 #=================================================================
-# This is used to enable autocompletion of Git
-autoload -Uz compinit && compinit
-
-#=================================================================
 # my aliases
 
 # GIT related
