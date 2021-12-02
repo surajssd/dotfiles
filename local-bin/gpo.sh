@@ -3,4 +3,4 @@
 set -euo pipefail
 set -x
 
-git push origin $(git branch --show-current) "$@"
+git push -u origin $(git branch --show-current) "$@"
