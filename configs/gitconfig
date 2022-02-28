@@ -19,3 +19,5 @@
   editor = code --wait
 [gpg]
   program = gpg
+[pager]
+  diff = false
