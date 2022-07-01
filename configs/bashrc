@@ -171,3 +171,7 @@ complete -C $HOME/.local/bin/vault vault
 #=================================================================
 # ssh aliases
 alias ssh="ssh -oStrictHostKeyChecking=no"
+
+#=================================================================
+# Default editor
+export EDITOR=vim
