@@ -26,6 +26,9 @@ plugins=(
 
 source $ZSH/oh-my-zsh.sh
 
+unsetopt inc_append_history
+unsetopt share_history
+
 #=================================================================
 # my aliases
 
