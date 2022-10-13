@@ -18,7 +18,7 @@ case $email_type in
   email="surajd.service@gmail.com"
   ;;
   work)
-  email="suraj@kinvolk.io"
+  email="suraj.deshmukh@microsoft.com"
   ;;
   *)
   print_usage
