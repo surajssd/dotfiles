@@ -1,12 +1,13 @@
 # Add the dir ~/.local/bin and ~/go/bin to the PATH.
-# Former is used to download random binaries, custom scripts, etc.
-# Later contains the binaries built by local go code.
-export PATH=$PATH:$HOME/.local/bin:$HOME/go/bin
+# First is used to download random binaries, custom scripts, etc.
+# Second contains the binaries built by local go code.
+# And the final is used by homebrew
+export PATH=$PATH:$HOME/.local/bin:$HOME/go/bin:/opt/homebrew/bin
 
 #=================================================================
 # Oh my zsh config
 # Path to your oh-my-zsh installation.
-export ZSH="/Users/surajdeshmukh/.oh-my-zsh"
+export ZSH="$HOME/.oh-my-zsh"
 
 # Set name of the theme to load --- if set to "random", it will
 # load a random theme each time oh-my-zsh is loaded, in which case,
