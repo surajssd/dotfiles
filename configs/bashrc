@@ -175,3 +175,7 @@ alias ssh="ssh -oStrictHostKeyChecking=no"
 #=================================================================
 # Default editor
 export EDITOR=vim
+
+#=================================================================
+# Rust related env vars
+. "$HOME/.cargo/env"
