@@ -178,4 +178,4 @@ export EDITOR=vim
 
 #=================================================================
 # Rust related env vars
-. "$HOME/.cargo/env"
+[[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
