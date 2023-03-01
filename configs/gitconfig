@@ -1,23 +1,29 @@
 [user]
-  name = Suraj Deshmukh
-  email = surajd.service@gmail.com
-  signingkey = 60AB66A34038D4A7
+name = Suraj Deshmukh
+email = surajd.service@gmail.com
+signingkey = 60AB66A34038D4A7
+
 [color]
-  diff = auto
-  status = auto
-  branch = auto
-  interactive = auto
-  ui = auto
-  pager = true
+diff = auto
+status = auto
+branch = auto
+interactive = auto
+ui = auto
+pager = true
+
 [diff]
-  tool = default-difftool
-  noprefix = true
+tool = default-difftool
+noprefix = true
+
 [difftool "default-difftool"]
-  cmd = code --wait --diff $LOCAL $REMOTE
+cmd = code --wait --diff $LOCAL $REMOTE
+
 [core]
-  excludesfile = ~/.gitignore
-  editor = code --wait
+excludesfile = ~/.gitignore
+editor = code --wait
+
 [gpg]
-  program = gpg
+program = gpg
+
 [pager]
-  diff = false
+diff = false
