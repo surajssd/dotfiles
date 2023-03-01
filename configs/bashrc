@@ -2,7 +2,7 @@
 
 # Source global definitions
 if [ -f /etc/bashrc ]; then
-	. /etc/bashrc
+    . /etc/bashrc
 fi
 
 # Uncomment the following line if you don't like systemctl's auto-paging feature:
@@ -15,14 +15,12 @@ export PATH=$PATH:$HOME/.local/bin:.scripts
 
 #=================================================================
 # Byobu prompt
-[ -r $HOME/.byobu/prompt ] && . $HOME/.byobu/prompt   #byobu-prompt#
-
+[ -r $HOME/.byobu/prompt ] && . $HOME/.byobu/prompt #byobu-prompt#
 
 #=================================================================
 # Bash Git Prompt
 source ~/.bash-git-prompt/gitprompt.sh
 GIT_PROMPT_ONLY_IN_REPO=1
-
 
 #=================================================================
 # my aliases
@@ -63,7 +61,6 @@ export PATH=$PATH:$GOBIN:$HOME/.local/bin/go/bin
 export CDPATH=.:$GOPATH/src/github.com:$GOPATH/src
 export GO111MODULE=on
 
-
 #=================================================================
 # All Kubernetes related stuff
 
@@ -81,8 +78,8 @@ alias kc="kubectl create -f"
 
 # find what the current namespace on the cluster is
 function current-ns() {
-	kubectl get sa default -o jsonpath='{.metadata.namespace}'
-	echo
+    kubectl get sa default -o jsonpath='{.metadata.namespace}'
+    echo
 }
 
 # changing namespace
@@ -96,28 +93,28 @@ function change-ns() {
     kubectl config set-context $(kubectl config current-context) --namespace $namespace
 }
 
-which kubectl > /dev/null 2>&1
+which kubectl >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     source <(kubectl completion bash)
     source <(kubectl completion bash | sed 's/kubectl/k/g')
 fi
 
-which helm > /dev/null 2>&1
+which helm >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     source <(helm completion bash)
 fi
 
-which operator-sdk > /dev/null 2>&1
+which operator-sdk >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     source <(operator-sdk completion bash)
 fi
 
-which kubeadm > /dev/null 2>&1
+which kubeadm >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     source <(kubeadm completion bash)
 fi
 
-which gh > /dev/null 2>&1
+which gh >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     eval "$(gh completion -s bash)"
 fi
@@ -132,13 +129,13 @@ alias watch='watch '
 
 # this is not default on distro not centos/fedora based
 alias ll="ls -l"
-which exa > /dev/null 2>&1
+which exa >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     alias ll="exa -Fl"
     alias ls="exa"
 fi
 
-which rg > /dev/null 2>&1
+which rg >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     alias grep="rg"
 fi
@@ -147,7 +144,6 @@ fi
 # To get around the problem in fedora and vscode
 # More info: https://github.com/Microsoft/vscode/issues/48480#issuecomment-414100718
 export GTK_IM_MODULE=ibus
-
 
 #=================================================================
 # npm related stuff
