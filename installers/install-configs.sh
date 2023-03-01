@@ -9,9 +9,17 @@ os=$(uname)
 case $os in
 Darwin)
   ln -sf $(pwd)/configs/zshrc ~/.zshrc
+
+  # Install gpg-agent config for OSX
+  mkdir -p ~/.gnupg/
+  ln -sf $(pwd)/configs/gpg-agent-mac.conf ~/.gnupg/gpg-agent.conf
   ;;
 *)
   ln -sf $(pwd)/configs/bashrc ~/.bashrc
+
+  # Install gpg-agent config for OSX
+  mkdir -p ~/.gnupg/
+  ln -sf $(pwd)/configs/gpg-agent-linux.conf ~/.gnupg/gpg-agent.conf
   ;;
 esac
 
