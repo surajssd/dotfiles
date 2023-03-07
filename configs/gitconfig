@@ -20,7 +20,8 @@ cmd = code --wait --diff $LOCAL $REMOTE
 
 [core]
 excludesfile = ~/.gitignore
-editor = code --wait || vi
+editor = code --wait
+vi
 
 [gpg]
 program = gpg
