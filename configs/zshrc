@@ -2,7 +2,7 @@
 # First is used to download random binaries, custom scripts, etc.
 # Second contains the binaries built by local go code.
 # And the final is used by homebrew
-export PATH=$PATH:$HOME/.local/bin:$HOME/go/bin:/opt/homebrew/bin
+export PATH=$PATH:$HOME/.local/bin:$HOME/go/bin:/opt/homebrew/bin:/opt/homebrew/sbin
 
 #=================================================================
 # Oh my zsh config
