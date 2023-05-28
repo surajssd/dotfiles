@@ -7,4 +7,4 @@
 set -euo pipefail
 
 # shellcheck disable=SC2005
-echo "$(date '+%Y-%m-%d-%H-%M-%S')"
+echo "$(date '+%Y-%m-%b-%d-%H-%M-%S')"
