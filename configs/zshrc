@@ -70,8 +70,8 @@ alias kc="kubectl create -f"
 
 # find what the current namespace on the cluster is
 function current-ns() {
-	kubectl get sa default -o jsonpath='{.metadata.namespace}'
-	echo
+    kubectl get sa default -o jsonpath='{.metadata.namespace}'
+    echo
 }
 
 # changing namespace
@@ -85,31 +85,31 @@ function change-ns() {
     kubectl config set-context $(kubectl config current-context) --namespace $namespace
 }
 
-which kubectl > /dev/null 2>&1
+which kubectl >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     source <(kubectl completion zsh)
     source <(kubectl completion zsh | sed 's/kubectl/k/g')
 fi
 
-which helm > /dev/null 2>&1
+which helm >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     source <(helm completion zsh)
 fi
 
-which kubeadm > /dev/null 2>&1
+which kubeadm >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     source <(kubeadm completion zsh)
 fi
 
-which gh > /dev/null 2>&1
+which gh >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     eval "$(gh completion -s zsh)"
 fi
 
-which kind > /dev/null 2>&1
+which kind >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     mkdir -p $ZSH/completions/
-    kind completion zsh > $ZSH/completions/_kind
+    kind completion zsh >$ZSH/completions/_kind
 fi
 
 #=================================================================
@@ -120,13 +120,13 @@ alias watch='watch '
 
 # this is not default on distro not centos/fedora based
 alias ll="ls -l"
-which exa > /dev/null 2>&1
+which exa >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     alias ll="exa -Fl"
     alias ls="exa"
 fi
 
-which rg > /dev/null 2>&1
+which rg >/dev/null 2>&1
 if [ $? -eq 0 ]; then
     alias grep="rg"
 fi
