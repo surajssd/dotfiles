@@ -14,6 +14,8 @@ pushd "${backup_dir}"
 
 echo "Backing up to ${backup_dir} ..."
 
+echo "Total backup size close to: $(du -sh ~ 2>/dev/null)"
+
 while true; do
     echo "Size: $(du -sh ${backup_dir})"
     sleep 1
@@ -36,6 +38,10 @@ rsync \
     --exclude ".net" \
     --exclude ".terraform.*" \
     --exclude "Applications" \
+    --exclude "Pictures/Photos Library.photoslibrary" \
+    --exclude "Desktop" \
+    --exclude ".Trash" \
+    --exclude ".gnupg" \
     ~/ ./
 
 popd
