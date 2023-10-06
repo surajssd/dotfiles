@@ -1,6 +1,8 @@
-.PHONY: install-local-bin
+.PHONY: install-local-bin install-configs
 install-local-bin:
 	./installers/install-local-bin.sh
+	# TODO: Ensure that rust is installed
+	make -C ./dotfiles-rs install
 
 .PHONY: install-configs
 install-configs:
