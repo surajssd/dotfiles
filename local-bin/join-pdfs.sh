@@ -13,5 +13,5 @@ tmpdir="$(mktemp -d)"
 cp -r "${files}" "${tmpdir}"
 
 cd "${tmpdir}"
-combined_name="combined-pdf-$(date.sh).pdf"
+combined_name="combined-pdf-$(ssd date).pdf"
 pdfunite "${files}" "${combined_name}"

@@ -6,7 +6,7 @@ set -euo pipefail
 trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT
 
 hdd="/Volumes/backup-osx"
-dir="m2-$(date.sh)"
+dir="m2-$(ssd date)"
 backup_dir="${hdd}/${dir}"
 
 mkdir -p "${backup_dir}"
