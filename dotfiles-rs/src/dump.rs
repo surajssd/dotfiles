@@ -1,7 +1,8 @@
-use chrono::Utc;
 use shellexpand;
 use std::path::Path;
 use std::process::Command;
+
+use crate::date;
 
 pub const DUMP_LOCATION: &str = "$HOME/code/work/dump";
 
@@ -20,11 +21,7 @@ pub fn dump(location: &str) {
         panic!("Location {:?} is not a directory", dir);
     }
 
-    // Generate a date.
-    //    Format for the date is: 2023-10-Oct-05-19-24-08
-    //    date '+%Y-%m-%b-%d-%H-%M-%S'
-    let now = Utc::now();
-    let filename = now.format("%Y-%m-%b-%d-%H-%M-%S");
+    let filename = date::date();
 
     // Create a file in the location with the date as the name.
     let location = dir.join(format!("{}.sh", filename));
