@@ -23,10 +23,8 @@ Darwin)
   ;;
 esac
 
-ln -sf $(pwd)/configs/gitconfig ~/.gitconfig
 ln -sf $(pwd)/configs/gitignore ~/.gitignore
 ln -sf $(pwd)/configs/terraformrc ~/.terraformrc
 ln -sf $(pwd)/configs/tmux.conf ~/.tmux.conf
-ln -sf $(pwd)/configs/ssh_config ~/.ssh/config
 
 echo "Installation successful."
