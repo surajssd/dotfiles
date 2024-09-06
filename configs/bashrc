@@ -129,10 +129,10 @@ alias watch='watch '
 
 # this is not default on distro not centos/fedora based
 alias ll="ls -l"
-which exa >/dev/null 2>&1
+which eza >/dev/null 2>&1
 if [ $? -eq 0 ]; then
-    alias ll="exa -Fl"
-    alias ls="exa"
+    alias ll="eza -F -l"
+    alias ls="eza"
 fi
 
 which rg >/dev/null 2>&1
