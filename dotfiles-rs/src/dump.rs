@@ -6,6 +6,7 @@ use crate::date;
 
 pub const DUMP_LOCATION: &str = "$HOME/code/work/dump";
 
+// TODO: Return errors.
 pub fn dump(location: &str) {
     // The file path may contain tilde or env vars, so expand them.
     let location = shellexpand::full(location).unwrap().to_string();
