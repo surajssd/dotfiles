@@ -15,6 +15,7 @@ install-all:
 .PHONY: pull-master
 pull-master:
 	git pull --ff origin master
+	cd dotfilesprivate && git pull --ff origin master
 
 .PHONY: update
 update: pull-master install-all
