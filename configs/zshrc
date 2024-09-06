@@ -120,10 +120,10 @@ alias watch='watch '
 
 # this is not default on distro not centos/fedora based
 alias ll="ls -l"
-which exa >/dev/null 2>&1
+which eza >/dev/null 2>&1
 if [ $? -eq 0 ]; then
-    alias ll="exa -Fl"
-    alias ls="exa"
+    alias ll="eza -F -l"
+    alias ls="eza"
 fi
 
 which rg >/dev/null 2>&1
@@ -139,6 +139,10 @@ gpgconf --launch gpg-agent
 #=================================================================
 # ssh aliases
 alias ssh="ssh -oStrictHostKeyChecking=no"
+
+#=================================================================
+# missing osx commands aliases
+alias sha256sum="shasum -a 256"
 
 #=================================================================
 # Az CLI completion
@@ -164,3 +168,9 @@ _az_python_argcomplete() {
     fi
 }
 complete -o nospace -o default -o bashdefault -F _az_python_argcomplete "az"
+
+#=================================================================
+# Node and NVM related stuff
+export NVM_DIR="$HOME/.nvm"
+[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"                                       # This loads nvm
+[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" # This loads nvm bash_completion
