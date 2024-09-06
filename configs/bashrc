@@ -175,3 +175,18 @@ export EDITOR=vim
 #=================================================================
 # Rust related env vars
 [[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
+
+#=================================================================
+# WSL related stuff
+
+# Define a function only if the env var WSL_DISTRO_NAME is set
+if [ -n "$WSL_DISTRO_NAME" ]; then
+    # Define a function to open a file or a URL.
+    function open() {
+        if [[ $1 == http* ]]; then
+            explorer.exe $1
+        else
+            explorer.exe "$(wslpath -w $1)"
+        fi
+    }
+fi
