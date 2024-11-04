@@ -174,3 +174,9 @@ complete -o nospace -o default -o bashdefault -F _az_python_argcomplete "az"
 export NVM_DIR="$HOME/.nvm"
 [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"                                       # This loads nvm
 [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" # This loads nvm bash_completion
+
+#===============================================================================
+#
+# The coreutils package provided by homebrew has newer tools like tr compared to
+# what the default OSX ships
+export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
