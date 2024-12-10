@@ -3,22 +3,29 @@
 
 set -euo pipefail
 
+# Check if this is a OSX machine and if not exit
+OPERATING_SYSTEM=$(uname)
+if [ "$OPERATING_SYSTEM" != "Darwin" ]; then
+    echo "This script is only on OSX"
+    exit 1
+fi
+
 trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT
 
-hdd="/Volumes/backup-osx"
-dir="m2-$(ssd date)"
-backup_dir="${hdd}/${dir}"
+HDD_NAME="${HDD_NAME:-/Volumes/mac-backup}"
+DIR_NAME="${DIR_NAME:-m2-$(ssd date)}"
+BACKUP_DIR_NAME="${HDD_NAME}/${DIR_NAME}"
 
-mkdir -p "${backup_dir}"
-pushd "${backup_dir}"
+mkdir -p "${BACKUP_DIR_NAME}"
+pushd "${BACKUP_DIR_NAME}"
 
-echo "Backing up to ${backup_dir} ..."
+echo "Backing up to ${BACKUP_DIR_NAME} ..."
 
 echo "Total backup size close to: $(du -sh ~ 2>/dev/null)"
 
 while true; do
-    echo "Size: $(du -sh ${backup_dir})"
-    sleep 1
+    echo "Size: $(du -sh ${BACKUP_DIR_NAME})"
+    sleep 5
 done &
 
 rsync \
@@ -39,6 +46,7 @@ rsync \
     --exclude ".terraform.*" \
     --exclude "Applications" \
     --exclude "Pictures/Photos Library.photoslibrary" \
+    --exclude "Pictures/Photo Booth Library" \
     --exclude "Desktop" \
     --exclude ".Trash" \
     --exclude ".gnupg" \
