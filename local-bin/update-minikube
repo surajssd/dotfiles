@@ -2,6 +2,22 @@
 
 set -euo pipefail
 
+# Detect OS
+os=$(uname)
+case $os in
+Darwin)
+  brew install minikube
+  exit 0
+  ;;
+Linux)
+  # no op
+  ;;
+*)
+  echo "unsupported OS: ${os}"
+  exit 1
+  ;;
+esac
+
 # shellcheck source=/dev/null
 source "$(dirname "${BASH_SOURCE[0]}")"/util.sh
 
