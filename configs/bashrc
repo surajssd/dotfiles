@@ -190,3 +190,11 @@ if [ -n "$WSL_DISTRO_NAME" ]; then
         fi
     }
 fi
+
+#=================================================================
+# A terminal browser
+function browser() {
+    local command="docker run --rm -it --net=host browsh/browsh"
+    echo "$ ${command}"
+    $command
+}
