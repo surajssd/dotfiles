@@ -65,6 +65,7 @@ export GO111MODULE=on
 # All Kubernetes related stuff
 
 # k8s alias
+which kubecolor >/dev/null 2>&1 && alias kubectl="kubecolor"
 alias k=kubectl
 alias kg="kubectl get"
 alias kgp="kubectl get pods"
@@ -190,7 +191,6 @@ if [ -n "$WSL_DISTRO_NAME" ]; then
         fi
     }
 fi
-
 #=================================================================
 # A terminal browser
 function browser() {
