@@ -16,3 +16,6 @@ Session.vim
 
 # ignore the local scripts directory
 .scripts
+
+# Ignore all the .DS_Store files
+**/.*DS_Store
