@@ -57,7 +57,16 @@ function gpom() {
 # All Kubernetes related stuff
 
 # k8s alias
-which kubecolor >/dev/null 2>&1 && alias kubectl="kubecolor"
+which kubectl >/dev/null 2>&1 && {
+    source <(kubectl completion zsh)
+    source <(kubectl completion zsh | sed 's/kubectl/k/g')
+}
+
+which kubecolor >/dev/null 2>&1 && {
+    compdef kubecolor=kubectl
+    alias kubectl='kubecolor'
+}
+
 alias k=kubectl
 alias kg="kubectl get"
 alias kgp="kubectl get pods"
@@ -85,12 +94,6 @@ function change-ns() {
 
     kubectl config set-context $(kubectl config current-context) --namespace $namespace
 }
-
-which kubectl >/dev/null 2>&1
-if [ $? -eq 0 ]; then
-    source <(kubectl completion zsh)
-    source <(kubectl completion zsh | sed 's/kubectl/k/g')
-fi
 
 which helm >/dev/null 2>&1
 if [ $? -eq 0 ]; then
