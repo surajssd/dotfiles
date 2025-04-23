@@ -17,4 +17,4 @@ if [[ -z "${url}" ]]; then
   exit 1
 fi
 
-youtube-dl --extract-audio --audio-format mp3 "${url}"
+yt-dlp --extract-audio --audio-format mp3 "${url}"
