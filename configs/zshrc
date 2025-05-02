@@ -184,3 +184,7 @@ export NVM_DIR="$HOME/.nvm"
 # The coreutils package provided by homebrew has newer tools like tr compared to
 # what the default OSX ships
 export PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
+
+#===============================================================================
+# tmux
+alias tmux="tmux -CC"
