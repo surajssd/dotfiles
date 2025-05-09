@@ -14,4 +14,4 @@ QUAY_IMAGE_NAME="${QUAY_REPO}/${DOMAIN_LESS_IMAGE_NAME}"
 
 docker pull "${IMAGE_NAME}"
 docker tag "${IMAGE_NAME}" "${QUAY_IMAGE_NAME}"
-docker push "${QUAY_REPO}/${IMAGE_NAME}"
+docker push "${QUAY_IMAGE_NAME}"
