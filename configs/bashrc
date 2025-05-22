@@ -198,3 +198,7 @@ function browser() {
     echo "$ ${command}"
     $command
 }
+
+#=================================================================
+# Homebrew related env vars
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
