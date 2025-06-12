@@ -32,24 +32,31 @@ rsync \
     -aq \
     --backup \
     --progress --stats \
-    --exclude ".cargo" \
     --exclude ".azure" \
+    --exclude ".bash-git-prompt" \
+    --exclude ".cache" \
+    --exclude ".cargo" \
     --exclude ".docker" \
-    --exclude ".rustup" \
-    --exclude "Library" \
-    --exclude "go" \
+    --exclude ".gnupg" \
     --exclude ".kube" \
+    --exclude ".local" \
+    --exclude ".minikube" \
+    --exclude ".net" \
+    --exclude ".npm" \
+    --exclude ".nvm" \
+    --exclude ".oh-my-zsh" \
+    --exclude ".ollama" \
+    --exclude ".rustup" \
+    --exclude ".terraform.*" \
+    --exclude ".Trash" \
     --exclude ".vscode*" \
     --exclude ".zsh*" \
-    --exclude ".oh-my-zsh" \
-    --exclude ".net" \
-    --exclude ".terraform.*" \
     --exclude "Applications" \
+    --exclude "Desktop" \
+    --exclude "go" \
+    --exclude "Library" \
     --exclude "Pictures/Photos Library.photoslibrary" \
     --exclude "Pictures/Photo Booth Library" \
-    --exclude "Desktop" \
-    --exclude ".Trash" \
-    --exclude ".gnupg" \
     ~/ ./
 
 popd
