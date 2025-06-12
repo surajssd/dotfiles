@@ -31,6 +31,10 @@ unsetopt inc_append_history
 unsetopt share_history
 
 #=================================================================
+# Starship prompt
+eval "$(starship init zsh)"
+
+#=================================================================
 # my aliases
 
 # GIT related

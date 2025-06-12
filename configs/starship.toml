@@ -1,0 +1,20 @@
+[character]
+success_symbol = '[➜](bold green) '
+error_symbol = '[✗](bold red) '
+
+# Git specific configuration
+[git_branch]
+symbol = '🔀 '
+
+[git_commit]
+tag_symbol = ' 🏷 '
+
+# Kubernetes specific configuration
+[kubernetes]
+disabled = false
+symbol = "☸️ "
+
+# Azure specific configuration
+[azure]
+disabled = false
+symbol = '☁️ '
