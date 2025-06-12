@@ -10,28 +10,20 @@ if [ "$OPERATING_SYSTEM" != "Darwin" ]; then
     exit 1
 fi
 
-trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT
-
 HDD_NAME="${HDD_NAME:-/Volumes/mac-backup}"
 DIR_NAME="${DIR_NAME:-m2-$(ssd date)}"
 BACKUP_DIR_NAME="${HDD_NAME}/${DIR_NAME}"
 
-mkdir -p "${BACKUP_DIR_NAME}"
-pushd "${BACKUP_DIR_NAME}"
-
-echo "Backing up to ${BACKUP_DIR_NAME} ..."
-
 echo "Total backup size close to: $(du -sh ~ 2>/dev/null)"
 
-while true; do
-    echo "Size: $(du -sh ${BACKUP_DIR_NAME})"
-    sleep 5
-done &
+mkdir -p "${BACKUP_DIR_NAME}"
+pushd "${BACKUP_DIR_NAME}"
+echo "Backing up to ${BACKUP_DIR_NAME} ..."
 
 rsync \
-    -aq \
+    -av \
     --backup \
-    --progress --stats \
+    --info=progress2 \
     --exclude ".azure" \
     --exclude ".bash-git-prompt" \
     --exclude ".cache" \
