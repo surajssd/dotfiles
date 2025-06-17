@@ -17,4 +17,4 @@ symbol = "☸️ "
 # Azure specific configuration
 [azure]
 disabled = false
-symbol = '☁️ '
+symbol = '󰠅 '
