@@ -29,6 +29,26 @@ function convert_branch_name() {
     fi
 }
 
-gh pr checkout "${PR_NUMBER}" --repo "$(get_origin_repo)"
-git checkout -b "$(convert_branch_name)" || true
+# If this failed, usually it means we already have an outdated branch from the PR.
+if ! gh pr checkout "${PR_NUMBER}" --repo "$(get_origin_repo)"; then
+    pr_branch=$(git branch --show-current)
+    if [[ "$pr_branch" == "main" ]]; then
+        echo "❌ [ERROR]: gh failed"
+    fi
+
+    git checkout main
+    git branch -D "${pr_branch}"
+    echo "ℹ️ [INFO]: Deleted outdated branch ${pr_branch} and checking out main."
+    gh pr checkout "${PR_NUMBER}" --repo "$(get_origin_repo)"
+fi
+
+new_branch_name=$(convert_branch_name)
+# If this failed, it means that the branch already exists and that is because we
+# already created and pushed it and probably it is outdated now.
+if ! git checkout -b "${new_branch_name}"; then
+    git branch -D "${new_branch_name}"
+    echo "ℹ️ [INFO]: Deleted outdated branch ${new_branch_name} and checking out main."
+    git checkout -b "${new_branch_name}"
+fi
+
 git push -u origin "$(git branch --show-current)"
