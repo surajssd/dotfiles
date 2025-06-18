@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+function err() {
+    echo "❌ ${1}" >&2
+}
+
+function chrome_copy_paste() {
+    # This function is a placeholder for the actual implementation.
+    # It should handle copying and pasting data to/from Chrome.
+    err "This function is not implemented yet."
+    exit 1
+}
+
+DUMP_DIR="${HOME}/code/work/surajssd/dump"
+DUMP_FORMAT="sh"
+
+function usage_dump() {
+    echo "Usage: $0 dump [Options]"
+    echo ""
+    echo "Options:"
+    echo "    --format, -f <format>   Specify the format for the dump file (default: sh)"
+}
+
+function dump() {
+    while [[ $# -gt 0 ]]; do
+        case "${1:-}" in
+        " ")
+            shift
+            ;;
+        --format | -f)
+            shift
+            DUMP_FORMAT="$1"
+            shift
+            ;;
+        --help | help | -h)
+            usage_dump
+            exit 0
+            ;;
+        *)
+            err "Unknown option: ${1:-}"
+            usage_dump
+            exit 1
+            ;;
+        esac
+    done
+
+    FILE_PATH="${DUMP_DIR}/$(date +%Y)-archives/$(date "+%Y-%m-%b-%d-%H-%M-%S").${DUMP_FORMAT}"
+
+    code "${DUMP_DIR}"
+    touch "${FILE_PATH}"
+    code "${FILE_PATH}"
+}
+
+function usage_global() {
+    echo "Usage: $0 <subcommand> [options]"
+    echo ""
+    echo "Available subcommands:"
+    echo "    dump      Create a dump file"
+}
+
+case "${1:-}" in
+dump)
+    shift
+    dump "$@"
+    ;;
+*)
+    err "Unknown subcommand: ${1:-}"
+    usage_global
+    exit 1
+    ;;
+esac
