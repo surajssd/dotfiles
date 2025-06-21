@@ -2,6 +2,13 @@
 
 set -euo pipefail
 
+function check_ssd_path() {
+    SSD_PATH="${0}"
+    if [[ "${SSD_PATH}" == "${HOME}/.local/bin/ssd" ]]; then
+        SSD_PATH="ssd"
+    fi
+}
+
 function err() {
     echo "❌ ${1}" >&2
 }
@@ -24,7 +31,7 @@ DUMP_DIR="${HOME}/code/work/surajssd/dump"
 DUMP_FORMAT="sh"
 
 function usage_dump() {
-    echo "Usage: $0 dump [Options]"
+    echo "Usage: ${SSD_PATH} dump [Options]"
     echo ""
     echo "Options:"
     echo "    --format, -f <format>   Specify the format for the dump file (default: sh)"
@@ -61,13 +68,15 @@ function dump() {
 }
 
 function usage_global() {
-    echo "Usage: $0 <subcommand> [options]"
+    echo "Usage: "${SSD_PATH}" <subcommand> [options]"
     echo ""
     echo "Available subcommands:"
     echo "    dump      Create a dump file"
     echo "    date      Print the current date in a specific format: YYYY-MM-mmm-dd-HH-MM-SS"
     echo "    browser   Force a website to allow copy-paste in Chromium-based browsers"
 }
+
+check_ssd_path
 
 case "${1:-}" in
 dump)
