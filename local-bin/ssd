@@ -58,12 +58,17 @@ function usage_global() {
     echo ""
     echo "Available subcommands:"
     echo "    dump      Create a dump file"
+    echo "    date      Print the current date in a specific format: YYYY-MM-mmm-dd-HH-MM-SS"
 }
 
 case "${1:-}" in
 dump)
     shift
     dump "$@"
+    ;;
+date)
+    shift
+    date "+%Y-%m-%b-%d-%H-%M-%S"
     ;;
 *)
     err "Unknown subcommand: ${1:-}"
