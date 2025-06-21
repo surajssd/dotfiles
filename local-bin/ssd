@@ -6,11 +6,18 @@ function err() {
     echo "❌ ${1}" >&2
 }
 
-function chrome_copy_paste() {
-    # This function is a placeholder for the actual implementation.
-    # It should handle copying and pasting data to/from Chrome.
-    err "This function is not implemented yet."
-    exit 1
+function chromium_copy_paste() {
+    cat <<EOF | pbcopy
+var allowPaste = function(e){
+  e.stopImmediatePropagation();
+  return true;
+};
+
+document.addEventListener('paste', allowPaste, true);
+EOF
+
+    echo "✅ Copied code to clipboard!"
+    echo "ℹ️  Press '⌘ + ⌥ + I' on a browser to open 'Developer Tools' go to 'Console' and paste the code in clipboard."
 }
 
 DUMP_DIR="${HOME}/code/work/surajssd/dump"
@@ -59,6 +66,7 @@ function usage_global() {
     echo "Available subcommands:"
     echo "    dump      Create a dump file"
     echo "    date      Print the current date in a specific format: YYYY-MM-mmm-dd-HH-MM-SS"
+    echo "    browser   Force a website to allow copy-paste in Chromium-based browsers"
 }
 
 case "${1:-}" in
@@ -69,6 +77,10 @@ dump)
 date)
     shift
     date "+%Y-%m-%b-%d-%H-%M-%S"
+    ;;
+browser)
+    shift
+    chromium_copy_paste
     ;;
 *)
     err "Unknown subcommand: ${1:-}"
