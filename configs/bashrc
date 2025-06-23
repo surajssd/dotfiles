@@ -18,9 +18,8 @@ export PATH=$PATH:$HOME/.local/bin:.scripts
 [ -r $HOME/.byobu/prompt ] && . $HOME/.byobu/prompt #byobu-prompt#
 
 #=================================================================
-# Bash Git Prompt
-source ~/.bash-git-prompt/gitprompt.sh
-GIT_PROMPT_ONLY_IN_REPO=1
+# Starship prompt
+eval "$(starship init zsh)"
 
 #=================================================================
 # my aliases
