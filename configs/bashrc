@@ -19,7 +19,7 @@ export PATH=$PATH:$HOME/.local/bin:.scripts
 
 #=================================================================
 # Starship prompt
-eval "$(starship init zsh)"
+eval "$(starship init bash)"
 
 #=================================================================
 # my aliases
@@ -171,10 +171,6 @@ alias ssh="ssh -oStrictHostKeyChecking=no"
 #=================================================================
 # Default editor
 export EDITOR=vim
-
-#=================================================================
-# Rust related env vars
-[[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
 
 #=================================================================
 # WSL related stuff
