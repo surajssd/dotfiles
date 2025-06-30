@@ -31,10 +31,12 @@ DUMP_DIR="${HOME}/code/work/surajssd/dump"
 DUMP_FORMAT="sh"
 
 function usage_dump() {
-    echo "Usage: ${SSD_PATH} dump [Options]"
+    echo "🛠️ Usage: ${SSD_PATH} dump [Options]"
     echo ""
     echo "Options:"
     echo "    --format, -f <format>   Specify the format for the dump file (default: sh)"
+    echo "    --open, -o              Open the dump directory in VS Code"
+    echo "    --help, -h              Show this help message"
 }
 
 function dump() {
@@ -47,6 +49,11 @@ function dump() {
             shift
             DUMP_FORMAT="$1"
             shift
+            ;;
+        --open | -o)
+            shift
+            code "${DUMP_DIR}"
+            exit 0
             ;;
         --help | help | -h)
             usage_dump
@@ -68,7 +75,7 @@ function dump() {
 }
 
 function usage_global() {
-    echo "Usage: "${SSD_PATH}" <subcommand> [options]"
+    echo "🛠️ Usage: "${SSD_PATH}" <subcommand> [options]"
     echo ""
     echo "Available subcommands:"
     echo "    dump      Create a dump file"
