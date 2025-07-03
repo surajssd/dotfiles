@@ -2,33 +2,35 @@
 
 set -euo pipefail
 
-echo "Installing configs from ./configs dir"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONFIGS_DIR="$(realpath "${SCRIPT_DIR}/../configs")"
+
+echo "⏳ Installing configs from ${CONFIGS_DIR} dir"
 
 # Install zshrc for OSX and bashrc for the rest.
 os=$(uname)
 case $os in
 Darwin)
-  ln -sf $(pwd)/configs/zshrc ~/.zshrc
+    ln -sf "${CONFIGS_DIR}"/zshrc ~/.zshrc
 
-  # Install gpg-agent config for OSX
-  mkdir -p ~/.gnupg/
-  ln -sf $(pwd)/configs/gpg-agent-mac.conf ~/.gnupg/gpg-agent.conf
-  ;;
+    # Install gpg-agent config for OSX
+    mkdir -p ~/.gnupg/
+    ln -sf "${CONFIGS_DIR}"/gpg-agent-mac.conf ~/.gnupg/gpg-agent.conf
+    ;;
 *)
-  ln -sf $(pwd)/configs/bashrc ~/.bashrc
+    ln -sf "${CONFIGS_DIR}"/bashrc ~/.bashrc
 
-  # Install gpg-agent config for OSX
-  mkdir -p ~/.gnupg/
-  ln -sf $(pwd)/configs/gpg-agent-linux.conf ~/.gnupg/gpg-agent.conf
-  ;;
+    # Install gpg-agent config for OSX
+    mkdir -p ~/.gnupg/
+    ln -sf "${CONFIGS_DIR}"/gpg-agent-linux.conf ~/.gnupg/gpg-agent.conf
+    ;;
 esac
 
-ln -sf $(pwd)/configs/gitignore ~/.gitignore
-ln -sf $(pwd)/configs/terraformrc ~/.terraformrc
-ln -sf $(pwd)/configs/tmux.conf ~/.tmux.conf
-ln -sf $(pwd)/configs/starship.toml ~/.config/starship.toml
+ln -sf "${CONFIGS_DIR}"/gitignore ~/.gitignore
+ln -sf "${CONFIGS_DIR}"/terraformrc ~/.terraformrc
+ln -sf "${CONFIGS_DIR}"/tmux.conf ~/.tmux.conf
+ln -sf "${CONFIGS_DIR}"/starship.toml ~/.config/starship.toml
 
-ln -sf $(pwd)/dotfilesprivate/configs/gitconfig ~/.gitconfig
-mkdir -p ~/.ssh && ln -sf $(pwd)/dotfilesprivate/configs/ssh_config ~/.ssh/config
+echo "✅ Config files installed successfully!"
 
-echo "Installation successful."
+"${SCRIPT_DIR}"/../dotfilesprivate/install-configs.sh
