@@ -10,6 +10,7 @@ function lite() {
 }
 
 function full() {
+    lite
     docker buildx prune -af
     echo "🚀 Cleaning up all unused containers, images, networks, and volumes..."
     docker system prune -a --volumes -f
