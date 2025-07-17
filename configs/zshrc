@@ -35,6 +35,10 @@ unsetopt share_history
 eval "$(starship init zsh)"
 
 #=================================================================
+# fzf
+source <(fzf --zsh)
+
+#=================================================================
 # my aliases
 
 # GIT related
