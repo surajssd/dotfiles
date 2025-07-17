@@ -183,11 +183,13 @@ complete -o nospace -o default -o bashdefault -F _az_python_argcomplete "az"
 
 # Add azure auth
 export PATH="${PATH}:${HOME}/.azureauth/0.9.2"
-#=================================================================
-# Node and NVM related stuff
-export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"                                       # This loads nvm
-[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" # This loads nvm bash_completion
+
+# #=================================================================
+# This is commented right now because it is slowing down the shell startup!
+# # Node and NVM related stuff
+# export NVM_DIR="$HOME/.nvm"
+# [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"                                       # This loads nvm
+# [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" # This loads nvm bash_completion
 
 #===============================================================================
 #
