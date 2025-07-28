@@ -38,6 +38,7 @@ if ! gh pr checkout "${PR_NUMBER}" --repo "$(get_origin_repo)"; then
 
     git checkout main
     git branch -D "${pr_branch}"
+    git push origin --delete "${pr_branch}"
     echo "ℹ️ [INFO]: Deleted outdated branch ${pr_branch} and checking out main."
     gh pr checkout "${PR_NUMBER}" --repo "$(get_origin_repo)"
 fi
@@ -47,6 +48,7 @@ new_branch_name=$(convert_branch_name)
 # already created and pushed it and probably it is outdated now.
 if ! git checkout -b "${new_branch_name}"; then
     git branch -D "${new_branch_name}"
+    git push origin --delete "${new_branch_name}"
     echo "ℹ️ [INFO]: Deleted outdated branch ${new_branch_name} and checking out main."
     git checkout -b "${new_branch_name}"
 fi
