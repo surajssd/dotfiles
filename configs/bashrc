@@ -22,6 +22,10 @@ export PATH=$PATH:$HOME/.local/bin:.scripts
 eval "$(starship init bash)"
 
 #=================================================================
+# fzf
+eval "$(fzf --bash)"
+
+#=================================================================
 # my aliases
 
 # GIT related
