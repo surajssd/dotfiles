@@ -29,29 +29,49 @@ function convert_branch_name() {
     fi
 }
 
-# If this failed, usually it means we already have an outdated branch from the PR.
-if ! gh pr checkout "${PR_NUMBER}" --repo "$(get_origin_repo)"; then
-    pr_branch=$(git branch --show-current)
-    if [[ "$pr_branch" == "main" ]]; then
-        echo "❌ [ERROR]: gh failed"
-        exit 1
+function create_tmp_dir() {
+    # Let's get the folder name of the current git repository
+    origin_url=$(git remote get-url origin)
+    repo=$(basename -s .git "$origin_url")
+    tmp_dir="$(mktemp -d)"
+    mkdir -p "$tmp_dir"
+
+    cd "$tmp_dir"
+    git clone "${origin_url}"
+    cd "$repo"
+}
+
+function setup_pr_branch() {
+    # If this failed, usually it means we already have an outdated branch from the PR.
+    if ! gh pr checkout "${PR_NUMBER}" --repo "$(get_origin_repo)"; then
+        pr_branch=$(git branch --show-current)
+        if [[ "$pr_branch" == "main" ]]; then
+            echo "❌ [ERROR]: gh failed"
+            exit 1
+        fi
+
+        git checkout main
+        git branch -D "${pr_branch}"
+        git push origin --delete "${pr_branch}"
+        echo "ℹ️ [INFO]: Deleted outdated branch ${pr_branch} and checking out main."
+        gh pr checkout "${PR_NUMBER}" --repo "$(get_origin_repo)"
+    fi
+}
+
+function push_branch_to_origin() {
+    new_branch_name=$(convert_branch_name)
+    # If this failed, it means that the branch already exists and that is because we
+    # already created and pushed it and probably it is outdated now.
+    if ! git checkout -b "${new_branch_name}"; then
+        git branch -D "${new_branch_name}"
+        git push origin --delete "${new_branch_name}" || true
+        echo "ℹ️ [INFO]: Deleted outdated branch ${new_branch_name} and checking out main."
+        git checkout -b "${new_branch_name}"
     fi
 
-    git checkout main
-    git branch -D "${pr_branch}"
-    git push origin --delete "${pr_branch}"
-    echo "ℹ️ [INFO]: Deleted outdated branch ${pr_branch} and checking out main."
-    gh pr checkout "${PR_NUMBER}" --repo "$(get_origin_repo)"
-fi
+    git push -u origin "$(git branch --show-current)"
+}
 
-new_branch_name=$(convert_branch_name)
-# If this failed, it means that the branch already exists and that is because we
-# already created and pushed it and probably it is outdated now.
-if ! git checkout -b "${new_branch_name}"; then
-    git branch -D "${new_branch_name}"
-    git push origin --delete "${new_branch_name}" || true
-    echo "ℹ️ [INFO]: Deleted outdated branch ${new_branch_name} and checking out main."
-    git checkout -b "${new_branch_name}"
-fi
-
-git push -u origin "$(git branch --show-current)"
+create_tmp_dir
+setup_pr_branch
+push_branch_to_origin
