@@ -12,6 +12,21 @@ if [[ -z "${PR_NUMBER}" ]]; then
     exit 1
 fi
 
+# Now let's write a loop to get all the flags
+FORCE_PUSH=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --force-push | -f)
+            FORCE_PUSH="-f"
+            shift
+            ;;
+        *)
+            echo "❌ [ERROR]: Unknown flag: $1"
+            exit 1
+            ;;
+    esac
+done
+
 set -euo pipefail
 
 function get_origin_repo() {
@@ -69,7 +84,7 @@ function push_branch_to_origin() {
         git checkout -b "${new_branch_name}"
     fi
 
-    git push -u origin "$(git branch --show-current)"
+    git push -u ${FORCE_PUSH} origin "$(git branch --show-current)"
 }
 
 create_tmp_dir
