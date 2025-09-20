@@ -5,6 +5,9 @@
 
 set -euo pipefail
 
+AZURE_RESOURCE_GROUP="${1:-${AZURE_RESOURCE_GROUP:-}}"
+: "${AZURE_RESOURCE_GROUP:?AZURE_RESOURCE_GROUP must be provided either as first argument or environment variable}"
+
 SUBSCRIPTION_ID=$(az account show --query id --output tsv)
 
 while true; do
