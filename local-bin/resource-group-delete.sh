@@ -18,7 +18,7 @@ while true; do
     date
 
     # Sleep if the resource group is still there otherwise exit the loop.
-    if az group show -g "${AZURE_RESOURCE_GROUP}"; then
+    if az group show -g "${AZURE_RESOURCE_GROUP}" > /dev/null 2>&1; then
         echo "⏳ Resource group ${AZURE_RESOURCE_GROUP} still exists. Sleeping for 30 seconds..."
         sleep 30
     else
