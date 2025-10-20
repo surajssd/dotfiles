@@ -14,7 +14,12 @@ function source_venv() {
   # Create a virtualenv in the /tmp/litellm only if it does not exists
   if [ ! -d "${TMP_LITELLM_VENV}" ] || [ ! -f "${TMP_LITELLM_VENV}/bin/activate" ]; then
     info "Creating virtualenv in ${TMP_LITELLM_VENV}"
-    virtualenv "${TMP_LITELLM_VENV}"
+
+    # NOTE: This is a workaround for the python 3.14 issue where litellm fails
+    # as follows:
+    # ImportError: cannot import name 'BaseDefaultEventLoopPolicy' from 'asyncio.events'
+    python3.11 -m venv "${TMP_LITELLM_VENV}"
+
     source "${TMP_LITELLM_VENV}/bin/activate"
     # https://github.com/BerriAI/litellm
     pip install 'litellm[proxy]'
@@ -77,6 +82,7 @@ function start() {
   source_venv
   create_claude_config
   create_litellm_config
+  info "Starting litellm proxy server"
   litellm --config "${LITELLM_CONFIG_FILE}"
 }
 
