@@ -12,7 +12,7 @@ function info() {
 
 function source_venv() {
   # Create a virtualenv in the /tmp/litellm only if it does not exists
-  if [ ! -d "${TMP_LITELLM_VENV}" ]; then
+  if [ ! -d "${TMP_LITELLM_VENV}" ] || [ ! -f "${TMP_LITELLM_VENV}/bin/activate" ]; then
     info "Creating virtualenv in ${TMP_LITELLM_VENV}"
     virtualenv "${TMP_LITELLM_VENV}"
     source "${TMP_LITELLM_VENV}/bin/activate"
