@@ -22,6 +22,7 @@ function usage() {
     echo "Subcommands:"
     echo "  print        Check Azure VM capacity in specified regions and VM sizes"
     echo "  try          Attempt to scale a specific VM size in a region"
+    echo "  who-uses     Find who is using a specific VM type in resource groups"
     echo "  help, -h     Show this help message"
     echo ""
     echo "Options for 'print':"
@@ -33,9 +34,15 @@ function usage() {
     echo "  --region     The region to scale in (e.g., eastus)"
     echo "  --scale      The scale value to attempt (e.g., 10)"
     echo ""
+    echo "Options for 'who-uses':"
+    echo "  --vm-size    The VM size to search for (e.g., Standard_ND96isr_H100_v5)"
+    echo "  --refresh    Force re-download of VM and VMSS data (optional)"
+    echo ""
     echo "Examples:"
-    echo "  $0 print --vm-sizes Standard_D2s_v3 Standard_D4s_v3 --regions eastus westus"
-    echo "  $0 try --vm-size Standard_D2s_v3 --region eastus --scale 10"
+    echo "  $0 print     --vm-sizes Standard_D2s_v3 Standard_D4s_v3 --regions eastus westus"
+    echo "  $0 try       --vm-size Standard_D2s_v3 --region eastus --scale 10"
+    echo "  $0 who-uses  --vm-size Standard_ND96isr_H100_v5"
+    echo "  $0 who-uses  --vm-size Standard_ND96isr_H100_v5 --refresh"
     exit 1
 }
 
@@ -210,6 +217,105 @@ function try_vmss() {
     echo -e "${GREEN}Scale operation complete!${NC}"
 }
 
+# This function finds which resource groups are using a specific VM type
+function who_uses() {
+    local vm_type="$1"
+    local refresh="$2"
+
+    echo -e "${YELLOW}Checking Azure environment...${NC}"
+    check_azure_cli
+    check_azure_login
+
+    echo -e "${YELLOW}Finding resource groups using VM type: $vm_type${NC}"
+
+    # Get current subscription
+    SUB=$(az account show --query id --output tsv)
+    echo -e "${YELLOW}Subscription: ${SUB}${NC}"
+
+    # Create temporary directory for cache files
+    mkdir -p "${TMP_DIR}"
+
+    # Remove cache files if refresh is requested
+    if [ "${refresh}" = "true" ]; then
+        echo -e "${YELLOW}Refresh requested, removing cached files...${NC}"
+        rm -f "${TMP_DIR}/all_vms.json" "${TMP_DIR}/all_vmss.json"
+    fi
+
+    # Fetch all VMs and VMSSs
+    if [ -f "${TMP_DIR}/all_vms.json" ]; then
+        echo -e "${YELLOW}Using cached VMs from ${TMP_DIR}/all_vms.json${NC}"
+    else
+        echo -e "${YELLOW}Fetching all VMs...${NC}"
+        az vm list -d --subscription "${SUB}" -o json > "${TMP_DIR}/all_vms.json"
+    fi
+
+    if [ -f "${TMP_DIR}/all_vmss.json" ]; then
+        echo -e "${YELLOW}Using cached VMSSs from ${TMP_DIR}/all_vmss.json${NC}"
+    else
+        echo -e "${YELLOW}Fetching all VMSSs...${NC}"
+        az vmss list --subscription "${SUB}" -o json > "${TMP_DIR}/all_vmss.json"
+    fi
+
+    echo ""
+    echo -e "${BOLD}Results:${NC}"
+    echo ""
+
+    # Check VMs
+    vm_results=$(cat "${TMP_DIR}/all_vms.json" | jq -r --arg vmtype "${vm_type}" '.[] | select(.hardwareProfile.vmSize == $vmtype) | "\(.name) | \(.resourceGroup) | \(.location)"')
+
+    if [ -n "${vm_results}" ]; then
+        echo -e "${BOLD}Virtual Machines using ${vm_type}:${NC}"
+        printf "%-40s | %-50s | %-20s\n" "VM Name" "Resource Group" "Location"
+        printf "%-40s-|-%-50s-|-%-20s\n" "$(printf -- '-%.0s' $(seq 1 40))" "$(printf -- '-%.0s' $(seq 1 50))" "$(printf -- '-%.0s' $(seq 1 20))"
+        echo "${vm_results}" | while IFS='|' read -r name rg location; do
+            printf "${GREEN}%-40s${NC} | ${YELLOW}%-50s${NC} | %-20s\n" "$(echo "${name}" | xargs)" "$(echo "${rg}" | xargs)" "$(echo "${location}" | xargs)"
+        done
+        echo ""
+    else
+        echo -e "${YELLOW}No VMs found using ${vm_type}${NC}"
+        echo ""
+    fi
+
+    # Check VMSSs
+    vmss_results=$(cat "${TMP_DIR}/all_vmss.json" | jq -r --arg vmtype "${vm_type}" '.[] | select(.sku.name == $vmtype) | "\(.name) | \(.resourceGroup) | \(.location) | \(.sku.capacity)"')
+
+    if [ -n "${vmss_results}" ]; then
+        echo -e "${BOLD}Virtual Machine Scale Sets using ${vm_type}:${NC}"
+        printf "%-40s | %-50s | %-20s | %-8s\n" "VMSS Name" "Resource Group" "Location" "Capacity"
+        printf "%-40s-|-%-50s-|-%-20s-|-%-8s\n" "$(printf -- '-%.0s' $(seq 1 40))" "$(printf -- '-%.0s' $(seq 1 50))" "$(printf -- '-%.0s' $(seq 1 20))" "$(printf -- '-%.0s' $(seq 1 8))"
+        echo "${vmss_results}" | while IFS='|' read -r name rg location capacity; do
+            printf "${GREEN}%-40s${NC} | ${YELLOW}%-50s${NC} | %-20s | %-8s\n" "$(echo "${name}" | xargs)" "$(echo "${rg}" | xargs)" "$(echo "${location}" | xargs)" "$(echo "${capacity}" | xargs)"
+        done
+        echo ""
+
+        # Check for AKS-managed resource groups and provide portal links
+        echo -e "${BOLD}AKS Cluster Links:${NC}"
+        aks_found=false
+        while IFS='|' read -r name rg location capacity; do
+            rg_trimmed=$(echo "${rg}" | xargs)
+            # AKS managed resource groups follow the pattern: MC_{resourceGroup}_{aksClusterName}_{location}
+            if [[ "${rg_trimmed}" =~ ^MC_([^_]+)_([^_]+)_.+$ ]]; then
+                aks_found=true
+                aks_rg="${BASH_REMATCH[1]}"
+                aks_name="${BASH_REMATCH[2]}"
+                portal_url="https://portal.azure.com/#@/resource/subscriptions/${SUB}/resourceGroups/${aks_rg}/providers/Microsoft.ContainerService/managedClusters/${aks_name}/overview"
+                echo -e "  ${GREEN}${aks_name}${NC} (in resource group ${YELLOW}${aks_rg}${NC}):"
+                echo -e "    ${portal_url}"
+            fi
+        done <<< "${vmss_results}"
+
+        if [ "${aks_found}" = false ]; then
+            echo -e "  ${YELLOW}No AKS-managed resource groups detected${NC}"
+        fi
+        echo ""
+    else
+        echo -e "${YELLOW}No VMSSs found using ${vm_type}${NC}"
+        echo ""
+    fi
+
+    echo -e "${GREEN}Search complete!${NC}"
+}
+
 # Parse command line arguments
 subcommand=""
 vm_sizes=()
@@ -217,6 +323,7 @@ regions=()
 vm_size=""
 region=""
 scale=""
+refresh=false
 
 if [[ $# -eq 0 ]]; then
     echo -e "${RED}Error: No subcommand specified${NC}"
@@ -295,6 +402,36 @@ try)
     fi
 
     try_vmss "$vm_size" "$region" "$scale"
+    ;;
+who-uses)
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+        --vm-size)
+            shift
+            vm_size="$1"
+            shift
+            ;;
+        --refresh)
+            refresh=true
+            shift
+            ;;
+        -h | --help)
+            usage
+            ;;
+        *)
+            echo -e "${RED}Error: Unknown option $1${NC}"
+            usage
+            ;;
+        esac
+    done
+
+    # Check if required argument is provided
+    if [ -z "$vm_size" ]; then
+        echo -e "${RED}Error: Missing required argument --vm-size for 'who-uses' subcommand${NC}"
+        usage
+    fi
+
+    who_uses "$vm_size" "$refresh"
     ;;
 *)
     echo -e "${RED}Error: Unknown subcommand $subcommand${NC}"
