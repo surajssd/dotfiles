@@ -4,6 +4,7 @@ set -euo pipefail
 
 readonly TMP_LITELLM_VENV="/tmp/litellm"
 readonly CLAUDE_SETTINGS_FILE="${HOME}/.claude/settings.json"
+readonly CLAUDE_CONFIG_FILE="${HOME}/.claude.json"
 readonly LITELLM_CONFIG_FILE="${HOME}/.config/litellm/config.yaml"
 
 function info() {
@@ -63,6 +64,24 @@ function create_claude_settings() {
 EOF
 }
 
+function create_or_update_claude_config() {
+  # if claude config file does not exist, create it
+  if [ ! -f "${CLAUDE_CONFIG_FILE}" ]; then
+    info "Creating claude config file at ${CLAUDE_CONFIG_FILE}"
+    cat > "${CLAUDE_CONFIG_FILE}" <<EOF
+{
+  "hasCompletedOnboarding": true,
+  "hasAvailableSubscription": true
+}
+EOF
+  else
+    info "Updating claude config file at ${CLAUDE_CONFIG_FILE}"
+    # update the existing claude config file to set hasCompletedOnboarding and hasAvailableSubscription to true
+    jq '.hasCompletedOnboarding = true | .hasAvailableSubscription = true' "${CLAUDE_CONFIG_FILE}" > "${CLAUDE_CONFIG_FILE}.tmp" && mv "${CLAUDE_CONFIG_FILE}.tmp" "${CLAUDE_CONFIG_FILE}"
+  fi
+
+}
+
 function create_litellm_config() {
   info "Creating litellm config file at ${LITELLM_CONFIG_FILE}"
   mkdir -p "$(dirname "${LITELLM_CONFIG_FILE}")"
@@ -84,6 +103,7 @@ EOF
 function start() {
   source_venv
   create_claude_settings
+  create_or_update_claude_config
   create_litellm_config
   info "Starting litellm proxy server"
   litellm --config "${LITELLM_CONFIG_FILE}"
