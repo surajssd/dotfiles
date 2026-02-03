@@ -18,7 +18,7 @@ function source_venv() {
     # NOTE: This is a workaround for the python 3.14 issue where litellm fails
     # as follows:
     # ImportError: cannot import name 'BaseDefaultEventLoopPolicy' from 'asyncio.events'
-    python3.11 -m venv "${TMP_LITELLM_VENV}"
+    python3.13 -m venv "${TMP_LITELLM_VENV}"
 
     source "${TMP_LITELLM_VENV}/bin/activate"
     # https://github.com/BerriAI/litellm
