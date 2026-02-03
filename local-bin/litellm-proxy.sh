@@ -32,6 +32,7 @@ function source_venv() {
 function reset_claude() {
   info "Resetting claude settings file at ${CLAUDE_SETTINGS_FILE}"
   rm -rf "${CLAUDE_SETTINGS_FILE}"
+  rm -rf "${LITELLM_CONFIG_FILE}"
 }
 
 function cleanup() {
