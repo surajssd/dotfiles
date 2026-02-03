@@ -9,4 +9,4 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-kubectl debug "node/${1}" --image=ubuntu --profile=sysadmin -it -- chroot /host /bin/bash
+kubectl debug "node/${1}" --image=quay.io/surajd/ubuntu:latest --profile=sysadmin -it -- chroot /host /bin/bash
