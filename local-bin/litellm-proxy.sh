@@ -41,11 +41,12 @@ function cleanup() {
   rm -rf "${LITELLM_CONFIG_FILE}"
 }
 
-function create_claude_config() {
+function create_claude_settings() {
   info "Creating claude settings file at ${CLAUDE_SETTINGS_FILE}"
   mkdir -p "$(dirname "${CLAUDE_SETTINGS_FILE}")"
-  cat > "${CLAUDE_SETTINGS_FILE}" <<EOF
+  cat > "${CLAUDE_SETTINGS_FILE}" <<'EOF'
 {
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "sk-",
     "ANTHROPIC_BASE_URL": "http://localhost:4000",
@@ -54,7 +55,8 @@ function create_claude_config() {
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-sonnet-4.5",
     "ANTHROPIC_MODEL": "claude-sonnet-4.5",
     "ANTHROPIC_SMALL_FAST_MODEL": "claude-sonnet-4.5",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4.5"
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4.5",
+    "CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS": "1"
   }
 }
 EOF
@@ -80,7 +82,7 @@ EOF
 
 function start() {
   source_venv
-  create_claude_config
+  create_claude_settings
   create_litellm_config
   info "Starting litellm proxy server"
   litellm --config "${LITELLM_CONFIG_FILE}"
