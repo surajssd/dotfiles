@@ -1,0 +1,85 @@
+# vscode-light.yml
+k9s:
+  body:
+    fgColor: "#3b3b3b"        # Main text (Dark Grey)
+    bgColor: "#ffffff"        # Main background (White)
+    logoColor: "#007acc"      # VS Code Blue
+  prompt:
+    fgColor: "#3b3b3b"
+    bgColor: "#f3f3f3"        # Slightly off-white for input areas
+    suggestColor: "#007acc"
+  info:
+    fgColor: "#007acc"        # Blue info text
+    sectionColor: "#3b3b3b"
+  dialog:
+    fgColor: "#3b3b3b"
+    bgColor: "#f3f3f3"        # Light grey dialog background
+    buttonFgColor: "#ffffff"
+    buttonBgColor: "#007acc"  # Blue buttons
+    buttonFocusFgColor: "#ffffff"
+    buttonFocusBgColor: "#005a9e" # Darker blue on hover/focus
+    labelFgColor: "#616161"
+    fieldFgColor: "#3b3b3b"
+  frame:
+    border:
+      fgColor: "#e7e7e7"      # Subtle light grey borders
+      focusColor: "#007acc"   # Blue border when focused
+    menu:
+      fgColor: "#3b3b3b"
+      keyColor: "#007acc"     # Blue shortcut keys
+      numKeyColor: "#007acc"
+    crumb:
+      fgColor: "#616161"
+      bgColor: "#f3f3f3"
+      activeColor: "#007acc"
+    status:
+      newColor: "#007acc"     # Blue
+      modifyColor: "#007acc"
+      addColor: "#388a34"     # Green
+      errorColor: "#cd3131"   # Red
+      highlightColor: "#cca700" # Warning Yellow/Orange
+      killColor: "#652d90"    # Purple
+      completedColor: "#666666" # Grey
+    title:
+      fgColor: "#3b3b3b"
+      bgColor: "#f3f3f3"
+      highlightColor: "#007acc"
+      counterColor: "#007acc"
+      filterColor: "#007acc"
+  views:
+    charts:
+      bgColor: "default"
+      defaultDialColors:
+        - "#007acc"
+        - "#cd3131"
+      defaultChartColors:
+        - "#007acc"
+        - "#cd3131"
+    table:
+      fgColor: "#3b3b3b"
+      bgColor: "#ffffff"
+      cursorFgColor: "#ffffff" # White text on selection
+      cursorBgColor: "#0060c0" # Standard VS Code selection blue
+      markColor: "#cca700"
+      header:
+        fgColor: "#3b3b3b"
+        bgColor: "#f3f3f3"     # Header background
+        sorterColor: "#007acc"
+    xray:
+      fgColor: "#3b3b3b"
+      bgColor: "#ffffff"
+      cursorColor: "#e4f0f5"   # Light blue highlight
+      graphicColor: "#007acc"
+      showIcons: false
+    yaml:
+      keyColor: "#0000ff"      # VS Code Blue keys
+      colonColor: "#3b3b3b"
+      valueColor: "#3b3b3b"    # Dark grey values
+    logs:
+      fgColor: "#3b3b3b"
+      bgColor: "#ffffff"
+      indicator:
+        fgColor: "#ffffff"
+        bgColor: "#007acc"
+        toggleOnColor: "#388a34"
+        toggleOffColor: "#666666"

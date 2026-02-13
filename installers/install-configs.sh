@@ -16,6 +16,8 @@ Darwin)
     # Install gpg-agent config for OSX
     mkdir -p ~/.gnupg/
     ln -sf "${CONFIGS_DIR}"/gpg-agent-mac.conf ~/.gnupg/gpg-agent.conf
+
+    K9S_DIR="$HOME/Library/Application Support/k9s"
     ;;
 *)
     ln -sf "${CONFIGS_DIR}"/bashrc ~/.bashrc
@@ -23,6 +25,8 @@ Darwin)
     # Install gpg-agent config for OSX
     mkdir -p ~/.gnupg/
     ln -sf "${CONFIGS_DIR}"/gpg-agent-linux.conf ~/.gnupg/gpg-agent.conf
+
+    K9S_DIR="$HOME/.config/k9s"
     ;;
 esac
 
@@ -31,6 +35,10 @@ ln -sf "${CONFIGS_DIR}"/terraformrc ~/.terraformrc
 ln -sf "${CONFIGS_DIR}"/tmux.conf ~/.tmux.conf
 ln -sf "${CONFIGS_DIR}"/starship.toml ~/.config/starship.toml
 mkdir -p ~/.claude && ln -sf "${CONFIGS_DIR}"/global-claude-config.md ~/.claude/CLAUDE.md
+
+# Install k9s skin
+mkdir -p "${K9S_DIR}/skins"
+ln -sf "${CONFIGS_DIR}"/k9s/skins/vscode-light.yaml "${K9S_DIR}/skins/vscode-light.yaml"
 
 echo "✅ Config files installed successfully!"
 
