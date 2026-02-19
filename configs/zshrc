@@ -32,14 +32,16 @@ unsetopt share_history
 
 #=================================================================
 # Starship prompt
-eval "$(starship init zsh)"
+which starship >/dev/null 2>&1 && eval "$(starship init zsh)"
 
 #=================================================================
 # fzf
-source <(fzf --zsh)
-export FZF_CTRL_T_OPTS="
-  --walker-skip .git,node_modules,target,.DS_Store,.azureauth,.cache,.continue
-  --preview 'bat -n --color=always {}'"
+which fzf >/dev/null 2>&1 && {
+    source <(fzf --zsh)
+    export FZF_CTRL_T_OPTS="
+      --walker-skip .git,node_modules,target,.DS_Store,.azureauth,.cache,.continue
+      --preview 'bat -n --color=always {}'"
+}
 
 #=================================================================
 # my aliases
