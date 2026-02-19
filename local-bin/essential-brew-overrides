@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+OS="$(uname -s)"
+
+# Packages to install on all platforms (one per line, sorted alphabetically).
+common_packages=(
+    copilot-cli
+    fzf
+    gh
+    helm
+    procs
+    rsync
+    starship
+    zsh
+    zsh-completions
+)
+
+# Cask packages to install on all platforms (one per line, sorted alphabetically).
+common_cask_packages=(
+)
+
+# Packages to install only on macOS (one per line, sorted alphabetically).
+mac_packages=(
+)
+
+# Cask packages to install only on macOS (one per line, sorted alphabetically).
+mac_cask_packages=(
+    iterm2
+)
+
+# Packages to install only on Linux (one per line, sorted alphabetically).
+linux_packages=(
+)
+
+# Cask packages to install only on Linux (one per line, sorted alphabetically).
+linux_cask_packages=(
+)
+
+install_if_nonempty() {
+    local -a flags=()
+    if [[ "$1" == "--cask" ]]; then
+        flags+=("--cask")
+        shift
+    fi
+    if [[ $# -gt 0 ]]; then
+        brew install "${flags[@]}" "$@"
+    fi
+}
+
+install_if_nonempty "${common_packages[@]}"
+install_if_nonempty --cask "${common_cask_packages[@]}"
+
+if [[ "$OS" == "Darwin" ]]; then
+    install_if_nonempty "${mac_packages[@]}"
+    install_if_nonempty --cask "${mac_cask_packages[@]}"
+elif [[ "$OS" == "Linux" ]]; then
+    install_if_nonempty "${linux_packages[@]}"
+    install_if_nonempty --cask "${linux_cask_packages[@]}"
+fi

@@ -25,6 +25,14 @@ plugins=(
     zsh-completions
 )
 
+# These are needed for the zsh-completions plugin to work properly.
+# https://github.com/zsh-users/zsh-completions
+if type brew &>/dev/null; then
+    FPATH=$(brew --prefix)/share/zsh-completions:$FPATH
+    autoload -Uz compinit
+    compinit
+fi
+
 source $ZSH/oh-my-zsh.sh
 
 unsetopt inc_append_history
