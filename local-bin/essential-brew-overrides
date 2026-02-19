@@ -23,6 +23,7 @@ common_cask_packages=(
 
 # Packages to install only on macOS (one per line, sorted alphabetically).
 mac_packages=(
+    tree
 )
 
 # Cask packages to install only on macOS (one per line, sorted alphabetically).
