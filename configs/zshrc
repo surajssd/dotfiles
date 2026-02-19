@@ -37,6 +37,9 @@ eval "$(starship init zsh)"
 #=================================================================
 # fzf
 source <(fzf --zsh)
+export FZF_CTRL_T_OPTS="
+  --walker-skip .git,node_modules,target,.DS_Store,.azureauth,.cache,.continue
+  --preview 'bat -n --color=always {}'"
 
 #=================================================================
 # my aliases
@@ -132,21 +135,14 @@ alias watch='watch '
 
 # this is not default on distro not centos/fedora based
 alias ll="ls -l"
-which eza >/dev/null 2>&1
-if [ $? -eq 0 ]; then
-    alias ll="eza -F -l"
-    alias ls="eza"
-fi
+which eza >/dev/null 2>&1 && alias ll="eza -F -l" && alias ls="eza"
 
-which rg >/dev/null 2>&1
-if [ $? -eq 0 ]; then
-    alias grep="rg"
-fi
+which rg >/dev/null 2>&1 && alias grep="rg"
 
 #=================================================================
 # GPG
 export GPG_TTY=$(tty)
-gpgconf --launch gpg-agent
+which gpgconf >/dev/null 2>&1 && gpgconf --launch gpg-agent
 
 #=================================================================
 # ssh aliases
