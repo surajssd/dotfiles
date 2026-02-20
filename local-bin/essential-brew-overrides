@@ -28,6 +28,7 @@ common_packages=(
 common_cask_packages=(
     visual-studio-code
     claude-code
+    git-credential-manager
 )
 
 # Packages to install only on macOS (one per line, sorted alphabetically).
@@ -39,6 +40,7 @@ mac_packages=(
     rsync
     tmux
     tree
+    pinentry-mac
 )
 
 # Cask packages to install only on macOS (one per line, sorted alphabetically).

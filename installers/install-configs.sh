@@ -16,15 +16,20 @@ Darwin)
     # Install gpg-agent config for OSX
     mkdir -p ~/.gnupg/
     ln -sf "${CONFIGS_DIR}"/gpg-agent-mac.conf ~/.gnupg/gpg-agent.conf
+    ln -sf "${CONFIGS_DIR}"/gpg.conf ~/.gnupg/gpg.conf
+    find ~/.gnupg -type d -exec chmod 700 {} \;
+    find ~/.gnupg -type f -exec chmod 600 {} \;
 
     K9S_DIR="$HOME/Library/Application Support/k9s"
     ;;
 *)
     ln -sf "${CONFIGS_DIR}"/bashrc ~/.bashrc
 
-    # Install gpg-agent config for OSX
+    # Install gpg-agent config for Linux
     mkdir -p ~/.gnupg/
     ln -sf "${CONFIGS_DIR}"/gpg-agent-linux.conf ~/.gnupg/gpg-agent.conf
+    find ~/.gnupg -type d -exec chmod 700 {} \;
+    find ~/.gnupg -type f -exec chmod 600 {} \;
 
     K9S_DIR="$HOME/.config/k9s"
     ;;
