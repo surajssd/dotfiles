@@ -14,8 +14,10 @@ common_packages=(
     gh
     go
     helm
+    hugo
     kubecolor
     kubernetes-cli
+    llm
     procs
     ripgrep
     starship
