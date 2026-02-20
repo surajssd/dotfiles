@@ -7,12 +7,17 @@ OS="$(uname -s)"
 # Packages to install on all platforms (one per line, sorted alphabetically).
 common_packages=(
     azure-cli
+    bat
     copilot-cli
+    eza
     fzf
     gh
+    go
     helm
+    kubecolor
+    kubernetes-cli
     procs
-    rsync
+    ripgrep
     starship
     yq
     zsh
@@ -21,11 +26,18 @@ common_packages=(
 
 # Cask packages to install on all platforms (one per line, sorted alphabetically).
 common_cask_packages=(
+    visual-studio-code
+    claude-code
 )
 
 # Packages to install only on macOS (one per line, sorted alphabetically).
 mac_packages=(
+    coreutils
+    git
     gnupg
+    python
+    rsync
+    tmux
     tree
 )
 
