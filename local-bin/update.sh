@@ -47,9 +47,30 @@ update_apt() {
     echo "✅ APT update and upgrade complete."
 }
 
+update_omz() {
+    local omz_dir="${HOME}/.oh-my-zsh"
+
+    if [[ ! -d "${omz_dir}" ]]; then
+        echo "ℹ️ Oh My Zsh not found, skipping OMZ update."
+        return
+    fi
+
+    echo "⏳ Updating Oh My Zsh..."
+    zsh -ic "omz update"
+
+    echo "✅ Oh My Zsh update complete."
+
+    echo "⏳ Updating Oh My Zsh plugins..."
+    for plugin in "${omz_dir}"/custom/plugins/*/.git; do
+        [[ -d "${plugin}" ]] || continue
+        git -C "${plugin%/.git}" pull
+    done
+}
+
 echo "ℹ️ Detected OS: ${OS}"
 
 update_brew
 update_apt
+update_omz
 
 echo "✅ System update complete."

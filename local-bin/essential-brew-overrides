@@ -14,6 +14,7 @@ common_packages=(
     procs
     rsync
     starship
+    yq
     zsh
     zsh-completions
 )
@@ -24,6 +25,7 @@ common_cask_packages=(
 
 # Packages to install only on macOS (one per line, sorted alphabetically).
 mac_packages=(
+    gnupg
     tree
 )
 
