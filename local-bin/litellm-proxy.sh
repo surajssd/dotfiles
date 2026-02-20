@@ -95,10 +95,14 @@ model_list:
     model: github_copilot/*
     extra_headers:
       Editor-Version: vscode/1.372.0
+      Copilot-Vision-Request: "true"
 EOF
 }
 
 function start() {
+  # We don't want to reset this when running in a container
+  trap reset_claude EXIT SIGINT SIGTERM
+
   source_venv
   create_claude_settings
   create_or_update_claude_config
@@ -107,22 +111,75 @@ function start() {
   litellm --config "${LITELLM_CONFIG_FILE}"
 }
 
+function start_container() {
+  # Check if running on macOS
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "Error: start-container is only supported on macOS (Darwin)."
+    exit 1
+  fi
+
+  # Check if the container CLI is installed
+  if ! command -v container &> /dev/null; then
+    echo "Error: 'container' CLI is not installed."
+    info "Install it with:"
+    echo "brew install container"
+    exit 1
+  fi
+
+  # Check if the container system is running
+  if ! container system status &> /dev/null; then
+    echo "Error: container system is not running."
+    info "Start it with:"
+    echo "container system start"
+    exit 1
+  fi
+
+  create_claude_settings
+  create_or_update_claude_config
+  create_litellm_config
+
+  local container_name="litellm"
+
+  # Check if a container with the name 'litellm' already exists
+  if container ls -a 2>/dev/null | grep -q "${container_name}"; then
+    info "Container '${container_name}' already exists, removing it first"
+    container stop "${container_name}" 2>/dev/null || true
+    container rm "${container_name}"
+  fi
+
+  info "Starting litellm proxy server as a container"
+  container run \
+    -d \
+    -p '4000:4000' \
+    --mount type=bind,source="${HOME}/.config/litellm/",target='/root/.config/litellm/' \
+    --name "${container_name}" \
+    ghcr.io/berriai/litellm:main-latest \
+    --config '/root/.config/litellm/config.yaml'
+
+  info "Container '${container_name}' started successfully. To view logs, run:"
+  echo ""
+  echo "container logs -f ${container_name}"
+}
+
 function usage() {
   echo "Usage: litellm-proxy.sh <subcommand>"
   echo ""
   echo "Subcommands:"
-  echo "  start         Start the litellm proxy server"
-  echo "  reset-claude  Reset the claude settings file"
-  echo "  cleanup       Cleanup temporary files and configurations"
+  echo "  start            Start the litellm proxy server"
+  echo "  start-container  Start the litellm proxy server as a macOS container"
+  echo "  reset-claude     Reset the claude settings file"
+  echo "  cleanup          Cleanup temporary files and configurations"
   echo ""
 }
-
-trap reset_claude EXIT SIGINT SIGTERM
 
 case "${1:-}" in
 start)
     shift
     start "$@"
+    ;;
+start-container)
+    shift
+    start_container "$@"
     ;;
 reset-claude)
     shift
