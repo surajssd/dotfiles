@@ -6,6 +6,7 @@ OS="$(uname -s)"
 
 # Packages to install on all platforms (one per line, sorted alphabetically).
 common_packages=(
+    azure-cli
     copilot-cli
     fzf
     gh
@@ -28,7 +29,15 @@ mac_packages=(
 
 # Cask packages to install only on macOS (one per line, sorted alphabetically).
 mac_cask_packages=(
+    aldente
+    discord
+    google-chrome
     iterm2
+    keepingyouawake
+    notion
+    slack
+    tailscale-app
+    whatsapp
 )
 
 # Packages to install only on Linux (one per line, sorted alphabetically).
