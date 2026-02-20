@@ -14,12 +14,15 @@ common_packages=(
     gh
     go
     helm
+    htop
     hugo
     kubecolor
     kubernetes-cli
+    k9s
     llm
     procs
     ripgrep
+    shellcheck
     starship
     yq
     zsh
@@ -35,9 +38,11 @@ common_cask_packages=(
 
 # Packages to install only on macOS (one per line, sorted alphabetically).
 mac_packages=(
+    container
     coreutils
     git
     gnupg
+    pstree
     python
     rsync
     tmux
