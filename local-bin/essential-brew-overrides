@@ -31,9 +31,7 @@ common_packages=(
 
 # Cask packages to install on all platforms (one per line, sorted alphabetically).
 common_cask_packages=(
-    visual-studio-code
     claude-code
-    git-credential-manager
 )
 
 # Packages to install only on macOS (one per line, sorted alphabetically).
@@ -54,12 +52,14 @@ mac_packages=(
 mac_cask_packages=(
     aldente
     discord
+    git-credential-manager
     google-chrome
     iterm2
     keepingyouawake
     notion
     slack
     tailscale-app
+    visual-studio-code
     whatsapp
 )
 
