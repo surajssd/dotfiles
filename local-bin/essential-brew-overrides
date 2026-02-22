@@ -73,7 +73,7 @@ linux_cask_packages=(
 
 install_if_nonempty() {
     local -a flags=()
-    if [[ "$1" == "--cask" ]]; then
+    if [[ $# -gt 0 && "$1" == "--cask" ]]; then
         flags+=("--cask")
         shift
     fi
