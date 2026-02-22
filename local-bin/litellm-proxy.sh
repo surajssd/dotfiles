@@ -161,12 +161,55 @@ function start_container() {
   echo "container logs -f ${container_name}"
 }
 
+function start_docker() {
+  # Check if docker CLI is installed
+  if ! command -v docker &>/dev/null; then
+    echo "❌ Error: 'docker' CLI is not installed."
+    info "Install it from: https://docs.docker.com/get-docker/"
+    exit 1
+  fi
+
+  # Check if docker daemon is running
+  if ! docker info &>/dev/null; then
+    echo "❌ Error: Docker daemon is not running."
+    info "Start Docker Desktop or the Docker daemon first."
+    exit 1
+  fi
+
+  create_claude_settings
+  create_or_update_claude_config
+  create_litellm_config
+
+  local container_name="litellm"
+
+  # Check if a container with the name 'litellm' already exists
+  if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^${container_name}$"; then
+    info "Container '${container_name}' already exists, removing it first"
+    docker stop "${container_name}" 2>/dev/null || true
+    docker rm "${container_name}"
+  fi
+
+  info "Starting litellm proxy server as a Docker container"
+  docker run \
+    -d \
+    -p '4000:4000' \
+    -v "${HOME}/.config/litellm/:/root/.config/litellm/" \
+    --name "${container_name}" \
+    ghcr.io/berriai/litellm:main-latest \
+    --config '/root/.config/litellm/config.yaml'
+
+  info "Container '${container_name}' started successfully. To view logs, run:"
+  echo ""
+  echo "docker logs -f ${container_name}"
+}
+
 function usage() {
   echo "Usage: litellm-proxy.sh <subcommand>"
   echo ""
   echo "Subcommands:"
   echo "  start            Start the litellm proxy server"
   echo "  start-container  Start the litellm proxy server as a macOS container"
+  echo "  start-docker     Start the litellm proxy server as a Docker container"
   echo "  reset-claude     Reset the claude settings file"
   echo "  cleanup          Cleanup temporary files and configurations"
   echo ""
@@ -180,6 +223,10 @@ start)
 start-container)
     shift
     start_container "$@"
+    ;;
+start-docker)
+    shift
+    start_docker "$@"
     ;;
 reset-claude)
     shift
