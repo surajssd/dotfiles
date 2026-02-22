@@ -6,6 +6,10 @@ install-local-bin:
 install-configs:
 	./installers/install-configs.sh
 
+.PHONY: install-skills
+install-skills:
+	./installers/install-skills.sh
+
 .PHONY: install-all
 install-all:
 	./installers/install-all.sh

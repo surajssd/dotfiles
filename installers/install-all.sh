@@ -7,3 +7,4 @@ set -euo pipefail
 
 ./installers/install-configs.sh
 ./installers/install-local-bin.sh
+./installers/install-skills.sh
