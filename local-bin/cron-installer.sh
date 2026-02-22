@@ -5,8 +5,8 @@ set -euo pipefail
 # shellcheck source=/dev/null
 source "$(dirname "${BASH_SOURCE[0]}")"/util.sh
 
-if [[ "$(uname)" != "Linux" ]]; then
-    echo "❌ This script only works on Linux."
+if ! command -v crontab &>/dev/null; then
+    echo "❌ crontab is not installed."
     exit 1
 fi
 
@@ -74,7 +74,7 @@ cmd_install() {
     validate_cron_schedule "$schedule"
 
     (
-        crontab -l 2>/dev/null
+        crontab -l 2>/dev/null || true
         echo "$schedule $script_path"
     ) | crontab -
 
