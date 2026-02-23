@@ -27,8 +27,13 @@ EOF
     echo "ℹ️  Press '⌘ + ⌥ + I' on a browser to open 'Developer Tools' go to 'Console' and paste the code in clipboard."
 }
 
-DUMP_DIR="${HOME}/code/work/surajssd/dump"
-DUMP_FORMAT="sh"
+function find_dump_dir() {
+    DUMP_DIR="$(find "${HOME}/code" -maxdepth 4 -type d -name "dump" -print -quit 2>/dev/null)"
+    if [[ -z "${DUMP_DIR}" ]]; then
+        err "Could not find 'dump' directory under ${HOME}/code"
+        exit 1
+    fi
+}
 
 function usage_dump() {
     echo "🛠️ Usage: ${SSD_PATH} dump [Options]"
@@ -40,6 +45,10 @@ function usage_dump() {
 }
 
 function dump() {
+    find_dump_dir
+    local dump_format="sh"
+
+
     while [[ $# -gt 0 ]]; do
         case "${1:-}" in
         " ")
@@ -47,7 +56,7 @@ function dump() {
             ;;
         --format | -f)
             shift
-            DUMP_FORMAT="$1"
+            dump_format="$1"
             shift
             ;;
         --open | -o)
@@ -67,7 +76,7 @@ function dump() {
         esac
     done
 
-    FILE_PATH="${DUMP_DIR}/$(date +%Y)-archives/$(date "+%Y-%m-%b-%d-%H-%M-%S").${DUMP_FORMAT}"
+    FILE_PATH="${DUMP_DIR}/$(date +%Y)-archives/$(date "+%Y-%m-%b-%d-%H-%M-%S").${dump_format}"
 
     code "${DUMP_DIR}"
     touch "${FILE_PATH}"
@@ -75,7 +84,7 @@ function dump() {
 }
 
 function usage_global() {
-    echo "🛠️ Usage: "${SSD_PATH}" <subcommand> [options]"
+    echo "🛠️ Usage: ${SSD_PATH} <subcommand> [options]"
     echo ""
     echo "Available subcommands:"
     echo "    dump      Create a dump file"
