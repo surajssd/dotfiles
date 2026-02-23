@@ -54,6 +54,7 @@ mac_packages=(
 mac_cask_packages=(
     aldente
     discord
+    font-fira-code-nerd-font
     git-credential-manager
     google-chrome
     iterm2
