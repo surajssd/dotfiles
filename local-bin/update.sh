@@ -9,6 +9,8 @@ source "${SCRIPT_DIR}/util.sh"
 OS="$(uname -s)"
 
 update_brew() {
+    ZSH_PATH=$(zsh -c 'source ~/.zshrc >/dev/null 2>&1; echo $PATH')
+    export PATH="${ZSH_PATH}:${PATH}"
     if ! command -v brew &>/dev/null; then
         echo "ℹ️ Homebrew not found, skipping brew update."
         return
