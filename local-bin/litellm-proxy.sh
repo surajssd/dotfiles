@@ -150,6 +150,7 @@ function start_container() {
   info "Starting litellm proxy server as a container"
   container run \
     -d \
+    --cpus 1 --memory 1.1g \
     -p '4000:4000' \
     --mount type=bind,source="${HOME}/.config/litellm/",target='/root/.config/litellm/' \
     --name "${container_name}" \
