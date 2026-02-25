@@ -108,7 +108,7 @@ function start() {
   create_or_update_claude_config
   create_litellm_config
   info "Starting litellm proxy server"
-  litellm --config "${LITELLM_CONFIG_FILE}"
+  litellm --config "${LITELLM_CONFIG_FILE}" "$@"
 }
 
 function start_container() {
@@ -155,7 +155,7 @@ function start_container() {
     --mount type=bind,source="${HOME}/.config/litellm/",target='/root/.config/litellm/' \
     --name "${container_name}" \
     ghcr.io/berriai/litellm:main-latest \
-    --config '/root/.config/litellm/config.yaml'
+    --config '/root/.config/litellm/config.yaml' "$@"
 
   info "Container '${container_name}' started successfully. To view logs, run:"
   echo ""
@@ -197,7 +197,7 @@ function start_docker() {
     -v "${HOME}/.config/litellm/:/root/.config/litellm/" \
     --name "${container_name}" \
     ghcr.io/berriai/litellm:main-latest \
-    --config '/root/.config/litellm/config.yaml'
+    --config '/root/.config/litellm/config.yaml' "$@"
 
   info "Container '${container_name}' started successfully. To view logs, run:"
   echo ""
@@ -205,7 +205,7 @@ function start_docker() {
 }
 
 function usage() {
-  echo "Usage: litellm-proxy.sh <subcommand>"
+  echo "Usage: litellm-proxy.sh <subcommand> [flags...]"
   echo ""
   echo "Subcommands:"
   echo "  start            Start the litellm proxy server"
@@ -213,6 +213,9 @@ function usage() {
   echo "  start-docker     Start the litellm proxy server as a Docker container"
   echo "  reset-claude     Reset the claude settings file"
   echo "  cleanup          Cleanup temporary files and configurations"
+  echo ""
+  echo "Any additional flags after the subcommand are passed through to litellm."
+  echo "Example: litellm-proxy.sh start --detailed_debug"
   echo ""
 }
 
