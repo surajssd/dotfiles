@@ -1,7 +1,6 @@
 ---
 name: sync-renovate-prs
 description: Sync Renovate dependency update PRs from surajssd/aks-rdma-infiniband fork to Azure/aks-rdma-infiniband upstream by cherry-picking commits into a consolidated PR.
-disable-model-invocation: true
 allowed-tools: Bash, Read
 ---
 
@@ -43,6 +42,13 @@ Determine which git remote points to `surajssd/aks-rdma-infiniband` (the Renovat
 3. Else add a temporary remote → `git remote add renovate-source https://github.com/surajssd/aks-rdma-infiniband.git` → `RENOVATE_REMOTE=renovate-source`
 
 If a `renovate-source` remote was added, ensure it is removed during cleanup (Step 11).
+
+Ensure the local repo is on `main` and has the latest upstream code before proceeding:
+
+```bash
+git checkout main
+git pull --ff upstream main
+```
 
 ## Step 2: Fetch latest from remotes
 
@@ -145,16 +151,19 @@ gh pr list --repo Azure/aks-rdma-infiniband \
 
 ## Step 9: Create or update PR
 
-Build the PR body. It should contain:
+Determine the PR title and body based on the total number of commits cherry-picked in Step 6.
 
-- A summary line: "Consolidated Renovate dependency updates from the fork."
-- A list of commit changes per commit. For each commit, include the original commit message only, don't include the PR number or title from the fork. Format as:
+**If exactly 1 commit was cherry-picked:**
 
-```
-- <commit message>
-```
+- Use the commit's first line as the PR title.
+- Use the commit's body (remaining lines after the first, trimmed of leading/trailing whitespace) as the PR body. If the commit has no body beyond the first line, use an empty body.
 
-The PR title should be: `chore(deps): Renovate dependency updates sync`
+**If more than 1 commit was cherry-picked:**
+
+- Run `git -C "$WORKTREE_DIR" log main..HEAD -p` to get the full commit log with diffs.
+- Analyze the output to produce:
+  - **PR title**: A concise summary (under 70 chars) describing the combined dependency changes.
+  - **PR body**: A consolidated description summarizing what was updated, grouped logically, with individual commit messages included for reference.
 
 **If no existing PR** (Step 8 returned empty):
 
@@ -162,7 +171,7 @@ The PR title should be: `chore(deps): Renovate dependency updates sync`
 gh pr create --repo Azure/aks-rdma-infiniband \
   --base main \
   --head "$ORIGIN_OWNER:renovate/sync-updates" \
-  --title "chore(deps): Renovate dependency updates sync" \
+  --title "<PR title>" \
   --body "<PR body>"
 ```
 
@@ -170,6 +179,7 @@ gh pr create --repo Azure/aks-rdma-infiniband \
 
 ```bash
 gh pr edit <number> --repo Azure/aks-rdma-infiniband \
+  --title "<PR title>" \
   --body "<PR body>"
 ```
 
