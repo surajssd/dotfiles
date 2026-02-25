@@ -24,6 +24,7 @@ common_packages=(
     procs
     ripgrep
     shellcheck
+    shellspec
     shfmt
     starship
     yq
