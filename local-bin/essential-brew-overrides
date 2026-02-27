@@ -41,6 +41,7 @@ common_cask_packages=(
 mac_packages=(
     container
     coreutils
+    docker
     git
     gnupg
     pstree
