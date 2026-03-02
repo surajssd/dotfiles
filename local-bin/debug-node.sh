@@ -2,10 +2,51 @@
 
 set -euo pipefail
 
-# If user doesn't provide the node name as an argument then exit
-if [ $# -ne 1 ]; then
+# Parse arguments: support --env KEY=VALUE flags before the positional node name.
+ENV_VARS=()
+NODE_NAME=""
+
+while [[ $# -gt 0 ]]; do
+    case "${1}" in
+    --env)
+        if [[ $# -lt 2 ]]; then
+            echo "❌ --env requires a KEY=VALUE argument"
+            exit 1
+        fi
+        ENV_VARS+=("${2}")
+        shift 2
+        ;;
+    --env=*)
+        ENV_VARS+=("${1#--env=}")
+        shift
+        ;;
+    -h | --help)
+        echo "📖 Usage:"
+        echo "  debug-node.sh [--env KEY=VALUE ...] <node-name>"
+        exit 0
+        ;;
+    -*)
+        echo "❌ Unknown flag: ${1}"
+        echo "📖 Usage:"
+        echo "  debug-node.sh [--env KEY=VALUE ...] <node-name>"
+        exit 1
+        ;;
+    *)
+        if [[ -n "${NODE_NAME}" ]]; then
+            echo "❌ Unexpected argument: ${1}"
+            echo "📖 Usage:"
+            echo "  debug-node.sh [--env KEY=VALUE ...] <node-name>"
+            exit 1
+        fi
+        NODE_NAME="${1}"
+        shift
+        ;;
+    esac
+done
+
+if [[ -z "${NODE_NAME}" ]]; then
     echo "📖 Usage:"
-    echo "  debug-node.sh <node-name>"
+    echo "  debug-node.sh [--env KEY=VALUE ...] <node-name>"
     exit 1
 fi
 
@@ -15,7 +56,6 @@ fi
 # custom name, waits for it to be ready, attaches to it, then cleans up after.
 #
 # kubectl debug "node/${1}" --image=quay.io/surajd/ubuntu:latest --profile=sysadmin -it -- chroot /host /bin/bash
-NODE_NAME="${1}"
 
 # kubectl debug auto-generates a pod name like "node-debugger-<nodename>-<suffix>"
 # which exceeds the 63-char DNS label limit for long node names, and there's no
@@ -41,7 +81,16 @@ spec:
     image: mcr.microsoft.com/mirror/docker/library/ubuntu:24.04
     stdin: true
     tty: true
-    command: ["chroot", "/host", "/bin/bash"]
+    command: ["chroot", "/host", "/bin/bash"]$(
+    if [[ ${#ENV_VARS[@]} -gt 0 ]]; then
+        printf '\n    env:'
+        for env_var in "${ENV_VARS[@]}"; do
+            env_key="${env_var%%=*}"
+            env_val="${env_var#*=}"
+            printf '\n    - name: %s\n      value: "%s"' "${env_key}" "${env_val}"
+        done
+    fi
+)
     securityContext:
       privileged: true
     volumeMounts:
