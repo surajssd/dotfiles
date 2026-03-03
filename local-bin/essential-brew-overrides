@@ -58,6 +58,7 @@ mac_cask_packages=(
     discord
     font-fira-code-nerd-font
     git-credential-manager
+    git-lfs
     google-chrome
     iterm2
     keepingyouawake
