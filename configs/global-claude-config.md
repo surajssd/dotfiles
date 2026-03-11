@@ -7,3 +7,7 @@
 ## Shell Scripts
 
 - After writing a shell script, make sure you run the command `shellfmt.sh <filename>` to format the script properly.
+
+## Go Programming
+
+- Always run `gofmt` on the go code you modify to ensure it is properly formatted.
