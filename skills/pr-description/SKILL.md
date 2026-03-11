@@ -93,6 +93,7 @@ Analyze all commits and diffs gathered in Step 2. The description should cover:
 - For checkbox items (e.g., `- [ ] Tests added`), check them (`- [x]`) ONLY if the diffs clearly confirm the criteria is met
 - Do NOT remove or skip any sections from the template — fill them all in, even if a section is "N/A"
 - Preserve the template's formatting and structure exactly
+- MUST wrap all code references in backticks (see Formatting rule below)
 
 **If no PR template was found:**
 
@@ -114,9 +115,23 @@ Use this default format:
 
 **Important:** Group changes logically by theme or component, NOT one bullet per commit. Combine related commits into coherent change descriptions.
 
+**Formatting (MANDATORY):** You MUST wrap ALL code references in backticks (`` ` ``). This includes: file names (e.g., `e2e/cache.go`), function names (e.g., `createVMExtensionLinuxAKSNode`), variable names, struct names, interface names, type names, method names, package names, commands, config keys, error messages, and any other identifier from the code. Every reference to something in the codebase must be wrapped in backticks — no exceptions. The output is used as a GitHub PR description where markdown rendering depends on this.
+
 ## Step 5: Output the result
 
 **Default behavior:** Output the PR description as formatted markdown directly to the user. Do NOT post it to GitHub unless explicitly asked.
+
+After outputting the description, save it to a temp file so the user can copy the raw markdown (the terminal rendering strips backticks):
+
+1. Create a temp file:
+
+   ```bash
+   mktemp --suffix=.md
+   ```
+
+2. Write the generated PR description markdown to that file using the Write tool.
+
+3. Tell the user: `📄 PR description also saved to: <path>` so they can copy the raw markdown from the file.
 
 **If the user explicitly asks to update/post the PR** (e.g., the user said "update the PR", "post it", "apply it to the PR", or invoked with arguments like "update"):
 
