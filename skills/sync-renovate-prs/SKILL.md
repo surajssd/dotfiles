@@ -8,6 +8,8 @@ allowed-tools: Bash, Read
 
 Collect commits from open Renovate PRs in `surajssd/aks-rdma-infiniband` and create or update a single consolidated PR in the upstream repo `Azure/aks-rdma-infiniband`, pushing via the current `origin` remote.
 
+**Important**: The created/updated PR title and body must NOT reference the fork repository or any PRs on the fork. The PR should describe the dependency updates purely based on what changed.
+
 ## Step 1: Validate prerequisites and derive remotes
 
 Verify required tools are installed:
@@ -163,7 +165,7 @@ Determine the PR title and body based on the total number of commits cherry-pick
 - Run `git -C "$WORKTREE_DIR" log main..HEAD -p` to get the full commit log with diffs.
 - Analyze the output to produce:
   - **PR title**: A concise summary (under 70 chars) describing the combined dependency changes.
-  - **PR body**: A consolidated description summarizing what was updated, grouped logically, with individual commit messages included for reference.
+  - **PR body**: A consolidated description summarizing what dependencies were updated and to which versions, grouped logically (e.g., GitHub Actions, Docker images, security). List each update as a bullet point with the dependency name and new version. Include the individual commit messages in a code block for reference. **Do NOT reference or link to the fork repository or any PRs on the fork.**
 
 **If no existing PR** (Step 8 returned empty):
 
