@@ -44,7 +44,8 @@ function usage_dump() {
     echo "    --help, -h              Show this help message"
     echo ""
     echo "Arguments:"
-    echo "    topic                   Optional short description appended to the filename"
+    echo "    topic                   Optional short description appended to the filename."
+    echo "                            If omitted, an interactive prompt will ask for it (press Enter to skip)."
 }
 
 function dump() {
@@ -83,6 +84,10 @@ function dump() {
             ;;
         esac
     done
+
+    if [[ -z "${dump_topic}" ]] && [[ -t 0 ]]; then
+        read -rp "Enter topic (press Enter to skip): " dump_topic
+    fi
 
     local dump_timestamp
     dump_timestamp="$(date "+%Y-%m-%b-%d-%H-%M-%S")"
