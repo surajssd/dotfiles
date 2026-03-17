@@ -88,8 +88,10 @@ function dump() {
     dump_timestamp="$(date "+%Y-%m-%b-%d-%H-%M-%S")"
     local dump_year="${dump_timestamp:0:4}"
     local dump_suffix="${dump_topic:+-${dump_topic}}"
-    FILE_PATH="${DUMP_DIR}/${dump_year}-archives/${dump_timestamp}${dump_suffix}.${dump_format}"
+    local dump_archive_dir="${DUMP_DIR}/${dump_year}-archives"
+    FILE_PATH="${dump_archive_dir}/${dump_timestamp}${dump_suffix}.${dump_format}"
 
+    mkdir -p "${dump_archive_dir}"
     code "${DUMP_DIR}"
     touch "${FILE_PATH}"
     code "${FILE_PATH}"
