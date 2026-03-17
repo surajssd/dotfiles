@@ -36,17 +36,21 @@ function find_dump_dir() {
 }
 
 function usage_dump() {
-    echo "🛠️ Usage: ${SSD_PATH} dump [Options]"
+    echo "🛠️ Usage: ${SSD_PATH} dump [Options] [topic]"
     echo ""
     echo "Options:"
     echo "    --format, -f <format>   Specify the format for the dump file (default: sh)"
     echo "    --open, -o              Open the dump directory in VS Code"
     echo "    --help, -h              Show this help message"
+    echo ""
+    echo "Arguments:"
+    echo "    topic                   Optional short description appended to the filename"
 }
 
 function dump() {
     find_dump_dir
     local dump_format="sh"
+    local dump_topic=""
 
 
     while [[ $# -gt 0 ]]; do
@@ -69,14 +73,22 @@ function dump() {
             exit 0
             ;;
         *)
-            err "Unknown option: ${1:-}"
-            usage_dump
-            exit 1
+            if [[ "${1:-}" == -* ]]; then
+                err "Unknown option: ${1:-}"
+                usage_dump
+                exit 1
+            fi
+            dump_topic="${1:-}"
+            shift
             ;;
         esac
     done
 
-    FILE_PATH="${DUMP_DIR}/$(date +%Y)-archives/$(date "+%Y-%m-%b-%d-%H-%M-%S").${dump_format}"
+    local dump_timestamp
+    dump_timestamp="$(date "+%Y-%m-%b-%d-%H-%M-%S")"
+    local dump_year="${dump_timestamp:0:4}"
+    local dump_suffix="${dump_topic:+-${dump_topic}}"
+    FILE_PATH="${DUMP_DIR}/${dump_year}-archives/${dump_timestamp}${dump_suffix}.${dump_format}"
 
     code "${DUMP_DIR}"
     touch "${FILE_PATH}"
