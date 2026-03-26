@@ -212,10 +212,11 @@ function usage_global() {
     echo "🛠️ Usage: ${SSD_PATH} <subcommand> [options]"
     echo ""
     echo "Available subcommands:"
-    echo "    dump            Create a dump file"
-    echo "    date            Print the current date in a specific format: YYYY-MM-mmm-dd-HH-MM-SS"
-    echo "    goodlinks, gl   Add a URL to GoodLinks"
-    echo "    browser         Force a website to allow copy-paste in Chromium-based browsers"
+    echo "    dump                Create a dump file"
+    echo "    date                Print the current date in a specific format: YYYY-MM-mmm-dd-HH-MM-SS"
+    echo "    goodlinks, gl       Add a URL to GoodLinks"
+    echo "    browser             Force a website to allow copy-paste in Chromium-based browsers"
+    echo "    help, --help, -h    Show this help message"
 }
 
 check_ssd_path
@@ -236,6 +237,10 @@ browser)
 gl | goodlinks)
     shift
     goodlinks "$@"
+    ;;
+help | --help | -h)
+    usage_global
+    exit 0
     ;;
 *)
     err "Unknown subcommand: ${1:-}"
