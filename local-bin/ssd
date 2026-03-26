@@ -14,6 +14,20 @@ function err() {
 }
 
 function chromium_copy_paste() {
+    while [[ $# -gt 0 ]]; do
+        case "${1:-}" in
+        --help | help | -h)
+            usage_browser
+            exit 0
+            ;;
+        *)
+            err "Unknown option: ${1:-}"
+            usage_browser
+            exit 1
+            ;;
+        esac
+    done
+
     cat <<EOF | pbcopy
 var allowPaste = function(e){
   e.stopImmediatePropagation();
@@ -56,6 +70,13 @@ function usage_gl() {
     echo "    --starred                   Mark the link as starred"
     echo "    --read                      Mark the link as read"
     echo "    --help, -h                  Show this help message"
+}
+
+function usage_browser() {
+    echo "🛠️ Usage: ${SSD_PATH} browser"
+    echo ""
+    echo "Force a website to allow copy-paste in Chromium-based browsers."
+    echo "Copies a JavaScript snippet to clipboard that re-enables paste events."
 }
 
 function goodlinks() {
@@ -232,7 +253,7 @@ date)
     ;;
 browser)
     shift
-    chromium_copy_paste
+    chromium_copy_paste "$@"
     ;;
 gl | goodlinks)
     shift
