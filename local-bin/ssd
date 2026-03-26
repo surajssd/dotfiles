@@ -44,10 +44,135 @@ function usage_dump() {
     echo "    --help, -h              Show this help message"
 }
 
+function usage_gl() {
+    echo "🛠️ Usage: ${SSD_PATH} gl <url> [Options]"
+    echo ""
+    echo "Add a URL to GoodLinks for later reading."
+    echo ""
+    echo "Options:"
+    echo "    --title, -t <title>         Link title (max 200 chars)"
+    echo "    --summary, -s <summary>     Link summary (max 400 chars)"
+    echo "    --tags <tag1,tag2,...>      Comma-separated tags"
+    echo "    --starred                   Mark the link as starred"
+    echo "    --read                      Mark the link as read"
+    echo "    --help, -h                  Show this help message"
+}
+
+function goodlinks() {
+    local url=""
+    local title=""
+    local summary=""
+    local tags=""
+    local starred="false"
+    local read_status="false"
+
+    # First positional arg is the URL
+    if [[ $# -gt 0 && ! "${1}" =~ ^- ]]; then
+        url="${1}"
+        shift
+    fi
+
+    while [[ $# -gt 0 ]]; do
+        case "${1:-}" in
+        --title | -t)
+            shift
+            title="${1}"
+            shift
+            ;;
+        --summary | -s)
+            shift
+            summary="${1}"
+            shift
+            ;;
+        --tags)
+            shift
+            tags="${1}"
+            shift
+            ;;
+        --starred)
+            shift
+            starred="true"
+            ;;
+        --read)
+            shift
+            read_status="true"
+            ;;
+        --help | help | -h)
+            usage_gl
+            exit 0
+            ;;
+        *)
+            err "Unknown option: ${1:-}"
+            usage_gl
+            exit 1
+            ;;
+        esac
+    done
+
+    # Validate URL
+    if [[ -z "${url}" ]]; then
+        err "URL is required"
+        usage_gl
+        exit 1
+    fi
+
+    if [[ ! "${url}" =~ ^https?:// ]]; then
+        err "URL must start with http:// or https://"
+        exit 1
+    fi
+
+    # Validate title length
+    if [[ -n "${title}" && ${#title} -gt 200 ]]; then
+        err "Title must be 200 characters or less (got ${#title})"
+        exit 1
+    fi
+
+    # Validate summary length
+    if [[ -n "${summary}" && ${#summary} -gt 400 ]]; then
+        err "Summary must be 400 characters or less (got ${#summary})"
+        exit 1
+    fi
+
+    # Build JSON payload with jq
+    local json
+    json=$(jq -n \
+        --arg url "${url}" \
+        --arg title "${title}" \
+        --arg summary "${summary}" \
+        --arg tags "${tags}" \
+        --argjson starred "${starred}" \
+        --argjson read "${read_status}" \
+        '{url: $url} +
+        (if $title != "" then {title: $title} else {} end) +
+        (if $summary != "" then {summary: $summary} else {} end) +
+        (if $tags != "" then {tags: ($tags | split(","))} else {} end) +
+        (if $starred then {starred: true} else {} end) +
+        (if $read then {read: true} else {} end)')
+
+    # POST to GoodLinks API
+    local response
+    local http_code
+    response=$(curl --silent --output /dev/stderr --write-out "%{http_code}" \
+        -X POST \
+        -H "Content-Type: application/json" \
+        -d "${json}" \
+        "http://localhost:9428/api/v1/links" 2>/dev/null) || {
+        err "Failed to connect to GoodLinks. Is the app running?"
+        exit 1
+    }
+    http_code="${response}"
+
+    if [[ "${http_code}" =~ ^2 ]]; then
+        echo "✅ Link added to GoodLinks: ${url}"
+    else
+        err "GoodLinks API returned HTTP ${http_code}"
+        exit 1
+    fi
+}
+
 function dump() {
     find_dump_dir
     local dump_format="sh"
-
 
     while [[ $# -gt 0 ]]; do
         case "${1:-}" in
@@ -87,9 +212,10 @@ function usage_global() {
     echo "🛠️ Usage: ${SSD_PATH} <subcommand> [options]"
     echo ""
     echo "Available subcommands:"
-    echo "    dump      Create a dump file"
-    echo "    date      Print the current date in a specific format: YYYY-MM-mmm-dd-HH-MM-SS"
-    echo "    browser   Force a website to allow copy-paste in Chromium-based browsers"
+    echo "    dump            Create a dump file"
+    echo "    date            Print the current date in a specific format: YYYY-MM-mmm-dd-HH-MM-SS"
+    echo "    goodlinks, gl   Add a URL to GoodLinks"
+    echo "    browser         Force a website to allow copy-paste in Chromium-based browsers"
 }
 
 check_ssd_path
@@ -106,6 +232,10 @@ date)
 browser)
     shift
     chromium_copy_paste
+    ;;
+gl | goodlinks)
+    shift
+    goodlinks "$@"
     ;;
 *)
     err "Unknown subcommand: ${1:-}"
