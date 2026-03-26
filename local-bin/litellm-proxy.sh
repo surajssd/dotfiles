@@ -52,7 +52,7 @@ function create_claude_settings() {
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "sk-",
     "ANTHROPIC_BASE_URL": "http://localhost:4000",
-    "ANTHROPIC_MODEL": "claude-opus-4.6[1m]",
+    "ANTHROPIC_MODEL": "claude-opus-4.6-1m[1m]",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4.6",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4.6",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4.5",
