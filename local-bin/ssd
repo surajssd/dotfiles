@@ -238,6 +238,7 @@ function dump() {
     FILE_PATH="${DUMP_DIR}/$(date +%Y)-archives/$(date "+%Y-%m-%b-%d-%H-%M-%S")${dump_topic:+-${dump_topic}}.${dump_format}"
 
     code "${DUMP_DIR}"
+    mkdir -p "$(dirname "${FILE_PATH}")"
     touch "${FILE_PATH}"
     code "${FILE_PATH}"
 }
