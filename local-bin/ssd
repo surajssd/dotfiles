@@ -82,6 +82,46 @@ function usage_browser() {
     echo "Copies a JavaScript snippet to clipboard that re-enables paste events."
 }
 
+function usage_password() {
+    echo "🛠️ Usage: ${SSD_PATH} password [Options] [length]"
+    echo ""
+    echo "Generate a random password and copy it to the clipboard."
+    echo ""
+    echo "Options:"
+    echo "    --help, -h    Show this help message"
+    echo ""
+    echo "Arguments:"
+    echo "    length         Password length (default: 20)"
+}
+
+function generate_password() {
+    local length=20
+
+    while [[ $# -gt 0 ]]; do
+        case "${1:-}" in
+        --help | help | -h)
+            usage_password
+            exit 0
+            ;;
+        *)
+            if [[ "${1}" =~ ^- ]]; then
+                err "Unknown option: ${1:-}"
+                usage_password
+                exit 1
+            fi
+            length="${1}"
+            shift
+            ;;
+        esac
+    done
+
+    local password
+    password=$(tr </dev/urandom -dc 'A-Za-z0-9!@#$%&*_-' | head -c "${length}" || true)
+    echo -n "${password}" | pbcopy
+    echo "Generated password: ${password}"
+    echo "✅ Password also copied to clipboard!"
+}
+
 function goodlinks() {
     local url=""
     local title=""
@@ -251,6 +291,7 @@ function usage_global() {
     echo "    date                Print the current date in a specific format: YYYY-MM-mmm-dd-HH-MM-SS"
     echo "    goodlinks, gl       Add a URL to GoodLinks"
     echo "    browser             Force a website to allow copy-paste in Chromium-based browsers"
+    echo "    password, pass      Generate a random password and copy to clipboard"
     echo "    help, --help, -h    Show this help message"
 }
 
@@ -272,6 +313,10 @@ browser)
 gl | goodlinks)
     shift
     goodlinks "$@"
+    ;;
+password | pass)
+    shift
+    generate_password "$@"
     ;;
 help | --help | -h)
     usage_global
