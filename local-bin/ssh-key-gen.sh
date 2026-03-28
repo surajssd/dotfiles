@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 print_usage() {
     echo "❌ Please provide the suffix name of the key"
     echo "e.g. ssh-key-gen.sh github personal"
     echo "e.g. ssh-key-gen.sh github work"
 }
 
-name=$1
+name=${1:-}
 if [ -z "${name}" ]; then
     print_usage
     exit 1
 fi
 
-email_type=$2
+email_type=${2:-}
 case $email_type in
 personal)
     email="surajd.service@gmail.com"
@@ -25,8 +27,6 @@ work)
     exit 1
     ;;
 esac
-
-set -euo pipefail
 
 # Detect OS
 os=$(uname)
