@@ -12,7 +12,7 @@ fi
 input_file="$1"
 
 if [[ ! -f "$input_file" ]]; then
-    echo "Error: File '$input_file' not found"
+    echo "❌ Error: File '$input_file' not found"
     exit 1
 fi
 
@@ -22,4 +22,4 @@ result=$(tr '[:upper:]' '[:lower:]' <"$input_file" | sort -u)
 temp_file="${input_file}.tmp"
 echo "$result" >"$temp_file"
 mv "$temp_file" "$input_file"
-echo "File '$input_file' updated"
+echo "✅ File '$input_file' updated"
