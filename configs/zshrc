@@ -149,10 +149,6 @@ export GPG_TTY=$(tty)
 which gpgconf >/dev/null 2>&1 && gpgconf --launch gpg-agent
 
 #=================================================================
-# ssh aliases
-alias ssh="ssh -oStrictHostKeyChecking=no"
-
-#=================================================================
 # missing osx commands aliases
 alias sha256sum="shasum -a 256"
 
