@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Reads a text file, converts to lowercase, sorts, and keeps unique lines
 
 set -euo pipefail
