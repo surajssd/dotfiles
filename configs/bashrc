@@ -71,7 +71,7 @@ export CDPATH=.:$GOPATH/src/github.com:$GOPATH/src
 # All Kubernetes related stuff
 
 # k8s alias
-which kubecolor >/dev/null 2>&1 && alias kubectl="kubecolor"
+command -v kubecolor &>/dev/null && alias kubectl="kubecolor"
 alias k=kubectl
 alias kg="kubectl get"
 alias kgp="kubectl get pods"
@@ -100,29 +100,24 @@ function change-ns() {
     kubectl config set-context $(kubectl config current-context) --namespace $namespace
 }
 
-which kubectl >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+if command -v kubectl &>/dev/null; then
     source <(kubectl completion bash)
     source <(kubectl completion bash | sed 's/kubectl/k/g')
 fi
 
-which helm >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+if command -v helm &>/dev/null; then
     source <(helm completion bash)
 fi
 
-which operator-sdk >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+if command -v operator-sdk &>/dev/null; then
     source <(operator-sdk completion bash)
 fi
 
-which kubeadm >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+if command -v kubeadm &>/dev/null; then
     source <(kubeadm completion bash)
 fi
 
-which gh >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+if command -v gh &>/dev/null; then
     eval "$(gh completion -s bash)"
 fi
 
@@ -136,14 +131,12 @@ alias watch='watch '
 
 # this is not default on distro not centos/fedora based
 alias ll="ls -l"
-which eza >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+if command -v eza &>/dev/null; then
     alias ll="eza -F -l"
     alias ls="eza"
 fi
 
-which rg >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+if command -v rg &>/dev/null; then
     alias grep="rg"
 fi
 

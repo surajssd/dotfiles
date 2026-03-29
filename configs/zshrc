@@ -33,11 +33,11 @@ unsetopt share_history
 
 #=================================================================
 # Starship prompt
-which starship >/dev/null 2>&1 && eval "$(starship init zsh)"
+command -v starship &>/dev/null && eval "$(starship init zsh)"
 
 #=================================================================
 # fzf
-which fzf >/dev/null 2>&1 && {
+command -v fzf &>/dev/null && {
     source <(fzf --zsh)
     export FZF_CTRL_T_OPTS="
       --walker-skip .git,node_modules,target,.DS_Store,.azureauth,.cache,.continue
@@ -71,12 +71,12 @@ function gpom() {
 # All Kubernetes related stuff
 
 # k8s alias
-which kubectl >/dev/null 2>&1 && {
+command -v kubectl &>/dev/null && {
     source <(kubectl completion zsh)
     source <(kubectl completion zsh | sed 's/kubectl/k/g')
 }
 
-which kubecolor >/dev/null 2>&1 && {
+command -v kubecolor &>/dev/null && {
     compdef kubecolor=kubectl
     alias kubectl='kubecolor'
 }
@@ -109,18 +109,15 @@ function change-ns() {
     kubectl config set-context $(kubectl config current-context) --namespace $namespace
 }
 
-which helm >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+if command -v helm &>/dev/null; then
     source <(helm completion zsh)
 fi
 
-which kubeadm >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+if command -v kubeadm &>/dev/null; then
     source <(kubeadm completion zsh)
 fi
 
-which gh >/dev/null 2>&1
-if [ $? -eq 0 ]; then
+if command -v gh &>/dev/null; then
     eval "$(gh completion -s zsh)"
 fi
 
@@ -139,14 +136,14 @@ alias watch='watch '
 
 # this is not default on distro not centos/fedora based
 alias ll="ls -l"
-which eza >/dev/null 2>&1 && alias ll="eza -F -l" && alias ls="eza"
+command -v eza &>/dev/null && alias ll="eza -F -l" && alias ls="eza"
 
-which rg >/dev/null 2>&1 && alias grep="rg"
+command -v rg &>/dev/null && alias grep="rg"
 
 #=================================================================
 # GPG
 export GPG_TTY=$(tty)
-which gpgconf >/dev/null 2>&1 && gpgconf --launch gpg-agent
+command -v gpgconf &>/dev/null && gpgconf --launch gpg-agent
 
 #=================================================================
 # missing osx commands aliases
