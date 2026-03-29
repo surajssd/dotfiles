@@ -9,16 +9,17 @@ echo "⏳ Installing configs from ${CONFIGS_DIR} dir"
 
 # Install zshrc for OSX and bashrc for the rest.
 os=$(uname)
+
+# Setup gnupg directory (shared across OS)
+mkdir -p ~/.gnupg/
+
 case $os in
 Darwin)
     ln -sf "${CONFIGS_DIR}"/zshrc ~/.zshrc
 
-    # Install gpg-agent config for OSX
-    mkdir -p ~/.gnupg/
+    # Install gpg configs for macOS
     ln -sf "${CONFIGS_DIR}"/gpg-agent-mac.conf ~/.gnupg/gpg-agent.conf
     ln -sf "${CONFIGS_DIR}"/gpg.conf ~/.gnupg/gpg.conf
-    find ~/.gnupg -type d -exec chmod 700 {} \;
-    find ~/.gnupg -type f -exec chmod 600 {} \;
 
     K9S_DIR="$HOME/Library/Application Support/k9s"
     ;;
@@ -26,14 +27,16 @@ Darwin)
     ln -sf "${CONFIGS_DIR}"/bashrc ~/.bashrc
 
     # Install gpg-agent config for Linux
-    mkdir -p ~/.gnupg/
     ln -sf "${CONFIGS_DIR}"/gpg-agent-linux.conf ~/.gnupg/gpg-agent.conf
-    find ~/.gnupg -type d -exec chmod 700 {} \;
-    find ~/.gnupg -type f -exec chmod 600 {} \;
 
     K9S_DIR="$HOME/.config/k9s"
     ;;
 esac
+
+# Set correct permissions on gnupg directory
+chmod 700 ~/.gnupg
+chmod 600 ~/.gnupg/gpg-agent.conf
+[ -f ~/.gnupg/gpg.conf ] && chmod 600 ~/.gnupg/gpg.conf
 
 ln -sf "${CONFIGS_DIR}"/gitignore ~/.gitignore
 ln -sf "${CONFIGS_DIR}"/terraformrc ~/.terraformrc
