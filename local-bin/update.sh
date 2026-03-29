@@ -2,10 +2,6 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=util.sh
-source "${SCRIPT_DIR}/util.sh"
-
 OS="$(uname -s)"
 
 update_brew() {

@@ -2,9 +2,6 @@
 
 set -euo pipefail
 
-# shellcheck source=/dev/null
-source "$(dirname "${BASH_SOURCE[0]}")"/util.sh
-
 if ! command -v crontab &>/dev/null; then
     echo "❌ crontab is not installed."
     exit 1
