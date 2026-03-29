@@ -2,16 +2,24 @@
 
 set -euo pipefail
 
-files=${*:-}
-if [ -z "${files}" ]; then
+if [ $# -eq 0 ]; then
     echo "❌ Please provide the list of PDF files."
     echo "join-pdfs.sh 1.pdf 2.pdf"
     exit 1
 fi
 
-tmpdir="$(mktemp -d)"
-cp -r "${files}" "${tmpdir}"
+# Convert all file paths to absolute paths
+abs_files=()
+for f in "$@"; do
+    if [ ! -f "$f" ]; then
+        echo "❌ File not found: $f"
+        exit 1
+    fi
+    abs_files+=("$(realpath "$f")")
+done
 
-cd "${tmpdir}"
+output_dir="$(pwd)"
 combined_name="combined-pdf-$(ssd date).pdf"
-pdfunite "${files}" "${combined_name}"
+
+pdfunite "${abs_files[@]}" "${output_dir}/${combined_name}"
+echo "✅ Combined PDF created: ${output_dir}/${combined_name}"
