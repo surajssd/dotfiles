@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
 set -x
 
 git config user.email "suraj.deshmukh@microsoft.com"
