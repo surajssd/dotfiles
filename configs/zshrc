@@ -15,7 +15,10 @@ fi
 
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME="pygmalion"
+# ZSH_THEME is disabled because Starship prompt (initialized below) completely
+# overrides the Oh My Zsh theme, making the theme loading wasted work.
+# ZSH_THEME="pygmalion"
+ZSH_THEME=""
 plugins=(
     brew
     colored-man-pages
