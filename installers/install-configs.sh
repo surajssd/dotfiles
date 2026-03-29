@@ -39,7 +39,7 @@ chmod 600 ~/.gnupg/gpg-agent.conf
 [ -f ~/.gnupg/gpg.conf ] && chmod 600 ~/.gnupg/gpg.conf
 
 ln -sf "${CONFIGS_DIR}"/gitignore ~/.gitignore
-ln -sf "${CONFIGS_DIR}"/terraformrc ~/.terraformrc
+mkdir -p ~/.terraform.d/plugin-cache && ln -sf "${CONFIGS_DIR}"/terraformrc ~/.terraformrc
 ln -sf "${CONFIGS_DIR}"/tmux.conf ~/.tmux.conf
 mkdir -p ~/.config && ln -sf "${CONFIGS_DIR}"/starship.toml ~/.config/starship.toml
 mkdir -p ~/.claude && ln -sf "${CONFIGS_DIR}"/global-claude-config.md ~/.claude/CLAUDE.md
