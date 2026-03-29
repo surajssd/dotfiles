@@ -7,12 +7,12 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "$(dirname "${BASH_SOURCE[0]}")"/util.sh
+source "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"/util.sh
 
 # if no cmd line flag provided this should error out
 if [[ $# -eq 0 ]]; then
-  err "❌ Please provide a filename, usage: shellfmt.sh <filename>"
-  exit 1
+    err "❌ Please provide a filename, usage: shellfmt.sh <filename>"
+    exit 1
 fi
 
 echo "⏳ Doing shellcheck for any errors..."

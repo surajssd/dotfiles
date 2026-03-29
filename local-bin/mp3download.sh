@@ -5,16 +5,16 @@
 set -euo pipefail
 
 # shellcheck source=/dev/null
-source "$(dirname "${BASH_SOURCE[0]}")"/util.sh
+source "$(dirname "$(realpath "${BASH_SOURCE[0]}")")"/util.sh
 
 url="$*"
 if [[ -z "${url}" ]]; then
-  err "error: Please provide the YouTube video URL"
-  err ""
-  err "Usage:"
-  err ""
-  err "mp3download.sh https://youtube.com/randomvideo"
-  exit 1
+    err "error: Please provide the YouTube video URL"
+    err ""
+    err "Usage:"
+    err ""
+    err "mp3download.sh https://youtube.com/randomvideo"
+    exit 1
 fi
 
 yt-dlp --extract-audio --audio-format mp3 "${url}"

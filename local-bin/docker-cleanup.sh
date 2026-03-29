@@ -4,9 +4,9 @@
 set -euo pipefail
 
 function lite() {
-    echo "🧹 Cleaning up old containers and untagged images..."
-    docker rm $(docker ps -a | grep Exited | awk '{print $1}') || true
-    docker rmi $(docker images | grep none | awk '{print $3}') || true
+    echo "🧹 Cleaning up stopped containers and dangling images..."
+    docker container prune -f
+    docker image prune -f
 }
 
 function full() {

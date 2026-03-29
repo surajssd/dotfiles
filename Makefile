@@ -1,4 +1,4 @@
-.PHONY: install-local-bin install-configs
+.PHONY: install-local-bin
 install-local-bin:
 	./installers/install-local-bin.sh
 
