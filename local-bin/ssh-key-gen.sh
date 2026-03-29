@@ -47,7 +47,11 @@ esac
 filename="${HOME}/.ssh/id_${key_type}.${name}.${email_type}"
 
 # Generate new key
-ssh-keygen -t "${key_type}" -b 8192 -f "${filename}" -N "" -C "${email}"
+if [ "${key_type}" = "rsa" ]; then
+    ssh-keygen -t "${key_type}" -b 8192 -f "${filename}" -N "" -C "${email}"
+else
+    ssh-keygen -t "${key_type}" -f "${filename}" -N "" -C "${email}"
+fi
 
 echo "ℹ️ Add the key in ${filename}.pub to https://github.com/settings/keys"
 echo "ℹ️ After that run -> ssh -T git@github.com"
