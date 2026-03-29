@@ -10,6 +10,9 @@ AZURE_RESOURCE_GROUP="${1:-${AZURE_RESOURCE_GROUP:-}}"
 
 SUBSCRIPTION_ID=$(az account show --query id --output tsv)
 
+MAX_ATTEMPTS=60 # 60 attempts * 30 seconds = 30 minutes
+attempt=0
+
 while true; do
     az group delete \
         -g "${AZURE_RESOURCE_GROUP}" \
@@ -18,8 +21,13 @@ while true; do
     date
 
     # Sleep if the resource group is still there otherwise exit the loop.
-    if az group show -g "${AZURE_RESOURCE_GROUP}" > /dev/null 2>&1; then
-        echo "⏳ Resource group ${AZURE_RESOURCE_GROUP} still exists. Sleeping for 30 seconds..."
+    if az group show -g "${AZURE_RESOURCE_GROUP}" >/dev/null 2>&1; then
+        attempt=$((attempt + 1))
+        if [ "${attempt}" -ge "${MAX_ATTEMPTS}" ]; then
+            echo "❌ Timed out after $((MAX_ATTEMPTS * 30 / 60)) minutes waiting for resource group ${AZURE_RESOURCE_GROUP} to be deleted."
+            exit 1
+        fi
+        echo "⏳ Resource group ${AZURE_RESOURCE_GROUP} still exists. Attempt ${attempt}/${MAX_ATTEMPTS}. Sleeping for 30 seconds..."
         sleep 30
     else
         echo "✅ Resource group ${AZURE_RESOURCE_GROUP} deleted successfully."
