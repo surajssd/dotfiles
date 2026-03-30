@@ -11,5 +11,5 @@ A Claude Code skill that formats commit messages according to the [Conventional 
 ## Usage (in the terminal)
 
 ```bash
-claude -p "/conventional-commits look at the cached diff using `git diff --cached` **only**, **don't look at the uncached changes**, and write a commit message. **Don't commit yourself, just output the the message as-is that I can pipe to the pbcopy and commit** Keep the format of the message as markdown, so that code is in backticks. Always use bullets or separate lines when the changes are not related, so that there is a distinction as to what the changes are." | pbcopy && gcmt
+claude -p "/conventional-commits look at the cached diff using `git diff --cached` **only**, **don't look at the uncached changes**, and write a commit message. **Don't commit yourself, you cannot copy to pbcopy since you are running in a claude session started with `claude -p` which is 'single-instruction-print-and-exit-mode', just output the the commit message as-is that I can pipe to the pbcopy and commit** Keep the format of the commit message as markdown, so that code is in backticks. Always use bullets or separate lines when the changes are not related, so that there is a distinction as to what the changes are." | pbcopy && gcmt
 ```
