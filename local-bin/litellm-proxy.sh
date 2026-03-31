@@ -14,6 +14,30 @@ function info() {
   echo "ℹ️ ${1}"
 }
 
+function wait_for_health() {
+  local health_url="${1}"
+  local log_cmd="${2}"
+  local max_attempts=30
+  local attempt=0
+  printf "⏳ Waiting for litellm to become healthy "
+  while [[ "${attempt}" -lt "${max_attempts}" ]]; do
+    if curl -sf "${health_url}" >/dev/null 2>&1; then
+      echo ""
+      info "Litellm proxy is running and healthy."
+      return 0
+    fi
+    printf "."
+    sleep 2
+    attempt=$((attempt + 1))
+  done
+
+  echo ""
+  echo "⚠️  Litellm did not become healthy within $((max_attempts * 2))s."
+  info "Check logs for errors:"
+  echo "  ${log_cmd}"
+  return 1
+}
+
 function source_venv() {
   # Create a virtualenv in the /tmp/litellm only if it does not exists
   if [ ! -d "${TMP_LITELLM_VENV}" ] || [ ! -f "${TMP_LITELLM_VENV}/bin/activate" ]; then
@@ -164,6 +188,8 @@ function start_container() {
     "${LITELLM_IMAGE}" \
     --config '/root/.config/litellm/config.yaml' "$@"
 
+  wait_for_health "http://127.0.0.1:4000/health/liveliness" "container logs -f ${container_name}"
+
   info "Container '${container_name}' started successfully. To view logs, run:"
   echo ""
   echo "container logs -f ${container_name}"
@@ -205,6 +231,8 @@ function start_docker() {
     --name "${container_name}" \
     "${LITELLM_IMAGE}" \
     --config '/root/.config/litellm/config.yaml' "$@"
+
+  wait_for_health "http://127.0.0.1:4000/health/liveliness" "docker logs -f ${container_name}"
 
   info "Container '${container_name}' started successfully. To view logs, run:"
   echo ""
