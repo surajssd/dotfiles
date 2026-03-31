@@ -23,7 +23,7 @@ function wait_for_health() {
   while [[ "${attempt}" -lt "${max_attempts}" ]]; do
     if curl -sf "${health_url}" >/dev/null 2>&1; then
       echo ""
-      info "Litellm proxy is running and healthy."
+      echo "✅ Litellm proxy is running and healthy."
       return 0
     fi
     printf "."
@@ -178,7 +178,7 @@ function start_container() {
     container rm "${container_name}"
   fi
 
-  info "Starting litellm proxy server as a container"
+  echo "🚀 Starting litellm proxy server as a container"
   container run \
     -d \
     --cpus 1 --memory 1.1g \
@@ -190,7 +190,7 @@ function start_container() {
 
   wait_for_health "http://127.0.0.1:4000/health/liveliness" "container logs -f ${container_name}"
 
-  info "Container '${container_name}' started successfully. To view logs, run:"
+  echo "✅ Container '${container_name}' started successfully. To view logs, run:"
   echo ""
   echo "container logs -f ${container_name}"
 }
@@ -223,7 +223,7 @@ function start_docker() {
     docker rm "${container_name}"
   fi
 
-  info "Starting litellm proxy server as a Docker container"
+  echo "🚀 Starting litellm proxy server as a Docker container"
   docker run \
     -d \
     -p '4000:4000' \
@@ -234,7 +234,7 @@ function start_docker() {
 
   wait_for_health "http://127.0.0.1:4000/health/liveliness" "docker logs -f ${container_name}"
 
-  info "Container '${container_name}' started successfully. To view logs, run:"
+  echo "✅ Container '${container_name}' started successfully. To view logs, run:"
   echo ""
   echo "docker logs -f ${container_name}"
 }
