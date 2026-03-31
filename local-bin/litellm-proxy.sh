@@ -6,6 +6,9 @@ readonly TMP_LITELLM_VENV="/tmp/litellm"
 readonly CLAUDE_SETTINGS_FILE="${HOME}/.claude/settings.json"
 readonly CLAUDE_CONFIG_FILE="${HOME}/.claude.json"
 readonly LITELLM_CONFIG_FILE="${HOME}/.config/litellm/config.yaml"
+readonly LITELLM_VERSION="1.81.3"
+readonly DEFAULT_LITELLM_IMAGE="ghcr.io/berriai/litellm:main-v${LITELLM_VERSION}-stable"
+readonly LITELLM_IMAGE="${LITELLM_IMAGE:-${DEFAULT_LITELLM_IMAGE}}"
 
 function info() {
   echo "ℹ️ ${1}"
@@ -23,7 +26,7 @@ function source_venv() {
 
     source "${TMP_LITELLM_VENV}/bin/activate"
     # https://github.com/BerriAI/litellm
-    pip install 'litellm[proxy]'
+    pip install "litellm[proxy]==${LITELLM_VERSION}"
   else
     info "Activating virtualenv in ${TMP_LITELLM_VENV}"
     source "${TMP_LITELLM_VENV}/bin/activate"
@@ -158,7 +161,7 @@ function start_container() {
     -p '4000:4000' \
     --mount type=bind,source="${HOME}/.config/litellm/",target='/root/.config/litellm/' \
     --name "${container_name}" \
-    ghcr.io/berriai/litellm:main-latest \
+    "${LITELLM_IMAGE}" \
     --config '/root/.config/litellm/config.yaml' "$@"
 
   info "Container '${container_name}' started successfully. To view logs, run:"
@@ -200,7 +203,7 @@ function start_docker() {
     -p '4000:4000' \
     -v "${HOME}/.config/litellm/:/root/.config/litellm/" \
     --name "${container_name}" \
-    ghcr.io/berriai/litellm:main-latest \
+    "${LITELLM_IMAGE}" \
     --config '/root/.config/litellm/config.yaml' "$@"
 
   info "Container '${container_name}' started successfully. To view logs, run:"
@@ -220,6 +223,9 @@ function usage() {
   echo ""
   echo "Any additional flags after the subcommand are passed through to litellm."
   echo "Example: litellm-proxy.sh start --detailed_debug"
+  echo ""
+  echo "Environment variables:"
+  echo "  LITELLM_IMAGE    Override the default container image (default: ${DEFAULT_LITELLM_IMAGE})"
   echo ""
 }
 
