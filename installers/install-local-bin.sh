@@ -31,3 +31,6 @@ if [[ -d "${REPO_DIR}/dotfilesprivate/local-bin" ]]; then
     shopt -u nullglob
     echo "✅ Installation successful for private scripts!"
 fi
+
+# Clean up dead symlinks.
+find ~/.local/bin -type l ! -exec test -e {} \; -delete

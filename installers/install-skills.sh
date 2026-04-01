@@ -28,3 +28,6 @@ if [ -d "${REPO_DIR}/dotfilesprivate/skills" ]; then
     shopt -u nullglob
     echo "✅ Installation successful for private skills!"
 fi
+
+# Clean up dead symlinks.
+find ~/.claude/skills -type l ! -exec test -e {} \; -delete
