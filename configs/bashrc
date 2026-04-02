@@ -23,11 +23,11 @@ eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
 #=================================================================
 # Starship prompt
-eval "$(starship init bash)"
+command -v starship &>/dev/null && eval "$(starship init bash)"
 
 #=================================================================
 # fzf
-eval "$(fzf --bash)"
+command -v fzf &>/dev/null && eval "$(fzf --bash)"
 
 #=================================================================
 # my aliases
@@ -154,7 +154,7 @@ export PATH="${PATH}:${HOME}/.npm-global/bin/"
 
 # Unset manpath so we can inherit from /etc/manpath via the `manpath` command
 unset MANPATH # delete if you already modified MANPATH elsewhere in your config
-export MANPATH="$NPM_PACKAGES/share/man:$(manpath)"
+command -v manpath &>/dev/null && export MANPATH="$NPM_PACKAGES/share/man:$(manpath)"
 
 #=================================================================
 # GPG version
