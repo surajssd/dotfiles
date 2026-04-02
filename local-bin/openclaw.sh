@@ -257,6 +257,14 @@ function cmd_start() {
     validate_session_name "${session_name}"
     ensure_state_dirs "${session_name}"
 
+    # Verify that setup has been completed (onboarding creates openclaw.json)
+    local config_json="${STATE_DIR}/${session_name}/config/openclaw.json"
+    if [[ ! -f "${config_json}" ]]; then
+        echo "❌ Session '${session_name}' has not been set up yet. Run setup first:" >&2
+        echo "  openclaw.sh setup ${session_name}" >&2
+        exit 1
+    fi
+
     local cname
     cname="$(container_name "${session_name}")"
 
