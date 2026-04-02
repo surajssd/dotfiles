@@ -5,7 +5,7 @@ set -euo pipefail
 readonly SESSIONS_CONFIG="${HOME}/.config/openclaw/sessions.yaml"
 readonly STATE_DIR="${HOME}/.custom-openclaw-setup"
 readonly CONTAINER_PREFIX="openclaw"
-readonly DEFAULT_IMAGE="openclaw-custom:latest"
+readonly DEFAULT_IMAGE="ghcr.io/surajssd/dotfiles/openclaw:latest"
 readonly CONTAINER_GATEWAY_PORT=18789
 readonly CONTAINER_BRIDGE_PORT=18790
 
@@ -197,7 +197,7 @@ function cmd_setup() {
         "${mount_args[@]}" \
         "${env_args[@]}" \
         "${image}" \
-        node dist/index.js onboard --mode local --no-install-daemon
+        openclaw onboard --mode local --no-install-daemon
 
     info "⚙️  Setting gateway mode to local..."
     container run \
@@ -207,7 +207,7 @@ function cmd_setup() {
         "${mount_args[@]}" \
         "${env_args[@]}" \
         "${image}" \
-        node dist/index.js config set gateway.mode local
+        openclaw config set gateway.mode local
 
     info "⚙️  Allowing Control UI access..."
     container run \
@@ -217,7 +217,7 @@ function cmd_setup() {
         "${mount_args[@]}" \
         "${env_args[@]}" \
         "${image}" \
-        node dist/index.js config set gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback true
+        openclaw config set gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback true
 
     info "✅ Setup complete for session '${session_name}'."
     echo ""
@@ -265,7 +265,7 @@ function cmd_start() {
         "${env_args[@]}" \
         --name "${cname}" \
         "${image}" \
-        node dist/index.js gateway --bind lan --port "${CONTAINER_GATEWAY_PORT}"
+        openclaw gateway --bind lan --port "${CONTAINER_GATEWAY_PORT}"
 
     # Wait for the gateway to become healthy
     local health_url="http://127.0.0.1:${gateway_port}/healthz"
