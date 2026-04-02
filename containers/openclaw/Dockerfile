@@ -13,6 +13,7 @@ RUN apt-get update && \
     python3 \
     python3-pip \
     python3-venv \
+    jq \
     && rm -rf /var/lib/apt/lists/* \
     && echo "node ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/node \
     && chmod 0440 /etc/sudoers.d/node \
