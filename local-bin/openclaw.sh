@@ -224,6 +224,33 @@ function cmd_setup() {
     cmd_start "${session_name}"
 }
 
+function wait_for_healthy() {
+    local session_name="${1}"
+    local cname="${2}"
+    local gateway_port="${3}"
+
+    local health_url="http://127.0.0.1:${gateway_port}/healthz"
+    local max_attempts=30
+    local attempt=0
+    printf "⏳ Waiting for gateway to become healthy "
+    while [[ "${attempt}" -lt "${max_attempts}" ]]; do
+        if curl -sf "${health_url}" >/dev/null 2>&1; then
+            echo ""
+            info "✅ Container '${cname}' is running and healthy."
+            print_connection_info "${session_name}"
+            return
+        fi
+        printf "."
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+
+    echo ""
+    echo "⚠️  Gateway did not become healthy within $((max_attempts * 2))s."
+    info "📋 Check logs for errors:"
+    echo "  openclaw.sh logs ${session_name}"
+}
+
 function cmd_start() {
     local session_name="${1:-}"
     preflight_checks
@@ -236,11 +263,16 @@ function cmd_start() {
     local image cpus memory gateway_port bridge_port
     read_session_config "${session_name}"
 
-    # Remove existing container if it exists
-    if container ls -a 2>/dev/null | grep -q "${cname}"; then
-        info "♻️  Container '${cname}' already exists, removing it first"
-        container stop "${cname}" 2>/dev/null || true
-        container rm "${cname}"
+    # Reuse existing container to preserve state/progress.
+    if container ls 2>/dev/null | grep -q "${cname}"; then
+        info "🟢 Container '${cname}' is already running."
+        print_connection_info "${session_name}"
+        return
+    elif container ls -a 2>/dev/null | grep -q "${cname}"; then
+        info "♻️  Restarting existing container '${cname}'"
+        container start "${cname}"
+        wait_for_healthy "${session_name}" "${cname}" "${gateway_port}"
+        return
     fi
 
     local mount_args=()
@@ -267,27 +299,7 @@ function cmd_start() {
         "${image}" \
         openclaw gateway --bind lan --port "${CONTAINER_GATEWAY_PORT}"
 
-    # Wait for the gateway to become healthy
-    local health_url="http://127.0.0.1:${gateway_port}/healthz"
-    local max_attempts=30
-    local attempt=0
-    printf "⏳ Waiting for gateway to become healthy "
-    while [[ "${attempt}" -lt "${max_attempts}" ]]; do
-        if curl -sf "${health_url}" >/dev/null 2>&1; then
-            echo ""
-            info "✅ Container '${cname}' is running and healthy."
-            print_connection_info "${session_name}"
-            return
-        fi
-        printf "."
-        sleep 2
-        attempt=$((attempt + 1))
-    done
-
-    echo ""
-    echo "⚠️  Gateway did not become healthy within $((max_attempts * 2))s."
-    info "📋 Check logs for errors:"
-    echo "  openclaw.sh logs ${session_name}"
+    wait_for_healthy "${session_name}" "${cname}" "${gateway_port}"
 }
 
 function print_connection_info() {
