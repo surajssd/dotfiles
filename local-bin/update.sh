@@ -33,8 +33,8 @@ update_apt() {
         return
     fi
 
-    if ! [[ -f /etc/os-release ]] || ! grep -qi "ubuntu" /etc/os-release; then
-        echo "ℹ️ Not an Ubuntu machine, skipping apt update."
+    if ! [[ -f /etc/os-release ]] || ! grep -qiE "ubuntu|debian" /etc/os-release; then
+        echo "ℹ️ Not an Ubuntu/Debian machine, skipping apt update."
         return
     fi
 
