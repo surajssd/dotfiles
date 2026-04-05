@@ -63,6 +63,7 @@ mac_cask_packages=(
     iterm2
     keepingyouawake
     notion
+    obsidian
     slack
     tailscale-app
     visual-studio-code
