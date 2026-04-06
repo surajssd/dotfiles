@@ -265,11 +265,10 @@ function dump() {
                 exit 1
             fi
             if [[ -n "${dump_topic}" ]]; then
-                err "Only one topic argument is allowed, got extra: ${1}"
-                usage_dump
-                exit 1
+                dump_topic="${dump_topic}-${1}"
+            else
+                dump_topic="${1}"
             fi
-            dump_topic="${1}"
             shift
             ;;
         esac
