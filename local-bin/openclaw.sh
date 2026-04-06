@@ -363,6 +363,13 @@ function cmd_stop() {
     fi
 }
 
+function cmd_restart() {
+    local session_name="${1:-}"
+    info "🔄 Restarting session '${session_name}'"
+    cmd_stop "${session_name}"
+    cmd_start "${session_name}"
+}
+
 function cmd_remove() {
     local session_name="${1:-}"
     preflight_checks
@@ -491,6 +498,7 @@ function usage() {
     echo "  🔧 setup  <name>        Run initial onboarding for a new session"
     echo "  🚀 start  <name>        Start an OpenClaw session container"
     echo "  🛑 stop   <name>        Stop an OpenClaw session container"
+    echo "  🔄 restart <name>       Restart an OpenClaw session container"
     echo "  🗑️ remove <name>        Stop and remove an OpenClaw session container"
     echo "  📋 logs   <name>        Follow logs of an OpenClaw session container"
     echo "  🐚 exec   <name> [cmd]  Exec into a running OpenClaw session container"
@@ -512,6 +520,10 @@ start)
 stop)
     shift
     cmd_stop "$@"
+    ;;
+restart)
+    shift
+    cmd_restart "$@"
     ;;
 remove)
     shift
