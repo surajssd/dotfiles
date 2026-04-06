@@ -363,6 +363,19 @@ function cmd_stop() {
     fi
 }
 
+function cmd_config() {
+    local session_name="${1:-}"
+    preflight_checks
+    validate_session_name "${session_name}"
+
+    local config_path="${STATE_DIR}/${session_name}/config/openclaw.json"
+    if [[ -f "${config_path}" ]]; then
+        echo "${config_path}"
+    else
+        err "Config file not found: ${config_path}. Run 'openclaw.sh setup ${session_name}' first"
+    fi
+}
+
 function cmd_restart() {
     local session_name="${1:-}"
     info "🔄 Restarting session '${session_name}'"
@@ -502,6 +515,7 @@ function usage() {
     echo "  🗑️ remove <name>        Stop and remove an OpenClaw session container"
     echo "  📋 logs   <name>        Follow logs of an OpenClaw session container"
     echo "  🐚 exec   <name> [cmd]  Exec into a running OpenClaw session container"
+    echo "  ⚙️ config <name>        Show config file path for a session"
     echo "  🔗 info   <name>        Show connection info for a session"
     echo "  🔍 status [name]        Show status of one or all OpenClaw containers"
     echo "  📝 list                 List all defined sessions and their status"
@@ -540,6 +554,10 @@ exec)
 info)
     shift
     cmd_info "$@"
+    ;;
+config)
+    shift
+    cmd_config "$@"
     ;;
 status)
     shift
