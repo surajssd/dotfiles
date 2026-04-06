@@ -3,6 +3,7 @@
 ## Local Tools Usage
 
 - Whenever you are searching something locally using grep, use `rg` instead of `grep`.
+- When on macOS, prefer using `container` CLI for running containers instead of `docker`, until and unless user explicitly requires `docker`.
 
 ## Shell Scripts
 
