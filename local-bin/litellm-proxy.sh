@@ -88,6 +88,22 @@ function create_claude_settings() {
   "statusLine": {
     "type": "command",
     "command": "jq -r '(.model.display_name // \"unknown\") as $model | ((.context_window.used_percentage // 0) | floor) as $pct | ($pct / 5 | floor) as $filled | (20 - $filled) as $empty | $model + \" | \" + ($pct | tostring) + \"% [\" + (\"█\" * $filled) + (\"░\" * $empty) + \"]\"'"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(ado-logs.sh:*)",
+      "Bash(find:*)",
+      "Bash(rg:*)",
+      "Bash(grep:*)",
+      "Bash(shellfmt.sh:*)",
+      "Bash(pbcopy:*)",
+      "Bash(go:*)",
+      "Bash(git:*)",
+      "Bash(gh issue:*)"
+    ]
+  },
+  "enabledPlugins": {
+    "gopls-lsp@claude-plugins-official": true
   }
 }
 EOF
