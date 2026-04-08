@@ -35,8 +35,9 @@ esac
 
 # Set correct permissions on gnupg directory
 chmod 700 ~/.gnupg
-chmod 600 ~/.gnupg/gpg-agent.conf
-[ -f ~/.gnupg/gpg.conf ] && chmod 600 ~/.gnupg/gpg.conf
+# Only chmod config files if they are regular files (not symlinks to read-only mounts)
+[ -f ~/.gnupg/gpg-agent.conf ] && [ ! -L ~/.gnupg/gpg-agent.conf ] && chmod 600 ~/.gnupg/gpg-agent.conf
+[ -f ~/.gnupg/gpg.conf ] && [ ! -L ~/.gnupg/gpg.conf ] && chmod 600 ~/.gnupg/gpg.conf
 
 ln -sf "${CONFIGS_DIR}"/gitignore ~/.gitignore
 mkdir -p ~/.terraform.d/plugin-cache && ln -sf "${CONFIGS_DIR}"/terraformrc ~/.terraformrc
