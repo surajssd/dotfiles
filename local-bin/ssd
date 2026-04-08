@@ -280,6 +280,7 @@ function dump() {
     mkdir -p "$(dirname "${FILE_PATH}")"
     touch "${FILE_PATH}"
     code "${FILE_PATH}"
+    echo "${FILE_PATH}"
 }
 
 function usage_global() {
