@@ -44,12 +44,13 @@ mac_packages=(
     docker
     git
     gnupg
+    pinentry-mac
     pstree
     python
     rsync
     tmux
     tree
-    pinentry-mac
+    watch
 )
 
 # Cask packages to install only on macOS (one per line, sorted alphabetically).
