@@ -37,4 +37,9 @@ WORKDIR /home/node
 # Make home directory and tool caches writable by any UID.
 USER root
 RUN chmod -R a+w /home/node
+
+# Copy /home/node to a seed directory at /opt/ (outside the home mount shadow)
+# so the entrypoint can populate a bind-mounted /home/node on first run.
+RUN cp -a /home/node /opt/node-home-seed
+
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

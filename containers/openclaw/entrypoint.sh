@@ -17,4 +17,17 @@ if ! id -un &>/dev/null 2>&1; then
     echo "node:x:${RUNTIME_UID}:${RUNTIME_GID}::/home/node:/bin/bash" >>/etc/passwd
 fi
 
+# Seed /home/node from the image's seed directory on first run.
+# When /home/node is bind-mounted from the host, it starts empty.
+# Copy the seed contents (Homebrew, uv, bun, etc.) to populate it.
+# The cp may warn about preserving timestamps on the VirtioFS mount root,
+# which is harmless and can be ignored.
+SEED_DIR="/opt/node-home-seed"
+MARKER="/home/node/.home-initialized"
+if [[ -d "${SEED_DIR}" ]] && [[ ! -f "${MARKER}" ]]; then
+    echo "entrypoint: seeding /home/node from image..."
+    cp -a "${SEED_DIR}"/. /home/node/ 2>/dev/null || true
+    touch "${MARKER}"
+fi
+
 exec "$@"

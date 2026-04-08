@@ -64,12 +64,7 @@ function container_name() {
 
 function ensure_state_dirs() {
     local session_name="${1}"
-    local config_dir="${STATE_DIR}/${session_name}/config"
-
-    mkdir -p "${config_dir}/identity"
-    mkdir -p "${config_dir}/agents/main/agent"
-    mkdir -p "${config_dir}/agents/main/sessions"
-    mkdir -p "${config_dir}/workspace"
+    mkdir -p "${STATE_DIR}/${session_name}/home"
 }
 
 function read_session_config() {
@@ -93,13 +88,13 @@ function read_session_config() {
 function build_mount_args() {
     local session_name="${1}"
     local yaml="${SESSIONS_CONFIG}"
-    local config_dir="${STATE_DIR}/${session_name}/config"
+    local home_dir="${STATE_DIR}/${session_name}/home"
 
     mount_args=()
 
-    # Mandatory mounts: config and workspace
-    mount_args+=("--mount" "type=bind,source=${config_dir},target=/home/node/.openclaw")
-    mount_args+=("--mount" "type=bind,source=${config_dir}/workspace,target=/home/node/.openclaw/workspace")
+    # Persistent home directory mount — must come first so sub-mounts overlay correctly.
+    # The entrypoint seeds this from the image archive on first run.
+    mount_args+=("--mount" "type=bind,source=${home_dir},target=/home/node")
 
     # Extra mounts from YAML
     local mount_count
@@ -258,7 +253,7 @@ function cmd_start() {
     ensure_state_dirs "${session_name}"
 
     # Verify that setup has been completed (onboarding creates openclaw.json)
-    local config_json="${STATE_DIR}/${session_name}/config/openclaw.json"
+    local config_json="${STATE_DIR}/${session_name}/home/.openclaw/openclaw.json"
     if [[ ! -f "${config_json}" ]]; then
         echo "❌ Session '${session_name}' has not been set up yet. Run setup first:" >&2
         echo "  openclaw.sh setup ${session_name}" >&2
@@ -319,7 +314,7 @@ function print_connection_info() {
     echo ""
 
     # Read gateway token from config
-    local config_json="${STATE_DIR}/${session_name}/config/openclaw.json"
+    local config_json="${STATE_DIR}/${session_name}/home/.openclaw/openclaw.json"
     local token=""
     if [[ -f "${config_json}" ]] && command -v jq &>/dev/null; then
         token="$(jq -r '.gateway.auth.token // empty' "${config_json}" 2>/dev/null || true)"
@@ -368,7 +363,7 @@ function cmd_config() {
     preflight_checks
     validate_session_name "${session_name}"
 
-    local config_path="${STATE_DIR}/${session_name}/config/openclaw.json"
+    local config_path="${STATE_DIR}/${session_name}/home/.openclaw/openclaw.json"
     if [[ -f "${config_path}" ]]; then
         echo "${config_path}"
     else
