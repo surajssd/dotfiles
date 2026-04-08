@@ -64,7 +64,23 @@ function container_name() {
 
 function ensure_state_dirs() {
     local session_name="${1}"
-    mkdir -p "${STATE_DIR}/${session_name}/home"
+    local config_dir="${STATE_DIR}/${session_name}/config"
+
+    # Host-side config dir (bind-mounted for host access to openclaw.json)
+    mkdir -p "${config_dir}/identity"
+    mkdir -p "${config_dir}/agents/main/agent"
+    mkdir -p "${config_dir}/agents/main/sessions"
+    mkdir -p "${config_dir}/workspace"
+
+    # Case-sensitive container volumes for home and linuxbrew
+    local home_vol="${CONTAINER_PREFIX}-${session_name}-home"
+    local brew_vol="${CONTAINER_PREFIX}-${session_name}-linuxbrew"
+    if ! container volume ls 2>/dev/null | grep -q "${home_vol}"; then
+        container volume create "${home_vol}" -s 20G >/dev/null
+    fi
+    if ! container volume ls 2>/dev/null | grep -q "${brew_vol}"; then
+        container volume create "${brew_vol}" -s 20G >/dev/null
+    fi
 }
 
 function read_session_config() {
@@ -88,13 +104,21 @@ function read_session_config() {
 function build_mount_args() {
     local session_name="${1}"
     local yaml="${SESSIONS_CONFIG}"
-    local home_dir="${STATE_DIR}/${session_name}/home"
+    local config_dir="${STATE_DIR}/${session_name}/config"
+    local home_vol="${CONTAINER_PREFIX}-${session_name}-home"
+    local brew_vol="${CONTAINER_PREFIX}-${session_name}-linuxbrew"
 
     mount_args=()
 
-    # Persistent home directory mount — must come first so sub-mounts overlay correctly.
-    # The entrypoint seeds this from the image archive on first run.
-    mount_args+=("--mount" "type=bind,source=${home_dir},target=/home/node")
+    # Case-sensitive container volumes for home and linuxbrew (ext4 in the VM).
+    # The entrypoint seeds these from image seed copies on first run.
+    mount_args+=("--mount" "type=volume,source=${home_vol},target=/home/node")
+    mount_args+=("--mount" "type=volume,source=${brew_vol},target=/home/linuxbrew")
+
+    # Bind-mount the config dir on top of the home volume for host-side access
+    # to openclaw.json (needed by start, info, config commands).
+    mount_args+=("--mount" "type=bind,source=${config_dir},target=/home/node/.openclaw")
+    mount_args+=("--mount" "type=bind,source=${config_dir}/workspace,target=/home/node/.openclaw/workspace")
 
     # Extra mounts from YAML
     local mount_count
@@ -253,7 +277,7 @@ function cmd_start() {
     ensure_state_dirs "${session_name}"
 
     # Verify that setup has been completed (onboarding creates openclaw.json)
-    local config_json="${STATE_DIR}/${session_name}/home/.openclaw/openclaw.json"
+    local config_json="${STATE_DIR}/${session_name}/config/openclaw.json"
     if [[ ! -f "${config_json}" ]]; then
         echo "❌ Session '${session_name}' has not been set up yet. Run setup first:" >&2
         echo "  openclaw.sh setup ${session_name}" >&2
@@ -314,7 +338,7 @@ function print_connection_info() {
     echo ""
 
     # Read gateway token from config
-    local config_json="${STATE_DIR}/${session_name}/home/.openclaw/openclaw.json"
+    local config_json="${STATE_DIR}/${session_name}/config/openclaw.json"
     local token=""
     if [[ -f "${config_json}" ]] && command -v jq &>/dev/null; then
         token="$(jq -r '.gateway.auth.token // empty' "${config_json}" 2>/dev/null || true)"
@@ -363,7 +387,7 @@ function cmd_config() {
     preflight_checks
     validate_session_name "${session_name}"
 
-    local config_path="${STATE_DIR}/${session_name}/home/.openclaw/openclaw.json"
+    local config_path="${STATE_DIR}/${session_name}/config/openclaw.json"
     if [[ -f "${config_path}" ]]; then
         echo "${config_path}"
     else

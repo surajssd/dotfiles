@@ -22,24 +22,25 @@ RUN apt-get update && \
 
 COPY --chmod=755 entrypoint.sh /usr/local/bin/entrypoint.sh
 
-# Install Homebrew (hardcoded to /home/linuxbrew/.linuxbrew), then move
-# it to /home/node/.linuxbrew and symlink the old path for compatibility.
+# Install Homebrew (stays at its default /home/linuxbrew/.linuxbrew),
+# then symlink from /home/node/.linuxbrew for PATH convenience.
 # Then install uv and bun.
 USER node
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
-    && sudo mv /home/linuxbrew/.linuxbrew /home/node/.linuxbrew \
-    && sudo ln -s /home/node/.linuxbrew /home/linuxbrew/.linuxbrew \
+    && ln -s /home/linuxbrew/.linuxbrew /home/node/.linuxbrew \
     && curl -LsSf https://astral.sh/uv/install.sh | sh \
     && curl -fsSL https://bun.sh/install | bash
 ENV PATH="/home/node/.linuxbrew/bin:/home/node/.linuxbrew/sbin:/home/node/.local/bin:/home/node/.bun/bin:${PATH}"
 WORKDIR /home/node
 
-# Make home directory and tool caches writable by any UID.
+# Make home and linuxbrew directories writable by any UID.
 USER root
-RUN chmod -R a+w /home/node
+RUN chmod -R a+w /home/node /home/linuxbrew
 
-# Copy /home/node to a seed directory at /opt/ (outside the home mount shadow)
-# so the entrypoint can populate a bind-mounted /home/node on first run.
-RUN cp -a /home/node /opt/node-home-seed
+# Copy /home/node and /home/linuxbrew to seed directories at /opt/
+# (outside mount shadows) so the entrypoint can populate bind-mounted
+# directories on first run.
+RUN cp -a /home/node /opt/node-home-seed \
+    && cp -a /home/linuxbrew /opt/linuxbrew-seed
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

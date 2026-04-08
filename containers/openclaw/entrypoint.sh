@@ -17,17 +17,23 @@ if ! id -un &>/dev/null 2>&1; then
     echo "node:x:${RUNTIME_UID}:${RUNTIME_GID}::/home/node:/bin/bash" >>/etc/passwd
 fi
 
-# Seed /home/node from the image's seed directory on first run.
-# When /home/node is bind-mounted from the host, it starts empty.
-# Copy the seed contents (Homebrew, uv, bun, etc.) to populate it.
-# The cp may warn about preserving timestamps on the VirtioFS mount root,
+# Seed bind-mounted directories from image seed copies on first run.
+# When these dirs are bind-mounted from the host, they start empty.
+# The cp may warn about preserving timestamps on VirtioFS mount roots,
 # which is harmless and can be ignored.
-SEED_DIR="/opt/node-home-seed"
-MARKER="/home/node/.home-initialized"
-if [[ -d "${SEED_DIR}" ]] && [[ ! -f "${MARKER}" ]]; then
-    echo "entrypoint: seeding /home/node from image..."
-    cp -a "${SEED_DIR}"/. /home/node/ 2>/dev/null || true
-    touch "${MARKER}"
-fi
+seed_dir_if_needed() {
+    local seed_dir="${1}"
+    local target_dir="${2}"
+    local marker="${target_dir}/.seed-initialized"
+
+    if [[ -d "${seed_dir}" ]] && [[ ! -f "${marker}" ]]; then
+        echo "entrypoint: seeding ${target_dir} from image..."
+        cp -a "${seed_dir}"/. "${target_dir}/" 2>/dev/null || true
+        touch "${marker}"
+    fi
+}
+
+seed_dir_if_needed "/opt/node-home-seed" "/home/node"
+seed_dir_if_needed "/opt/linuxbrew-seed" "/home/linuxbrew"
 
 exec "$@"
