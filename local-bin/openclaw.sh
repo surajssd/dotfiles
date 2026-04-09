@@ -8,6 +8,24 @@ readonly CONTAINER_PREFIX="openclaw"
 readonly DEFAULT_IMAGE="ghcr.io/surajssd/dotfiles/openclaw:latest"
 readonly CONTAINER_GATEWAY_PORT=18789
 readonly CONTAINER_BRIDGE_PORT=18790
+readonly PROXY_PID_DIR="${STATE_DIR}/proxy"
+readonly DEFAULT_PROXY_PORT=11080
+function detect_vmnet_gateway() {
+    local subnet
+    subnet="$(container network ls 2>/dev/null | awk 'NR==2 {print $3}')"
+    if [[ -z "${subnet}" ]]; then
+        echo ""
+        return
+    fi
+    # Convert subnet to gateway: 192.168.65.0/24 → 192.168.65.1
+    # Strip the network and CIDR suffix, then append .1
+    local base
+    base="${subnet%.*}"
+    echo "${base}.1"
+}
+
+VMNET_GATEWAY="$(detect_vmnet_gateway)"
+readonly VMNET_GATEWAY
 
 function info() {
     echo "${1}"
@@ -189,6 +207,203 @@ function build_env_args() {
     fi
 }
 
+# ---------------------------------------------------------------------------
+# HTTP proxy management
+#
+# macOS Network Extensions only intercept traffic from host user-space apps.
+# Container traffic via vmnet NAT is not intercepted, causing timeouts to
+# certain endpoints. Running an HTTP proxy on the host lets container
+# traffic originate from host user-space where it is properly handled.
+# ---------------------------------------------------------------------------
+
+function proxy_enabled() {
+    local session_name="${1}"
+    local yaml="${SESSIONS_CONFIG}"
+    local enabled
+    enabled="$(yq ".${session_name}.proxy.enabled // false" "${yaml}")"
+    [[ "${enabled}" == "true" ]]
+}
+
+function proxy_port() {
+    local session_name="${1}"
+    local yaml="${SESSIONS_CONFIG}"
+    local port
+    port="$(yq ".${session_name}.proxy.port // ${DEFAULT_PROXY_PORT}" "${yaml}")"
+    echo "${port}"
+}
+
+function proxy_config_file() {
+    local session_name="${1}"
+    echo "${PROXY_PID_DIR}/${session_name}.conf"
+}
+
+function start_proxy() {
+    local session_name="${1}"
+
+    if ! proxy_enabled "${session_name}"; then
+        return
+    fi
+
+    if ! command -v tinyproxy &>/dev/null; then
+        info "⚠️  'tinyproxy' not installed — proxy support disabled. Install with: brew install tinyproxy"
+        return
+    fi
+
+    if [[ -z "${VMNET_GATEWAY}" ]]; then
+        info "⚠️  Could not detect vmnet gateway IP — proxy support disabled. Ensure a bridge interface exists."
+        return
+    fi
+
+    local port
+    port="$(proxy_port "${session_name}")"
+    local pid_file="${PROXY_PID_DIR}/${session_name}.pid"
+    local conf_file
+    conf_file="$(proxy_config_file "${session_name}")"
+
+    mkdir -p "${PROXY_PID_DIR}"
+
+    # Check if proxy is already running
+    if [[ -f "${pid_file}" ]]; then
+        local existing_pid
+        existing_pid="$(cat "${pid_file}")"
+        if kill -0 "${existing_pid}" 2>/dev/null; then
+            info "🔌 HTTP proxy already running (PID ${existing_pid}) on ${VMNET_GATEWAY}:${port}"
+            return
+        fi
+        # Stale PID file — clean up
+        rm -f "${pid_file}"
+    fi
+
+    # Derive the /24 subnet from the gateway IP (e.g. 192.168.65.1 → 192.168.65.0/24)
+    local subnet
+    subnet="$(echo "${VMNET_GATEWAY}" | sed 's/\.[0-9]*$/.0\/24/')"
+
+    # Generate a minimal tinyproxy config
+    cat >"${conf_file}" <<EOF
+Port ${port}
+Listen ${VMNET_GATEWAY}
+Timeout 600
+LogLevel Critical
+MaxClients 100
+DisableViaHeader Yes
+Allow ${subnet}
+EOF
+
+    info "⏳ Starting HTTP proxy on ${VMNET_GATEWAY}:${port}..."
+    tinyproxy -d -c "${conf_file}" &
+    local proxy_pid=$!
+
+    # Give it a moment to bind
+    sleep 1
+    if ! kill -0 "${proxy_pid}" 2>/dev/null; then
+        info "❌ Failed to start HTTP proxy on ${VMNET_GATEWAY}:${port}"
+        return
+    fi
+
+    echo "${proxy_pid}" >"${pid_file}"
+    info "✅ HTTP proxy running (PID ${proxy_pid}) on ${VMNET_GATEWAY}:${port}"
+}
+
+function stop_proxy() {
+    local session_name="${1}"
+    local pid_file="${PROXY_PID_DIR}/${session_name}.pid"
+
+    if [[ ! -f "${pid_file}" ]]; then
+        return
+    fi
+
+    local proxy_pid
+    proxy_pid="$(cat "${pid_file}")"
+    if kill -0 "${proxy_pid}" 2>/dev/null; then
+        kill "${proxy_pid}" 2>/dev/null || true
+        info "✅ HTTP proxy stopped (PID ${proxy_pid})"
+    fi
+    rm -f "${pid_file}"
+}
+
+function inject_proxy_env() {
+    local session_name="${1}"
+    local cname="${2}"
+
+    if ! proxy_enabled "${session_name}"; then
+        return
+    fi
+
+    if ! command -v tinyproxy &>/dev/null || [[ -z "${VMNET_GATEWAY}" ]]; then
+        return
+    fi
+
+    local port
+    port="$(proxy_port "${session_name}")"
+    local proxy_url="http://${VMNET_GATEWAY}:${port}"
+
+    # Derive the /24 subnet from the gateway IP
+    local subnet
+    subnet="$(echo "${VMNET_GATEWAY}" | sed 's/\.[0-9]*$/.0\/24/')"
+
+    # Write proxy environment file inside the container
+    container exec "${cname}" bash -c "cat > /home/node/.proxy_env << PROXYEOF
+export http_proxy=${proxy_url}
+export HTTP_PROXY=${proxy_url}
+export https_proxy=${proxy_url}
+export HTTPS_PROXY=${proxy_url}
+export no_proxy=localhost,127.0.0.1,${subnet}
+export NO_PROXY=localhost,127.0.0.1,${subnet}
+PROXYEOF" 2>/dev/null || true
+
+    # Install into /etc/profile.d (login shells), /home/node/.profile (user login),
+    # and /etc/bash.bashrc (interactive non-login shells).
+    # Note: ~/.bashrc is often a read-only symlink on container volumes.
+    container exec "${cname}" bash -c '
+        sudo cp /home/node/.proxy_env /etc/profile.d/proxy.sh 2>/dev/null || true
+        if ! grep -q "\.proxy_env" /home/node/.profile 2>/dev/null; then
+            echo "" >> /home/node/.profile
+            echo "# HTTP proxy" >> /home/node/.profile
+            echo "[ -f ~/.proxy_env ] && source ~/.proxy_env" >> /home/node/.profile
+        fi
+        if ! grep -q "\.proxy_env" /etc/bash.bashrc 2>/dev/null; then
+            echo "" | sudo tee -a /etc/bash.bashrc > /dev/null
+            echo "# HTTP proxy" | sudo tee -a /etc/bash.bashrc > /dev/null
+            echo "[ -f /home/node/.proxy_env ] && . /home/node/.proxy_env" | sudo tee -a /etc/bash.bashrc > /dev/null
+        fi
+    ' 2>/dev/null || true
+
+    info "🔌 Proxy env injected: ${proxy_url}"
+}
+
+function cmd_proxy_status() {
+    local session_name="${1:-}"
+    preflight_checks
+    validate_session_name "${session_name}"
+
+    if ! proxy_enabled "${session_name}"; then
+        info "🔌 Proxy is not enabled for session '${session_name}'"
+        info "   Add 'proxy: { enabled: true }' to ${SESSIONS_CONFIG}"
+        return
+    fi
+
+    local port
+    port="$(proxy_port "${session_name}")"
+    local pid_file="${PROXY_PID_DIR}/${session_name}.pid"
+
+    echo ""
+    echo "  Session:  ${session_name}"
+    echo "  Bind:     ${VMNET_GATEWAY}:${port}"
+
+    if [[ -f "${pid_file}" ]]; then
+        local proxy_pid
+        proxy_pid="$(cat "${pid_file}")"
+        if kill -0 "${proxy_pid}" 2>/dev/null; then
+            echo "  Status:   🟢 Running (PID ${proxy_pid})"
+        else
+            echo "  Status:   🔴 Dead (stale PID ${proxy_pid})"
+        fi
+    else
+        echo "  Status:   ⚪ Not started"
+    fi
+    echo ""
+}
+
 function cmd_setup() {
     local session_name="${1:-}"
     preflight_checks
@@ -256,7 +471,6 @@ function wait_for_healthy() {
         if curl -sf "${health_url}" >/dev/null 2>&1; then
             echo ""
             info "✅ Container '${cname}' is running and healthy."
-            print_connection_info "${session_name}"
             return
         fi
         printf "."
@@ -293,12 +507,17 @@ function cmd_start() {
     # Reuse existing container to preserve state/progress.
     if container ls 2>/dev/null | grep -q "${cname}"; then
         info "🟢 Container '${cname}' is already running."
+        start_proxy "${session_name}"
+        inject_proxy_env "${session_name}" "${cname}"
         print_connection_info "${session_name}"
         return
     elif container ls -a 2>/dev/null | grep -q "${cname}"; then
         info "♻️  Restarting existing container '${cname}'"
         container start "${cname}"
         wait_for_healthy "${session_name}" "${cname}" "${gateway_port}"
+        start_proxy "${session_name}"
+        inject_proxy_env "${session_name}" "${cname}"
+        print_connection_info "${session_name}"
         return
     fi
 
@@ -327,6 +546,9 @@ function cmd_start() {
         openclaw gateway --bind lan --port "${CONTAINER_GATEWAY_PORT}"
 
     wait_for_healthy "${session_name}" "${cname}" "${gateway_port}"
+    start_proxy "${session_name}"
+    inject_proxy_env "${session_name}" "${cname}"
+    print_connection_info "${session_name}"
 }
 
 function print_connection_info() {
@@ -381,6 +603,8 @@ function cmd_stop() {
     local cname
     cname="$(container_name "${session_name}")"
 
+    stop_proxy "${session_name}"
+
     if container ls -a 2>/dev/null | grep -q "${cname}"; then
         info "🛑 Stopping container '${cname}'"
         container stop "${cname}" 2>/dev/null || true
@@ -418,6 +642,8 @@ function cmd_remove() {
     local cname
     cname="$(container_name "${session_name}")"
 
+    stop_proxy "${session_name}"
+
     if container ls -a 2>/dev/null | grep -q "${cname}"; then
         info "🗑️  Stopping and removing container '${cname}'"
         container stop "${cname}" 2>/dev/null || true
@@ -448,12 +674,18 @@ function cmd_exec() {
     local cname
     cname="$(container_name "${session_name}")"
 
-    # Default to bash shell if no command specified
+    # Default to login bash shell if no command specified
     if [[ $# -eq 0 ]]; then
-        set -- bash
+        set -- bash -l
     fi
 
-    container exec -it "${cname}" "$@"
+    # If proxy is enabled and a non-bash command is being run, wrap it so that
+    # the proxy env vars (ALL_PROXY, HTTP_PROXY, etc.) are available.
+    if proxy_enabled "${session_name}" && [[ "${1}" != "bash" ]]; then
+        container exec -it "${cname}" bash -lc "$*"
+    else
+        container exec -it "${cname}" "$@"
+    fi
 }
 
 function cmd_status() {
@@ -535,17 +767,18 @@ function usage() {
     echo "Persistent state is stored in: ${STATE_DIR}/<session>/"
     echo ""
     echo "Subcommands:"
-    echo "  🔧 setup  <name>        Run initial onboarding for a new session"
-    echo "  🚀 start  <name>        Start an OpenClaw session container"
-    echo "  🛑 stop   <name>        Stop an OpenClaw session container"
-    echo "  🔄 restart <name>       Restart an OpenClaw session container"
-    echo "  🗑️ remove <name>        Stop and remove an OpenClaw session container"
-    echo "  📋 logs   <name>        Follow logs of an OpenClaw session container"
-    echo "  🐚 exec   <name> [cmd]  Exec into a running OpenClaw session container"
-    echo "  ⚙️ config <name>        Show config file path for a session"
-    echo "  🔗 info   <name>        Show connection info for a session"
-    echo "  🔍 status [name]        Show status of one or all OpenClaw containers"
-    echo "  📝 list                 List all defined sessions and their status"
+    echo "  🔧 setup        <name>        Run initial onboarding for a new session"
+    echo "  🚀 start        <name>        Start an OpenClaw session container"
+    echo "  🛑 stop         <name>        Stop an OpenClaw session container"
+    echo "  🔄 restart      <name>        Restart an OpenClaw session container"
+    echo "  🗑️ remove       <name>        Stop and remove an OpenClaw session container"
+    echo "  📋 logs         <name>        Follow logs of an OpenClaw session container"
+    echo "  🐚 exec         <name> [cmd]  Exec into a running OpenClaw session container"
+    echo "  ⚙️ config       <name>        Show config file path for a session"
+    echo "  🔗 info         <name>        Show connection info for a session"
+    echo "  🔍 status       [name]        Show status of one or all OpenClaw containers"
+    echo "  🔌 proxy-status <name>        Show HTTP proxy status for a session"
+    echo "  📝 list                       List all defined sessions and their status"
     echo ""
 }
 
@@ -589,6 +822,10 @@ config)
 status)
     shift
     cmd_status "${1:-}"
+    ;;
+proxy-status)
+    shift
+    cmd_proxy_status "$@"
     ;;
 list)
     shift
