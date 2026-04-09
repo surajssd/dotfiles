@@ -362,6 +362,14 @@ function cmd_info() {
     local session_name="${1:-}"
     preflight_checks
     validate_session_name "${session_name}"
+
+    local cname
+    cname="$(container_name "${session_name}")"
+
+    if ! container ls 2>/dev/null | grep -q "${cname}"; then
+        err "Session '${session_name}' is not running. Start it with: openclaw.sh start ${session_name}"
+    fi
+
     print_connection_info "${session_name}"
 }
 
