@@ -50,6 +50,7 @@ mac_packages=(
     rsync
     tmux
     tree
+    virtualenv
     watch
 )
 
