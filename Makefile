@@ -10,6 +10,10 @@ install-configs:
 install-skills:
 	./installers/install-skills.sh
 
+.PHONY: install-azure-capacity-finder
+install-azure-capacity-finder:
+	cd azure-capacity-finder && go install .
+
 .PHONY: install-all
 install-all:
 	./installers/install-all.sh
@@ -18,6 +22,7 @@ install-all:
 pull-master:
 	git pull --ff origin master
 	cd dotfilesprivate && git pull --ff origin master
+	cd azure-capacity-finder && git pull --ff origin main
 
 .PHONY: update
 update: pull-master install-all
@@ -25,3 +30,7 @@ update: pull-master install-all
 .PHONY: clone-private
 clone-private:
 	git clone git@github.com:surajssd/dotfilesprivate.git
+
+.PHONY: clone-azure-capacity-finder
+clone-azure-capacity-finder:
+	git clone git@github.com:surajssd/azure-capacity-finder.git
