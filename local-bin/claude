@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Claude Code wrapper that auto-switches theme based on time of day.
+# The theme in ~/.claude.json is set to "light" or "dark" before launching
+# the real claude binary.
+#
+# Configuration (all optional env vars):
+#   CLAUDE_THEME        - Force "light" or "dark", skip time logic
+#   CLAUDE_LIGHT_START  - Hour (24h) when light theme starts (default: 7)
+#   CLAUDE_LIGHT_END    - Hour (24h) when dark theme starts (default: 19)
+#   CLAUDE_REAL_BIN     - Path to real claude binary (default: auto-detected)
+#   CLAUDE_THEME_DEBUG  - Set to "1" for debug output on stderr
+
+CLAUDE_JSON="${HOME}/.claude.json"
+
+# Find the real claude binary by scanning PATH, skipping this wrapper.
+find_real_claude() {
+    local self
+    self="$(realpath "${BASH_SOURCE[0]}")"
+
+    IFS=: read -ra dirs <<<"$PATH"
+    for dir in "${dirs[@]}"; do
+        local candidate="${dir}/claude"
+        if [[ -x "$candidate" ]]; then
+            local resolved
+            resolved="$(realpath "$candidate" 2>/dev/null)" || continue
+            if [[ "$resolved" != "$self" ]]; then
+                echo "$candidate"
+                return 0
+            fi
+        fi
+    done
+    return 1
+}
+
+# Determine theme based on current hour.
+get_theme_for_time() {
+    local light_start="${CLAUDE_LIGHT_START:-7}"
+    local light_end="${CLAUDE_LIGHT_END:-19}"
+    local current_hour
+    current_hour="$(date +%H)"
+    # Remove leading zero for arithmetic comparison.
+    current_hour="$((10#$current_hour))"
+
+    if ((current_hour >= light_start && current_hour < light_end)); then
+        echo "light"
+    else
+        echo "dark"
+    fi
+}
+
+# Update the theme in ~/.claude.json using jq.
+set_theme() {
+    local theme="$1"
+
+    if [[ -f "$CLAUDE_JSON" ]]; then
+        jq --arg t "$theme" '.theme = $t' "$CLAUDE_JSON" >"${CLAUDE_JSON}.tmp" &&
+            mv "${CLAUDE_JSON}.tmp" "$CLAUDE_JSON"
+    else
+        jq -n --arg t "$theme" '{theme: $t}' >"$CLAUDE_JSON"
+    fi
+}
+
+debug() {
+    if [[ "${CLAUDE_THEME_DEBUG:-}" == "1" ]]; then
+        echo "[claude-wrapper] $*" >&2
+    fi
+}
+
+# --- Main ---
+
+# Resolve the real claude binary.
+if [[ -n "${CLAUDE_REAL_BIN:-}" ]]; then
+    real_claude="$CLAUDE_REAL_BIN"
+else
+    if ! real_claude="$(find_real_claude)"; then
+        echo "❌ claude wrapper: could not find the real claude binary on PATH" >&2
+        exit 1
+    fi
+fi
+debug "real binary: $real_claude"
+
+# Determine and apply the theme (only if jq is available).
+if command -v jq &>/dev/null; then
+    if [[ -n "${CLAUDE_THEME:-}" ]]; then
+        theme="$CLAUDE_THEME"
+        debug "theme forced via CLAUDE_THEME=$theme"
+    else
+        theme="$(get_theme_for_time)"
+        debug "theme from time: $theme (hour=$(date +%H))"
+    fi
+
+    set_theme "$theme"
+    debug "updated $CLAUDE_JSON"
+else
+    debug "jq not found, skipping theme switch"
+fi
+
+# Launch the real claude, replacing this process.
+exec "$real_claude" "$@"
