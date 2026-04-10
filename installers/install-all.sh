@@ -18,4 +18,10 @@ if [[ -d "azure-capacity-finder" ]]; then
     echo "✅ azure-capacity-finder installed to ~/go/bin"
 fi
 
+if [[ -d "clawbox" ]]; then
+    echo "⏳ Installing clawbox..."
+    (cd clawbox && go install .)
+    echo "✅ clawbox installed to ~/go/bin"
+fi
+
 echo "✅ All installations completed successfully!"

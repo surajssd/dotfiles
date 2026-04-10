@@ -14,6 +14,14 @@ install-skills:
 install-azure-capacity-finder:
 	cd azure-capacity-finder && go install .
 
+.PHONY: install-clawbox
+install-clawbox:
+	cd clawbox && go install .
+
+.PHONY: test
+test:
+	cd clawbox && $(MAKE) test
+
 .PHONY: install-all
 install-all:
 	./installers/install-all.sh
