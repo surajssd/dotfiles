@@ -29,8 +29,8 @@ install-all:
 .PHONY: pull-master
 pull-master:
 	git pull --ff origin master
-	cd dotfilesprivate && git pull --ff origin master
-	cd azure-capacity-finder && git pull --ff origin main
+	if [ -d dotfilesprivate ]; then cd dotfilesprivate && git pull --ff origin master; fi
+	if [ -d azure-capacity-finder ]; then cd azure-capacity-finder && git pull --ff origin main; fi
 
 .PHONY: update
 update: pull-master install-all
