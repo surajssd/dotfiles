@@ -5,6 +5,10 @@
 export PATH=$HOME/.local/bin:$HOME/go/bin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH
 
 #=================================================================
+# Container detection
+detect-container.sh &>/dev/null && export RUNNING_IN_CONTAINER=true
+
+#=================================================================
 # Oh my zsh config
 
 # These are needed for the zsh-completions plugin to work properly.
