@@ -18,3 +18,11 @@ symbol   = "☸️ "
 [azure]
 disabled = false
 symbol   = '󰠅 '
+
+# Container detection
+[custom.container]
+disabled = false
+when     = 'test "$RUNNING_IN_CONTAINER" = "true"'
+format   = '[$symbol(Container)]($style) '
+symbol   = '📦 '
+style    = 'bold dimmed white'
