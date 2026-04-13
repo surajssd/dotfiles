@@ -251,7 +251,11 @@ function dump() {
             ;;
         --open | -o)
             shift
-            code "${DUMP_DIR}"
+            if command -v code &>/dev/null; then
+                code "${DUMP_DIR}"
+            else
+                err "code (VS Code) not found in PATH"
+            fi
             exit 0
             ;;
         --help | help | -h)
@@ -276,10 +280,16 @@ function dump() {
 
     FILE_PATH="${DUMP_DIR}/$(date +%Y)-archives/$(date "+%Y-%m-%b-%d-%H-%M-%S")${dump_topic:+-${dump_topic}}.${dump_format}"
 
-    code "${DUMP_DIR}"
     mkdir -p "$(dirname "${FILE_PATH}")"
     touch "${FILE_PATH}"
-    code "${FILE_PATH}"
+
+    if command -v code &>/dev/null; then
+        code "${DUMP_DIR}"
+        code "${FILE_PATH}"
+    else
+        err "code (VS Code) not found in PATH"
+    fi
+
     echo "${FILE_PATH}"
 }
 
