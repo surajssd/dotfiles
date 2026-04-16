@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -25,6 +27,19 @@ func runExec(cmd *cobra.Command, args []string) error {
 	}
 
 	cname := config.ContainerName(sessionName)
+
+	// Check if the container is running before trying to exec.
+	running, err := appState.Runtime.IsRunning(cname)
+	if err != nil {
+		return fmt.Errorf("failed to check container status: %w", err)
+	}
+	if !running {
+		cmd.SilenceUsage = true
+		cmd.SilenceErrors = true
+		fmt.Fprintf(cmd.ErrOrStderr(), "❌ Session '%s' is not running.\n\n", sessionName)
+		fmt.Fprintf(cmd.ErrOrStderr(), "▶️  Start it with:\n   clawbox start %s\n", sessionName)
+		return errors.New("")
+	}
 
 	// Determine command to run.
 	execArgs := args[1:]
