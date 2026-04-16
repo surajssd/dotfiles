@@ -18,6 +18,7 @@ if type brew &>/dev/null; then
 fi
 
 # Path to your oh-my-zsh installation.
+ZSH_DISABLE_COMPFIX=true
 export ZSH="$HOME/.oh-my-zsh"
 # ZSH_THEME is disabled because Starship prompt (initialized below) completely
 # overrides the Oh My Zsh theme, making the theme loading wasted work.
@@ -79,8 +80,11 @@ function gpom() {
 
 # k8s alias
 command -v kubectl &>/dev/null && {
-    source <(kubectl completion zsh)
-    source <(kubectl completion zsh | sed 's/kubectl/k/g')
+    if [ ! -f "$ZSH/completions/_kubectl" ]; then
+        mkdir -p $ZSH/completions/
+        kubectl completion zsh >$ZSH/completions/_kubectl
+        kubectl completion zsh | sed 's/kubectl/k/g' >$ZSH/completions/_kubectl_k
+    fi
 }
 
 command -v kubecolor &>/dev/null && {
@@ -117,15 +121,24 @@ function change-ns() {
 }
 
 if command -v helm &>/dev/null; then
-    source <(helm completion zsh)
+    if [ ! -f "$ZSH/completions/_helm" ]; then
+        mkdir -p $ZSH/completions/
+        helm completion zsh >$ZSH/completions/_helm
+    fi
 fi
 
 if command -v kubeadm &>/dev/null; then
-    source <(kubeadm completion zsh)
+    if [ ! -f "$ZSH/completions/_kubeadm" ]; then
+        mkdir -p $ZSH/completions/
+        kubeadm completion zsh >$ZSH/completions/_kubeadm
+    fi
 fi
 
 if command -v gh &>/dev/null; then
-    eval "$(gh completion -s zsh)"
+    if [ ! -f "$ZSH/completions/_gh" ]; then
+        mkdir -p $ZSH/completions/
+        gh completion -s zsh >$ZSH/completions/_gh
+    fi
 fi
 
 if command -v kind &>/dev/null; then
