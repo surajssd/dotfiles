@@ -19,6 +19,7 @@ function wait_for_health() {
   local log_cmd="${2}"
   local max_attempts=30
   local attempt=0
+  local auth_shown=false
   printf "⏳ Waiting for litellm to become healthy "
   while [[ "${attempt}" -lt "${max_attempts}" ]]; do
     if curl -sf "${health_url}" >/dev/null 2>&1; then
@@ -26,6 +27,29 @@ function wait_for_health() {
       echo "✅ Litellm proxy is running and healthy."
       return 0
     fi
+
+    # Check container logs for GitHub device authentication prompt
+    if [[ "${auth_shown}" == "false" ]]; then
+      local logs
+      # Use log command without -f flag to avoid blocking
+      local log_cmd_no_follow="${log_cmd/logs -f/logs}"
+      logs=$(eval "${log_cmd_no_follow} 2>&1" 2>/dev/null || true)
+      local auth_url
+      auth_url=$(echo "${logs}" | grep -o 'https://github.com/login/device' || true)
+      local device_code
+      device_code=$(echo "${logs}" | sed -n 's/.*enter code \([A-Z0-9-]*\).*/\1/p' | head -1)
+      if [[ -n "${auth_url}" && -n "${device_code}" ]]; then
+        echo ""
+        echo ""
+        echo "🔐 GitHub Copilot authentication required!"
+        echo "   Visit: ${auth_url}"
+        echo "   Enter code: ${device_code}"
+        echo ""
+        printf "⏳ Waiting for authentication and health check "
+        auth_shown=true
+      fi
+    fi
+
     printf "."
     sleep 2
     attempt=$((attempt + 1))
