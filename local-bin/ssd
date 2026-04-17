@@ -293,6 +293,69 @@ function dump() {
     echo "${FILE_PATH}"
 }
 
+function usage_kubeconfig() {
+    echo "🛠️ Usage: ${SSD_PATH} kubeconfig"
+    echo ""
+    echo "Move ~/.kube/config to ~/.kubeconfigs/ and symlink it back."
+    echo "The file is renamed to <current-context>-<ssd-date> format."
+    echo ""
+    echo "Options:"
+    echo "    --help, -h    Show this help message"
+}
+
+function kubeconfig() {
+    while [[ $# -gt 0 ]]; do
+        case "${1:-}" in
+        --help | help | -h)
+            usage_kubeconfig
+            exit 0
+            ;;
+        *)
+            err "Unknown option: ${1:-}"
+            usage_kubeconfig
+            exit 1
+            ;;
+        esac
+    done
+
+    local file="${HOME}/.kube/config"
+
+    if [[ ! -e "${file}" ]]; then
+        err "File not found: ${file}"
+        exit 1
+    fi
+
+    if [[ -L "${file}" ]]; then
+        err "File is already a symlink: ${file}"
+        exit 1
+    fi
+
+    # Get the current context from the kubeconfig
+    local context
+    context=$(kubectl config current-context 2>/dev/null) || {
+        err "Failed to get current context from ${file}"
+        exit 1
+    }
+
+    if [[ -z "${context}" ]]; then
+        err "No current context set in ${file}"
+        exit 1
+    fi
+
+    local date_stamp
+    date_stamp=$(date "+%Y-%m-%b-%d-%H-%M-%S")
+
+    local dest_dir="${HOME}/.kubeconfigs"
+    mkdir -p "${dest_dir}"
+
+    local dest_file="${dest_dir}/${context}-${date_stamp}"
+    mv "${file}" "${dest_file}"
+    echo "✅ Moved ${file} → ${dest_file}"
+
+    ln -s "${dest_file}" "${file}"
+    echo "✅ Symlinked ${file} → ${dest_file}"
+}
+
 function usage_global() {
     echo "🛠️ Usage: ${SSD_PATH} <subcommand> [options]"
     echo ""
@@ -302,6 +365,7 @@ function usage_global() {
     echo "    goodlinks, gl       Add a URL to GoodLinks"
     echo "    browser             Force a website to allow copy-paste in Chromium-based browsers"
     echo "    password, pass      Generate a random password and copy to clipboard"
+    echo "    kubeconfig, k       Move kubeconfig to ~/.kubeconfigs/ and symlink to ~/.kube/config"
     echo "    help, --help, -h    Show this help message"
 }
 
@@ -327,6 +391,10 @@ gl | goodlinks)
 password | pass)
     shift
     generate_password "$@"
+    ;;
+kubeconfig | k)
+    shift
+    kubeconfig "$@"
     ;;
 help | --help | -h)
     usage_global
