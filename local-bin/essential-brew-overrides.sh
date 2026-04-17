@@ -43,6 +43,7 @@ mac_packages=(
     coreutils
     docker
     git
+    git-lfs
     gnupg
     pinentry-mac
     pstree
@@ -60,16 +61,17 @@ mac_cask_packages=(
     discord
     font-fira-code-nerd-font
     git-credential-manager
-    git-lfs
     google-chrome
     iterm2
     keepingyouawake
+    microsoft-edge
     notion
     obsidian
     slack
     tailscale-app
     visual-studio-code
     whatsapp
+    zoom
 )
 
 # Packages to install only on Linux (one per line, sorted alphabetically).
