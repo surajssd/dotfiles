@@ -67,6 +67,7 @@ mac_cask_packages=(
     microsoft-edge
     notion
     obsidian
+    protonvpn
     slack
     tailscale-app
     visual-studio-code
