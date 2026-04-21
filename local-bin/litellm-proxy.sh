@@ -124,8 +124,28 @@ function create_claude_settings() {
       "Bash(go:*)",
       "Bash(git:*)",
       "Bash(gh issue:*)"
+    ],
+    "deny": [
+      "Read(~/.ssh/**)",
+      "Read(~/.gnupg/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.azure/**)",
+      "Read(~/.kube/**)",
+      "Read(~/.npmrc)",
+      "Read(~/.git-credentials)",
+      "Read(~/.config/gh/**)",
+      "Edit(~/.bashrc)",
+      "Edit(~/.zshrc)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(nc *)",
+      "Bash(ssh *)",
+      "Bash(git push *)",
+      "Read(*.env)",
+      "Read(.env.*)"
     ]
   },
+  "enableAllProjectMcpServers": false,
   "enabledPlugins": {
     "gopls-lsp@claude-plugins-official": true
   }
