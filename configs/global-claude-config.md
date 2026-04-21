@@ -8,6 +8,8 @@
 ## Shell Scripts
 
 - After writing a shell script, make sure you run the command `shellfmt.sh <filename>` to format the script properly.
+- Whenever you are asked to save the analysis or certain content to a file for later reference, use the command `ssd dump -f <appropriate extension> <topic>` to save the content in a well-formatted way.
+- Whenever you need to create a temporary file use `mktemp --suffix=.<appropriate extension>` to ensure the file is created with the correct extension.
 
 ## Go Programming
 
