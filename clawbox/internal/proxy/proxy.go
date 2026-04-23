@@ -195,8 +195,8 @@ func (m *Manager) InjectEnv(sessionName, containerName string, cfg *config.Sessi
 export HTTP_PROXY=%s
 export https_proxy=%s
 export HTTPS_PROXY=%s
-export no_proxy=localhost,127.0.0.1,%s
-export NO_PROXY=localhost,127.0.0.1,%s
+export no_proxy=localhost,127.0.0.1,%s,*.dev.local
+export NO_PROXY=localhost,127.0.0.1,%s,*.dev.local
 `, proxyURL, proxyURL, proxyURL, proxyURL, subnet, subnet)
 
 	// Write .proxy_env file.
