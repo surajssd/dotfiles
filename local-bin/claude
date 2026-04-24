@@ -13,6 +13,7 @@ set -euo pipefail
 #   CLAUDE_THEME_DEBUG  - Set to "1" for debug output on stderr
 
 CLAUDE_JSON="${HOME}/.claude.json"
+CLAUDE_SETTINGS="${HOME}/.claude/settings.json"
 
 # Find the real claude binary by scanning PATH, skipping this wrapper.
 find_real_claude() {
@@ -68,6 +69,36 @@ debug() {
     fi
 }
 
+# Enable sandbox settings when skip-permissions flags are used outside a container.
+configure_sandbox() {
+    # Containers already provide isolation — skip early.
+    if detect-container.sh 2>/dev/null; then
+        debug "inside container, skipping sandbox settings"
+        return 0
+    fi
+
+    local has_skip=false
+    for arg in "$@"; do
+        case "$arg" in
+        --dangerously-skip-permissions | --allow-dangerously-skip-permissions)
+            has_skip=true
+            break
+            ;;
+        esac
+    done
+    [[ "$has_skip" == false ]] && return 0
+
+    debug "applying sandbox settings to $CLAUDE_SETTINGS"
+    mkdir -p "$(dirname "$CLAUDE_SETTINGS")"
+    local sandbox='{"enabled":true,"failIfUnavailable":true,"allowUnsandboxedCommands":false}'
+    if [[ -f "$CLAUDE_SETTINGS" ]]; then
+        jq --argjson sb "$sandbox" '.sandbox = $sb' "$CLAUDE_SETTINGS" >"${CLAUDE_SETTINGS}.tmp" &&
+            mv "${CLAUDE_SETTINGS}.tmp" "$CLAUDE_SETTINGS"
+    else
+        jq -n --argjson sb "$sandbox" '{sandbox: $sb}' >"$CLAUDE_SETTINGS"
+    fi
+}
+
 # --- Main ---
 
 # Resolve the real claude binary.
@@ -96,6 +127,9 @@ if command -v jq &>/dev/null; then
 else
     debug "jq not found, skipping theme switch"
 fi
+
+# Apply sandbox settings if skip-permissions flags are present.
+configure_sandbox "$@"
 
 # Launch the real claude, replacing this process.
 exec "$real_claude" "$@"
