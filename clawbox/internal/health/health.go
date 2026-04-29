@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	maxAttempts  = 30
+	maxAttempts  = 150
 	pollInterval = 2 * time.Second
 	httpTimeout  = 2 * time.Second
 )
