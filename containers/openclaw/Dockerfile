@@ -19,7 +19,7 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/* \
     && echo "node ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/node \
     && chmod 0440 /etc/sudoers.d/node \
-    && chgrp node /etc/passwd && chmod 0664 /etc/passwd
+    && chmod 0666 /etc/passwd
 
 COPY --chmod=755 entrypoint.sh /usr/local/bin/entrypoint.sh
 
