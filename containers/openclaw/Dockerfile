@@ -14,6 +14,7 @@ RUN apt-get update && \
     python3-pip \
     python3-venv \
     jq \
+    unzip \
     iproute2 net-tools ufw firewalld nftables \
     && rm -rf /var/lib/apt/lists/* \
     && echo "node ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/node \
