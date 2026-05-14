@@ -1,6 +1,6 @@
 ---
 name: ab-gpu-renovate-prs
-description: Check open Renovate bot PRs on Azure/AgentBaker for GPU component updates (nvidia-device-plugin, datacenter-gpu-manager, dcgm-exporter). Shows pipeline status and whether review is needed.
+description: Check open Renovate bot PRs on Azure/AgentBaker for GPU component updates (nvidia-device-plugin, datacenter-gpu-manager, dcgm-exporter, nvidia-dcgm, aks-gpu-cuda). Shows pipeline status and whether review is needed.
 allowed-tools: Bash
 disable-model-invocation: true
 ---
@@ -15,7 +15,7 @@ Define the configurable component list, repo, and check name:
 
 ```bash
 REPO="Azure/AgentBaker"
-COMPONENTS=("nvidia-device-plugin" "datacenter-gpu-manager" "dcgm-exporter")
+COMPONENTS=("nvidia-device-plugin" "datacenter-gpu-manager*" "nvidia-dcgm" "dcgm-exporter" "aks-gpu-cuda")
 CHECK_NAME="version-consistency"
 ```
 
@@ -38,7 +38,7 @@ Store the JSON result. If the command fails, report "❌ Failed to list PRs from
 
 ## Step 4: Filter for GPU components
 
-For each PR in the list, check if the title matches any of the `COMPONENTS` entries (case-insensitive). A PR matches if its title contains the component name as a substring.
+For each PR in the list, check if the title matches any of the `COMPONENTS` entries (case-insensitive). A PR matches if its title contains the component name as a substring. If a component entry ends with a `*`, treat it as a prefix match (i.e., the PR title matches if it contains a word that starts with the prefix before the `*`).
 
 If no PRs match, report "✅ No open GPU component PRs found" and stop.
 
