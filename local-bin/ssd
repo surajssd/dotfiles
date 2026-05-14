@@ -325,11 +325,6 @@ function kubeconfig() {
         exit 1
     fi
 
-    if [[ -L "${file}" ]]; then
-        err "File is already a symlink: ${file}"
-        exit 1
-    fi
-
     # Get the current context from the kubeconfig
     local context
     context=$(kubectl config current-context 2>/dev/null) || {
@@ -349,11 +344,22 @@ function kubeconfig() {
     mkdir -p "${dest_dir}"
 
     local dest_file="${dest_dir}/${context}-${date_stamp}"
-    mv "${file}" "${dest_file}"
-    echo "✅ Moved ${file} → ${dest_file}"
 
-    ln -s "${dest_file}" "${file}"
-    echo "✅ Symlinked ${file} → ${dest_file}"
+    if [[ -L "${file}" ]]; then
+        # Already a symlink — copy content to a new file and re-point the symlink
+        cp "${file}" "${dest_file}"
+        echo "✅ Copied ${file} → ${dest_file}"
+
+        rm "${file}"
+        ln -s "${dest_file}" "${file}"
+        echo "✅ Symlinked ${file} → ${dest_file}"
+    else
+        mv "${file}" "${dest_file}"
+        echo "✅ Moved ${file} → ${dest_file}"
+
+        ln -s "${dest_file}" "${file}"
+        echo "✅ Symlinked ${file} → ${dest_file}"
+    fi
 }
 
 function usage_global() {
