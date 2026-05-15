@@ -123,7 +123,8 @@ function create_claude_settings() {
       "Bash(pbcopy:*)",
       "Bash(go:*)",
       "Bash(git:*)",
-      "Bash(gh issue:*)"
+      "Bash(gh issue:*)",
+      "Bash(gh pr list:*)"
     ],
     "deny": [
       "Read(~/.ssh/**)",
@@ -133,7 +134,6 @@ function create_claude_settings() {
       "Read(~/.kube/**)",
       "Read(~/.npmrc)",
       "Read(~/.git-credentials)",
-      "Read(~/.config/gh/**)",
       "Edit(~/.bashrc)",
       "Edit(~/.zshrc)",
       "Bash(curl *)",
