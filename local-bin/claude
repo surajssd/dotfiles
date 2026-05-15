@@ -69,24 +69,38 @@ debug() {
     fi
 }
 
+# Remove sandbox settings when the wrapper is not running Claude in privileged mode.
+remove_sandbox() {
+    [[ -f "$CLAUDE_SETTINGS" ]] || return 0
+
+    debug "removing sandbox settings from $CLAUDE_SETTINGS"
+    jq 'del(.sandbox)' "$CLAUDE_SETTINGS" >"${CLAUDE_SETTINGS}.tmp" &&
+        mv "${CLAUDE_SETTINGS}.tmp" "$CLAUDE_SETTINGS"
+}
+
 # Enable sandbox settings when skip-permissions flags are used outside a container.
 configure_sandbox() {
-    # Containers already provide isolation — skip early.
-    if detect-container.sh 2>/dev/null; then
-        debug "inside container, skipping sandbox settings"
-        return 0
-    fi
-
-    local has_skip=false
+    local privileged_mode=false
     for arg in "$@"; do
         case "$arg" in
         --dangerously-skip-permissions | --allow-dangerously-skip-permissions)
-            has_skip=true
+            privileged_mode=true
             break
             ;;
         esac
     done
-    [[ "$has_skip" == false ]] && return 0
+
+    if [[ "$privileged_mode" == false ]]; then
+        remove_sandbox
+        return 0
+    fi
+
+    # Containers already provide isolation.
+    if detect-container.sh 2>/dev/null; then
+        debug "inside container, removing sandbox settings"
+        remove_sandbox
+        return 0
+    fi
 
     debug "applying sandbox settings to $CLAUDE_SETTINGS"
     mkdir -p "$(dirname "$CLAUDE_SETTINGS")"
