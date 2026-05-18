@@ -1,3 +1,5 @@
+command_timeout = 2000
+
 [character]
 success_symbol = '[➜](bold green) '
 error_symbol   = '[✗](bold red) '
@@ -26,3 +28,4 @@ when     = 'test "$RUNNING_IN_CONTAINER" = "true"'
 format   = '[$symbol(Container)]($style) '
 symbol   = '📦 '
 style    = 'bold dimmed white'
+ignore_timeout = true
