@@ -78,6 +78,33 @@ remove_sandbox() {
         mv "${CLAUDE_SETTINGS}.tmp" "$CLAUDE_SETTINGS"
 }
 
+# Inject default permission mode (e.g. plan) unless the user overrides or opts out.
+# Honors:
+#   CLAUDE_DEFAULT_MODE - mode to inject (default: "plan"). Set to "" to disable.
+# Skips injection when the user already passes --permission-mode, is running
+# non-interactively (-p/--print), or is resuming a session.
+configure_default_mode() {
+    local default_mode="${CLAUDE_DEFAULT_MODE-plan}"
+    if [[ -z "$default_mode" ]]; then
+        debug "default mode injection disabled (CLAUDE_DEFAULT_MODE empty)"
+        return 0
+    fi
+
+    for arg in "$@"; do
+        case "$arg" in
+        --permission-mode | --permission-mode=* | \
+            -p | --print | \
+            -r | --resume | resume | -c | --continue)
+            debug "skipping default mode injection due to arg: $arg"
+            return 0
+            ;;
+        esac
+    done
+
+    debug "injecting --permission-mode $default_mode"
+    EXTRA_ARGS+=(--permission-mode "$default_mode")
+}
+
 # Enable sandbox settings when skip-permissions flags are used outside a container.
 configure_sandbox() {
     local privileged_mode=false
@@ -145,5 +172,9 @@ fi
 # Apply sandbox settings if skip-permissions flags are present.
 configure_sandbox "$@"
 
+# Determine extra args to inject (e.g. default --permission-mode).
+EXTRA_ARGS=()
+configure_default_mode "$@"
+
 # Launch the real claude, replacing this process.
-exec "$real_claude" "$@"
+exec "$real_claude" ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} "$@"
