@@ -172,6 +172,21 @@ Use this format for:
 - Pull request merge commits
 - When the user asks about commit messages or git commits
 
+## Copying messages to the clipboard
+
+When asked to copy a generated commit message to the macOS clipboard,
+use a **single-line pipeline** rather than a multi-line heredoc:
+
+✅ `printf '%s\n' 'first line' '' 'body line 1' 'body line 2' | pbcopy && pbpaste`
+
+❌ `cat <<'EOF' | pbcopy` ... `EOF` (multi-line heredoc)
+
+Multi-line heredoc scripts can defeat Claude Code's command-exclusion
+matcher and cause `pbcopy` to be blocked by the macOS sandbox, leading
+to a flaky `exit 1`. The `printf '%s\n'` form parses as a clean
+pipeline, matches the sandbox exclusion reliably, and preserves blank
+lines (pass `''` for them).
+
 ## Common Mistakes to Avoid
 
 ❌ `Added new feature` (past tense, capitalized)

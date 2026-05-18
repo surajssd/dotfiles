@@ -104,7 +104,7 @@ configure_sandbox() {
 
     debug "applying sandbox settings to $CLAUDE_SETTINGS"
     mkdir -p "$(dirname "$CLAUDE_SETTINGS")"
-    local sandbox='{"enabled":true,"failIfUnavailable":true,"allowUnsandboxedCommands":false,"excludedCommands":["pbcopy"],"enableWeakerNetworkIsolation":true}'
+    local sandbox='{"enabled":true,"failIfUnavailable":true,"allowUnsandboxedCommands":false,"excludedCommands":["pbcopy","pbpaste"],"enableWeakerNetworkIsolation":true}'
     if [[ -f "$CLAUDE_SETTINGS" ]]; then
         jq --argjson sb "$sandbox" '.sandbox = $sb' "$CLAUDE_SETTINGS" >"${CLAUDE_SETTINGS}.tmp" &&
             mv "${CLAUDE_SETTINGS}.tmp" "$CLAUDE_SETTINGS"
