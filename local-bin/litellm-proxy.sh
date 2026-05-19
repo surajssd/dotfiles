@@ -6,8 +6,9 @@ readonly TMP_LITELLM_VENV="/tmp/litellm"
 readonly CLAUDE_SETTINGS_FILE="${HOME}/.claude/settings.json"
 readonly CLAUDE_CONFIG_FILE="${HOME}/.claude.json"
 readonly LITELLM_CONFIG_FILE="${HOME}/.config/litellm/config.yaml"
-readonly LITELLM_VERSION="1.81.3"
-readonly DEFAULT_LITELLM_IMAGE="ghcr.io/berriai/litellm:main-v${LITELLM_VERSION}-stable"
+readonly CODEX_CONFIG_FILE="${HOME}/.codex/config.toml"
+readonly LITELLM_VERSION="1.85.0"
+readonly DEFAULT_LITELLM_IMAGE="ghcr.io/berriai/litellm:${LITELLM_VERSION}"
 readonly LITELLM_IMAGE="${LITELLM_IMAGE:-${DEFAULT_LITELLM_IMAGE}}"
 
 function info() {
@@ -85,6 +86,7 @@ function reset_claude() {
   info "Resetting claude settings file at ${CLAUDE_SETTINGS_FILE}"
   rm -rf "${CLAUDE_SETTINGS_FILE}"
   rm -rf "${LITELLM_CONFIG_FILE}"
+  rm -rf "${CODEX_CONFIG_FILE}"
 }
 
 function cleanup() {
@@ -92,6 +94,31 @@ function cleanup() {
   rm -rf "${TMP_LITELLM_VENV}"
   rm -rf "${CLAUDE_SETTINGS_FILE}"
   rm -rf "${LITELLM_CONFIG_FILE}"
+  rm -rf "${CODEX_CONFIG_FILE}"
+}
+
+function create_codex_config() {
+  info "Creating codex config file at ${CODEX_CONFIG_FILE}"
+  mkdir -p "$(dirname "${CODEX_CONFIG_FILE}")"
+  # Remove any existing file or symlink (the private dotfiles installer symlinks
+  # this path; while the proxy is running we want a real file pointing at the
+  # local LiteLLM bridge).
+  rm -f "${CODEX_CONFIG_FILE}"
+  # Master key is inlined as a static Authorization header (matches LiteLLM
+  # `general_settings.master_key`); no env var or env file needed.
+  cat > "${CODEX_CONFIG_FILE}" <<'EOF'
+profile = "github"
+
+[model_providers.github]
+name         = "GitHub Models via LiteLLM"
+base_url     = "http://localhost:4000/v1"
+wire_api     = "responses"
+http_headers = { Authorization = "Bearer sk-" }
+
+[profiles.github]
+model_provider = "github"
+model          = "gpt-5.5"
+EOF
 }
 
 function create_claude_settings() {
@@ -199,6 +226,7 @@ function start() {
   create_claude_settings
   create_or_update_claude_config
   create_litellm_config
+  create_codex_config
   info "Starting litellm proxy server"
   litellm --config "${LITELLM_CONFIG_FILE}" "$@"
 }
@@ -229,6 +257,7 @@ function start_container() {
   create_claude_settings
   create_or_update_claude_config
   create_litellm_config
+  create_codex_config
 
   local container_name="litellm"
 
@@ -242,7 +271,7 @@ function start_container() {
   echo "🚀 Starting litellm proxy server as a container"
   container run \
     -d \
-    --cpus 1 --memory 1.1g \
+    --cpus 1 --memory 1.5g \
     -p '4000:4000' \
     --mount type=bind,source="${HOME}/.config/litellm/",target='/root/.config/litellm/' \
     --name "${container_name}" \
@@ -274,6 +303,7 @@ function start_docker() {
   create_claude_settings
   create_or_update_claude_config
   create_litellm_config
+  create_codex_config
 
   local container_name="litellm"
 
