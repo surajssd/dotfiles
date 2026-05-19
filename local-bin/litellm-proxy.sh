@@ -72,14 +72,16 @@ function source_venv() {
     # as follows:
     # ImportError: cannot import name 'BaseDefaultEventLoopPolicy' from 'asyncio.events'
     python3.13 -m venv "${TMP_LITELLM_VENV}"
-
-    source "${TMP_LITELLM_VENV}/bin/activate"
-    # https://github.com/BerriAI/litellm
-    pip install "litellm[proxy]==${LITELLM_VERSION}"
   else
     info "Activating virtualenv in ${TMP_LITELLM_VENV}"
-    source "${TMP_LITELLM_VENV}/bin/activate"
   fi
+
+  # shellcheck disable=SC1091
+  source "${TMP_LITELLM_VENV}/bin/activate"
+  # Idempotent: pip is a no-op when the exact version is already installed,
+  # and self-heals venvs left in a half-installed state (or after a version bump).
+  # https://github.com/BerriAI/litellm
+  pip install --quiet "litellm[proxy]==${LITELLM_VERSION}"
 }
 
 function reset_claude() {
