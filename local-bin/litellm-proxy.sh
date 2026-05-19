@@ -12,103 +12,103 @@ readonly DEFAULT_LITELLM_IMAGE="ghcr.io/berriai/litellm:${LITELLM_VERSION}"
 readonly LITELLM_IMAGE="${LITELLM_IMAGE:-${DEFAULT_LITELLM_IMAGE}}"
 
 function info() {
-  echo "ℹ️ ${1}"
+    echo "ℹ️ ${1}"
 }
 
 function wait_for_health() {
-  local health_url="${1}"
-  local log_cmd="${2}"
-  local max_attempts=30
-  local attempt=0
-  local auth_shown=false
-  printf "⏳ Waiting for litellm to become healthy "
-  while [[ "${attempt}" -lt "${max_attempts}" ]]; do
-    if curl -sf "${health_url}" >/dev/null 2>&1; then
-      echo ""
-      echo "✅ Litellm proxy is running and healthy."
-      return 0
-    fi
+    local health_url="${1}"
+    local log_cmd="${2}"
+    local max_attempts=30
+    local attempt=0
+    local auth_shown=false
+    printf "⏳ Waiting for litellm to become healthy "
+    while [[ "${attempt}" -lt "${max_attempts}" ]]; do
+        if curl -sf "${health_url}" >/dev/null 2>&1; then
+            echo ""
+            echo "✅ Litellm proxy is running and healthy."
+            return 0
+        fi
 
-    # Check container logs for GitHub device authentication prompt
-    if [[ "${auth_shown}" == "false" ]]; then
-      local logs
-      # Use log command without -f flag to avoid blocking
-      local log_cmd_no_follow="${log_cmd/logs -f/logs}"
-      logs=$(eval "${log_cmd_no_follow} 2>&1" 2>/dev/null || true)
-      local auth_url
-      auth_url=$(echo "${logs}" | grep -o 'https://github.com/login/device' || true)
-      local device_code
-      device_code=$(echo "${logs}" | sed -n 's/.*enter code \([A-Z0-9-]*\).*/\1/p' | head -1)
-      if [[ -n "${auth_url}" && -n "${device_code}" ]]; then
-        echo ""
-        echo ""
-        echo "🔐 GitHub Copilot authentication required!"
-        echo "   Visit: ${auth_url}"
-        echo "   Enter code: ${device_code}"
-        echo ""
-        printf "⏳ Waiting for authentication and health check "
-        auth_shown=true
-      fi
-    fi
+        # Check container logs for GitHub device authentication prompt
+        if [[ "${auth_shown}" == "false" ]]; then
+            local logs
+            # Use log command without -f flag to avoid blocking
+            local log_cmd_no_follow="${log_cmd/logs -f/logs}"
+            logs=$(eval "${log_cmd_no_follow} 2>&1" 2>/dev/null || true)
+            local auth_url
+            auth_url=$(echo "${logs}" | grep -o 'https://github.com/login/device' || true)
+            local device_code
+            device_code=$(echo "${logs}" | sed -n 's/.*enter code \([A-Z0-9-]*\).*/\1/p' | head -1)
+            if [[ -n "${auth_url}" && -n "${device_code}" ]]; then
+                echo ""
+                echo ""
+                echo "🔐 GitHub Copilot authentication required!"
+                echo "   Visit: ${auth_url}"
+                echo "   Enter code: ${device_code}"
+                echo ""
+                printf "⏳ Waiting for authentication and health check "
+                auth_shown=true
+            fi
+        fi
 
-    printf "."
-    sleep 2
-    attempt=$((attempt + 1))
-  done
+        printf "."
+        sleep 2
+        attempt=$((attempt + 1))
+    done
 
-  echo ""
-  echo "⚠️  Litellm did not become healthy within $((max_attempts * 2))s."
-  info "Check logs for errors:"
-  echo "  ${log_cmd}"
-  return 1
+    echo ""
+    echo "⚠️  Litellm did not become healthy within $((max_attempts * 2))s."
+    info "Check logs for errors:"
+    echo "  ${log_cmd}"
+    return 1
 }
 
 function source_venv() {
-  # Create a virtualenv in the /tmp/litellm only if it does not exists
-  if [ ! -d "${TMP_LITELLM_VENV}" ] || [ ! -f "${TMP_LITELLM_VENV}/bin/activate" ]; then
-    info "Creating virtualenv in ${TMP_LITELLM_VENV}"
+    # Create a virtualenv in the /tmp/litellm only if it does not exists
+    if [ ! -d "${TMP_LITELLM_VENV}" ] || [ ! -f "${TMP_LITELLM_VENV}/bin/activate" ]; then
+        info "Creating virtualenv in ${TMP_LITELLM_VENV}"
 
-    # NOTE: This is a workaround for the python 3.14 issue where litellm fails
-    # as follows:
-    # ImportError: cannot import name 'BaseDefaultEventLoopPolicy' from 'asyncio.events'
-    python3.13 -m venv "${TMP_LITELLM_VENV}"
-  else
-    info "Activating virtualenv in ${TMP_LITELLM_VENV}"
-  fi
+        # NOTE: This is a workaround for the python 3.14 issue where litellm fails
+        # as follows:
+        # ImportError: cannot import name 'BaseDefaultEventLoopPolicy' from 'asyncio.events'
+        python3.13 -m venv "${TMP_LITELLM_VENV}"
+    else
+        info "Activating virtualenv in ${TMP_LITELLM_VENV}"
+    fi
 
-  # shellcheck disable=SC1091
-  source "${TMP_LITELLM_VENV}/bin/activate"
-  # Idempotent: pip is a no-op when the exact version is already installed,
-  # and self-heals venvs left in a half-installed state (or after a version bump).
-  # https://github.com/BerriAI/litellm
-  pip install --quiet "litellm[proxy]==${LITELLM_VERSION}"
+    # shellcheck disable=SC1091
+    source "${TMP_LITELLM_VENV}/bin/activate"
+    # Idempotent: pip is a no-op when the exact version is already installed,
+    # and self-heals venvs left in a half-installed state (or after a version bump).
+    # https://github.com/BerriAI/litellm
+    pip install --quiet "litellm[proxy]==${LITELLM_VERSION}"
 }
 
 function reset_claude() {
-  info "Resetting claude settings file at ${CLAUDE_SETTINGS_FILE}"
-  rm -rf "${CLAUDE_SETTINGS_FILE}"
-  rm -rf "${LITELLM_CONFIG_FILE}"
-  rm -rf "${CODEX_CONFIG_FILE}"
+    info "Resetting claude settings file at ${CLAUDE_SETTINGS_FILE}"
+    rm -rf "${CLAUDE_SETTINGS_FILE}"
+    rm -rf "${LITELLM_CONFIG_FILE}"
+    rm -rf "${CODEX_CONFIG_FILE}"
 }
 
 function cleanup() {
-  info "Cleaning up temporary files and configurations"
-  rm -rf "${TMP_LITELLM_VENV}"
-  rm -rf "${CLAUDE_SETTINGS_FILE}"
-  rm -rf "${LITELLM_CONFIG_FILE}"
-  rm -rf "${CODEX_CONFIG_FILE}"
+    info "Cleaning up temporary files and configurations"
+    rm -rf "${TMP_LITELLM_VENV}"
+    rm -rf "${CLAUDE_SETTINGS_FILE}"
+    rm -rf "${LITELLM_CONFIG_FILE}"
+    rm -rf "${CODEX_CONFIG_FILE}"
 }
 
 function create_codex_config() {
-  info "Creating codex config file at ${CODEX_CONFIG_FILE}"
-  mkdir -p "$(dirname "${CODEX_CONFIG_FILE}")"
-  # Remove any existing file or symlink (the private dotfiles installer symlinks
-  # this path; while the proxy is running we want a real file pointing at the
-  # local LiteLLM bridge).
-  rm -f "${CODEX_CONFIG_FILE}"
-  # Master key is inlined as a static Authorization header (matches LiteLLM
-  # `general_settings.master_key`); no env var or env file needed.
-  cat > "${CODEX_CONFIG_FILE}" <<'EOF'
+    info "Creating codex config file at ${CODEX_CONFIG_FILE}"
+    mkdir -p "$(dirname "${CODEX_CONFIG_FILE}")"
+    # Remove any existing file or symlink (the private dotfiles installer symlinks
+    # this path; while the proxy is running we want a real file pointing at the
+    # local LiteLLM bridge).
+    rm -f "${CODEX_CONFIG_FILE}"
+    # Master key is inlined as a static Authorization header (matches LiteLLM
+    # `general_settings.master_key`); no env var or env file needed.
+    cat >"${CODEX_CONFIG_FILE}" <<'EOF'
 profile = "github"
 
 [model_providers.github]
@@ -124,9 +124,9 @@ EOF
 }
 
 function create_claude_settings() {
-  info "Creating claude settings file at ${CLAUDE_SETTINGS_FILE}"
-  mkdir -p "$(dirname "${CLAUDE_SETTINGS_FILE}")"
-  cat > "${CLAUDE_SETTINGS_FILE}" <<'EOF'
+    info "Creating claude settings file at ${CLAUDE_SETTINGS_FILE}"
+    mkdir -p "$(dirname "${CLAUDE_SETTINGS_FILE}")"
+    cat >"${CLAUDE_SETTINGS_FILE}" <<'EOF'
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "env": {
@@ -184,27 +184,27 @@ EOF
 }
 
 function create_or_update_claude_config() {
-  # if claude config file does not exist, create it
-  if [ ! -f "${CLAUDE_CONFIG_FILE}" ]; then
-    info "Creating claude config file at ${CLAUDE_CONFIG_FILE}"
-    cat > "${CLAUDE_CONFIG_FILE}" <<EOF
+    # if claude config file does not exist, create it
+    if [ ! -f "${CLAUDE_CONFIG_FILE}" ]; then
+        info "Creating claude config file at ${CLAUDE_CONFIG_FILE}"
+        cat >"${CLAUDE_CONFIG_FILE}" <<EOF
 {
   "hasCompletedOnboarding": true,
   "hasAvailableSubscription": true
 }
 EOF
-  else
-    info "Updating claude config file at ${CLAUDE_CONFIG_FILE}"
-    # update the existing claude config file to set hasCompletedOnboarding and hasAvailableSubscription to true
-    jq '.hasCompletedOnboarding = true | .hasAvailableSubscription = true' "${CLAUDE_CONFIG_FILE}" > "${CLAUDE_CONFIG_FILE}.tmp" && mv "${CLAUDE_CONFIG_FILE}.tmp" "${CLAUDE_CONFIG_FILE}"
-  fi
+    else
+        info "Updating claude config file at ${CLAUDE_CONFIG_FILE}"
+        # update the existing claude config file to set hasCompletedOnboarding and hasAvailableSubscription to true
+        jq '.hasCompletedOnboarding = true | .hasAvailableSubscription = true' "${CLAUDE_CONFIG_FILE}" >"${CLAUDE_CONFIG_FILE}.tmp" && mv "${CLAUDE_CONFIG_FILE}.tmp" "${CLAUDE_CONFIG_FILE}"
+    fi
 
 }
 
 function create_litellm_config() {
-  info "Creating litellm config file at ${LITELLM_CONFIG_FILE}"
-  mkdir -p "$(dirname "${LITELLM_CONFIG_FILE}")"
-  cat > "${LITELLM_CONFIG_FILE}" <<EOF
+    info "Creating litellm config file at ${LITELLM_CONFIG_FILE}"
+    mkdir -p "$(dirname "${LITELLM_CONFIG_FILE}")"
+    cat >"${LITELLM_CONFIG_FILE}" <<EOF
 general_settings:
   master_key: sk-
 litellm_settings:
@@ -221,133 +221,133 @@ EOF
 }
 
 function start() {
-  # We don't want to reset this when running in a container
-  trap reset_claude EXIT SIGINT SIGTERM
+    # We don't want to reset this when running in a container
+    trap reset_claude EXIT SIGINT SIGTERM
 
-  source_venv
-  create_claude_settings
-  create_or_update_claude_config
-  create_litellm_config
-  create_codex_config
-  info "Starting litellm proxy server"
-  litellm --config "${LITELLM_CONFIG_FILE}" "$@"
+    source_venv
+    create_claude_settings
+    create_or_update_claude_config
+    create_litellm_config
+    create_codex_config
+    info "Starting litellm proxy server"
+    litellm --config "${LITELLM_CONFIG_FILE}" "$@"
 }
 
 function start_container() {
-  # Check if running on macOS
-  if [[ "$(uname -s)" != "Darwin" ]]; then
-    echo "Error: start-container is only supported on macOS (Darwin)."
-    exit 1
-  fi
+    # Check if running on macOS
+    if [[ "$(uname -s)" != "Darwin" ]]; then
+        echo "Error: start-container is only supported on macOS (Darwin)."
+        exit 1
+    fi
 
-  # Check if the container CLI is installed
-  if ! command -v container &> /dev/null; then
-    echo "Error: 'container' CLI is not installed."
-    info "Install it with:"
-    echo "brew install container"
-    exit 1
-  fi
+    # Check if the container CLI is installed
+    if ! command -v container &>/dev/null; then
+        echo "Error: 'container' CLI is not installed."
+        info "Install it with:"
+        echo "brew install container"
+        exit 1
+    fi
 
-  # Check if the container system is running
-  if ! container system status &> /dev/null; then
-    echo "Error: container system is not running."
-    info "Start it with:"
-    echo "container system start"
-    exit 1
-  fi
+    # Check if the container system is running
+    if ! container system status &>/dev/null; then
+        echo "Error: container system is not running."
+        info "Start it with:"
+        echo "container system start"
+        exit 1
+    fi
 
-  create_claude_settings
-  create_or_update_claude_config
-  create_litellm_config
-  create_codex_config
+    create_claude_settings
+    create_or_update_claude_config
+    create_litellm_config
+    create_codex_config
 
-  local container_name="litellm"
+    local container_name="litellm"
 
-  # Check if a container with the name 'litellm' already exists
-  if container ls -a 2>/dev/null | grep -q "${container_name}"; then
-    info "Container '${container_name}' already exists, removing it first"
-    container stop "${container_name}" 2>/dev/null || true
-    container rm "${container_name}"
-  fi
+    # Check if a container with the name 'litellm' already exists
+    if container ls -a 2>/dev/null | grep -q "${container_name}"; then
+        info "Container '${container_name}' already exists, removing it first"
+        container stop "${container_name}" 2>/dev/null || true
+        container rm "${container_name}"
+    fi
 
-  echo "🚀 Starting litellm proxy server as a container"
-  container run \
-    -d \
-    --cpus 1 --memory 1.5g \
-    -p '4000:4000' \
-    --mount type=bind,source="${HOME}/.config/litellm/",target='/root/.config/litellm/' \
-    --name "${container_name}" \
-    "${LITELLM_IMAGE}" \
-    --config '/root/.config/litellm/config.yaml' "$@"
+    echo "🚀 Starting litellm proxy server as a container"
+    container run \
+        -d \
+        --cpus 1 --memory 1.5g \
+        -p '4000:4000' \
+        --mount type=bind,source="${HOME}/.config/litellm/",target='/root/.config/litellm/' \
+        --name "${container_name}" \
+        "${LITELLM_IMAGE}" \
+        --config '/root/.config/litellm/config.yaml' "$@"
 
-  wait_for_health "http://127.0.0.1:4000/health/liveliness" "container logs -f ${container_name}"
+    wait_for_health "http://127.0.0.1:4000/health/liveliness" "container logs -f ${container_name}"
 
-  echo "✅ Container '${container_name}' started successfully. To view logs, run:"
-  echo ""
-  echo "container logs -f ${container_name}"
+    echo "✅ Container '${container_name}' started successfully. To view logs, run:"
+    echo ""
+    echo "container logs -f ${container_name}"
 }
 
 function start_docker() {
-  # Check if docker CLI is installed
-  if ! command -v docker &>/dev/null; then
-    echo "❌ Error: 'docker' CLI is not installed."
-    info "Install it from: https://docs.docker.com/get-docker/"
-    exit 1
-  fi
+    # Check if docker CLI is installed
+    if ! command -v docker &>/dev/null; then
+        echo "❌ Error: 'docker' CLI is not installed."
+        info "Install it from: https://docs.docker.com/get-docker/"
+        exit 1
+    fi
 
-  # Check if docker daemon is running
-  if ! docker info &>/dev/null; then
-    echo "❌ Error: Docker daemon is not running."
-    info "Start Docker Desktop or the Docker daemon first."
-    exit 1
-  fi
+    # Check if docker daemon is running
+    if ! docker info &>/dev/null; then
+        echo "❌ Error: Docker daemon is not running."
+        info "Start Docker Desktop or the Docker daemon first."
+        exit 1
+    fi
 
-  create_claude_settings
-  create_or_update_claude_config
-  create_litellm_config
-  create_codex_config
+    create_claude_settings
+    create_or_update_claude_config
+    create_litellm_config
+    create_codex_config
 
-  local container_name="litellm"
+    local container_name="litellm"
 
-  # Check if a container with the name 'litellm' already exists
-  if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^${container_name}$"; then
-    info "Container '${container_name}' already exists, removing it first"
-    docker stop "${container_name}" 2>/dev/null || true
-    docker rm "${container_name}"
-  fi
+    # Check if a container with the name 'litellm' already exists
+    if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "^${container_name}$"; then
+        info "Container '${container_name}' already exists, removing it first"
+        docker stop "${container_name}" 2>/dev/null || true
+        docker rm "${container_name}"
+    fi
 
-  echo "🚀 Starting litellm proxy server as a Docker container"
-  docker run \
-    -d \
-    -p '4000:4000' \
-    -v "${HOME}/.config/litellm/:/root/.config/litellm/" \
-    --name "${container_name}" \
-    "${LITELLM_IMAGE}" \
-    --config '/root/.config/litellm/config.yaml' "$@"
+    echo "🚀 Starting litellm proxy server as a Docker container"
+    docker run \
+        -d \
+        -p '4000:4000' \
+        -v "${HOME}/.config/litellm/:/root/.config/litellm/" \
+        --name "${container_name}" \
+        "${LITELLM_IMAGE}" \
+        --config '/root/.config/litellm/config.yaml' "$@"
 
-  wait_for_health "http://127.0.0.1:4000/health/liveliness" "docker logs -f ${container_name}"
+    wait_for_health "http://127.0.0.1:4000/health/liveliness" "docker logs -f ${container_name}"
 
-  echo "✅ Container '${container_name}' started successfully. To view logs, run:"
-  echo ""
-  echo "docker logs -f ${container_name}"
+    echo "✅ Container '${container_name}' started successfully. To view logs, run:"
+    echo ""
+    echo "docker logs -f ${container_name}"
 }
 
 function usage() {
-  echo "Usage: litellm-proxy.sh <subcommand> [flags...]"
-  echo ""
-  echo "Subcommands:"
-  echo "  start            Start the litellm proxy server"
-  echo "  start-container  Start the litellm proxy server as a macOS container"
-  echo "  start-docker     Start the litellm proxy server as a Docker container"
-  echo "  reset-claude     Reset the claude settings file"
-  echo "  cleanup          Cleanup temporary files and configurations"
-  echo ""
-  echo "Any additional flags after the subcommand are passed through to litellm."
-  echo "Example: litellm-proxy.sh start --detailed_debug"
-  echo ""
-  echo "Environment variables:"
-  echo "  LITELLM_IMAGE    Override the default container image (default: ${DEFAULT_LITELLM_IMAGE})"
-  echo ""
+    echo "Usage: litellm-proxy.sh <subcommand> [flags...]"
+    echo ""
+    echo "Subcommands:"
+    echo "  start            Start the litellm proxy server"
+    echo "  start-container  Start the litellm proxy server as a macOS container"
+    echo "  start-docker     Start the litellm proxy server as a Docker container"
+    echo "  reset-claude     Reset the claude settings file"
+    echo "  cleanup          Cleanup temporary files and configurations"
+    echo ""
+    echo "Any additional flags after the subcommand are passed through to litellm."
+    echo "Example: litellm-proxy.sh start --detailed_debug"
+    echo ""
+    echo "Environment variables:"
+    echo "  LITELLM_IMAGE    Override the default container image (default: ${DEFAULT_LITELLM_IMAGE})"
+    echo ""
 }
 
 case "${1:-}" in
