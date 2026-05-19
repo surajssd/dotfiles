@@ -124,7 +124,9 @@ function create_claude_settings() {
       "Bash(go:*)",
       "Bash(git:*)",
       "Bash(gh issue:*)",
-      "Bash(gh pr list:*)"
+      "Bash(gh pr list:*)",
+      "Bash(mkdir:*)",
+      "Bash(ls:*)"
     ],
     "deny": [
       "Read(~/.ssh/**)",
@@ -141,7 +143,6 @@ function create_claude_settings() {
       "Bash(nc *)",
       "Bash(ssh *)",
       "Bash(git push *)",
-      "Read(*.env)",
       "Read(.env.*)"
     ]
   },
