@@ -1,0 +1,523 @@
+<!doctype html>
+<!--
+  PR Review Dashboard template.
+  Fill in the sections marked  <!-- FILL: ... -->  with content.
+  All boilerplate (theme toggle, tab switching, mermaid init, CSS variables,
+  box/arrow primitives) is already wired up and tested.
+
+  HOW TO USE
+  ----------
+  1. Replace <!-- FILL: title --> with the PR title.
+  2. Replace <!-- FILL: metadata --> with one row of metadata
+     (branch, author, PR link, file count, etc.).
+  3. Fill each tab panel's <!-- FILL: ... --> with the relevant content.
+  4. Add diagrams using either the HTML/CSS box primitives (preferred) or
+     a <div class="mermaid">...</div> block (only for sequence/state/class
+     diagrams where mermaid's auto-layout pays for itself).
+  5. To add an interactive Before/After/Diff toggle, see the
+     `.view-toggle` + `.view-panel` pattern below.
+-->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title><!-- FILL: title --> — PR Review</title>
+<style>
+  /* ---- THEME TOKENS ---- */
+  :root, [data-theme="dark"] {
+    --bg: #0d1117;
+    --bg-2: #161b22;
+    --panel: #161b22;
+    --panel-2: #1f2733;
+    --fg: #e6edf3;
+    --fg-muted: #8b949e;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --accent-2: #1f6feb;
+    --added: #2ea043;
+    --added-bg: rgba(46, 160, 67, 0.15);
+    --removed: #f85149;
+    --removed-bg: rgba(248, 81, 73, 0.15);
+    --warn: #d29922;
+    --warn-bg: rgba(210, 153, 34, 0.15);
+    --info: #58a6ff;
+    --info-bg: rgba(88, 166, 255, 0.15);
+    --crit: #f85149;
+    --crit-bg: rgba(248, 81, 73, 0.18);
+    --ok: #2ea043;
+    --ok-bg: rgba(46, 160, 67, 0.15);
+    --code-bg: #1f2733;
+    --shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  [data-theme="light"] {
+    --bg: #ffffff;
+    --bg-2: #f6f8fa;
+    --panel: #ffffff;
+    --panel-2: #f6f8fa;
+    --fg: #1f2328;
+    --fg-muted: #656d76;
+    --border: #d0d7de;
+    --accent: #0969da;
+    --accent-2: #0550ae;
+    --added: #1a7f37;
+    --added-bg: rgba(26, 127, 55, 0.10);
+    --removed: #cf222e;
+    --removed-bg: rgba(207, 34, 46, 0.10);
+    --warn: #9a6700;
+    --warn-bg: rgba(154, 103, 0, 0.10);
+    --info: #0969da;
+    --info-bg: rgba(9, 105, 218, 0.10);
+    --crit: #cf222e;
+    --crit-bg: rgba(207, 34, 46, 0.12);
+    --ok: #1a7f37;
+    --ok-bg: rgba(26, 127, 55, 0.10);
+    --code-bg: #f6f8fa;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg);
+                font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI",
+                Helvetica, Arial, sans-serif; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+         font-size: 12.5px; background: var(--code-bg); padding: 1px 5px;
+         border-radius: 4px; border: 1px solid var(--border); }
+  pre  { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+         font-size: 12.5px; background: var(--code-bg); padding: 12px;
+         border-radius: 6px; border: 1px solid var(--border);
+         overflow-x: auto; margin: 0; }
+  h1, h2, h3 { margin: 0 0 12px; color: var(--fg); }
+  h1 { font-size: 20px; font-weight: 600; }
+  h2 { font-size: 17px; font-weight: 600; }
+  h3 { font-size: 14px; font-weight: 600; color: var(--accent); }
+
+  /* ---- LAYOUT ---- */
+  header { border-bottom: 1px solid var(--border); background: var(--bg-2);
+           padding: 14px 28px; display: flex; align-items: center; gap: 18px;
+           flex-wrap: wrap; }
+  header .title-block { flex: 1 1 auto; min-width: 0; }
+  header h1 { margin: 0; }
+  header .meta { color: var(--fg-muted); font-size: 12.5px; margin-top: 4px; }
+  header .meta > * + * { margin-left: 14px; }
+  .theme-toggle { background: var(--panel-2); border: 1px solid var(--border);
+                  color: var(--fg); padding: 6px 12px; border-radius: 6px;
+                  cursor: pointer; font: inherit; }
+  .theme-toggle:hover { border-color: var(--accent); }
+
+  nav.tabs { border-bottom: 1px solid var(--border); background: var(--bg);
+             padding: 0 28px; display: flex; gap: 4px; overflow-x: auto; }
+  nav.tabs button { background: transparent; border: 0; color: var(--fg-muted);
+                    padding: 12px 16px; cursor: pointer; font: inherit;
+                    border-bottom: 2px solid transparent; white-space: nowrap; }
+  nav.tabs button:hover { color: var(--fg); }
+  nav.tabs button.active { color: var(--fg); border-bottom-color: var(--accent); }
+
+  main { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .card { background: var(--panel); border: 1px solid var(--border);
+          border-radius: 8px; padding: 20px; margin-bottom: 18px;
+          box-shadow: var(--shadow); }
+  .card > h2:first-child { margin-top: 0; }
+  .card .caption { color: var(--fg-muted); font-size: 13px; margin: 0 0 14px; }
+
+  .row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .row > * { flex: 1 1 320px; min-width: 0; }
+
+  /* ---- DIAGRAM PRIMITIVES (HTML/CSS, no JS, no mermaid) ---- */
+  .diagram { display: flex; flex-direction: column; gap: 18px;
+             padding: 18px; background: var(--panel-2);
+             border: 1px solid var(--border); border-radius: 6px; }
+  .diagram-row { display: flex; gap: 28px; align-items: center;
+                 flex-wrap: wrap; justify-content: center; }
+  .diagram-col { display: flex; flex-direction: column; gap: 14px;
+                 align-items: stretch; }
+  .node { padding: 10px 14px; border-radius: 6px; background: var(--panel);
+          border: 1px solid var(--border); text-align: center;
+          font-size: 12.5px; min-width: 120px; color: var(--fg); }
+  .node.new { border-style: dashed; border-color: var(--accent);
+              background: var(--info-bg); }
+  .node.changed { border-color: var(--warn); background: var(--warn-bg); }
+  .node.removed { border-color: var(--removed); background: var(--removed-bg);
+                  text-decoration: line-through; opacity: 0.7; }
+  .node.cluster { background: rgba(255,255,255,0.02); padding: 14px;
+                  border-style: dashed; }
+  .node.cluster .cluster-label { font-size: 11px; color: var(--fg-muted);
+                                 text-transform: uppercase; letter-spacing: 0.5px;
+                                 margin-bottom: 8px; }
+  /* Connector: a thin horizontal line with an arrow. */
+  .arrow {
+    flex: 0 0 56px; height: 2px; background: var(--fg-muted); position: relative;
+  }
+  .arrow::after {
+    content: ""; position: absolute; right: -2px; top: -4px;
+    border-left: 8px solid var(--fg-muted);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+  .arrow.dashed { background: none; border-top: 2px dashed var(--accent); height: 0; }
+  .arrow.dashed::after { border-left-color: var(--accent); }
+  .arrow .label { position: absolute; top: -22px; left: 50%;
+                  transform: translateX(-50%); font-size: 11px;
+                  color: var(--fg-muted); white-space: nowrap;
+                  background: var(--panel-2); padding: 0 6px; }
+  .legend { display: flex; gap: 18px; font-size: 12px; color: var(--fg-muted);
+            margin-top: 8px; flex-wrap: wrap; }
+  .legend .swatch { display: inline-block; width: 14px; height: 14px;
+                    border-radius: 3px; vertical-align: middle;
+                    margin-right: 6px; border: 1px solid var(--border); }
+
+  /* ---- BEFORE / AFTER / DIFF TOGGLE ---- */
+  .view-toggle { display: inline-flex; gap: 0; border: 1px solid var(--border);
+                 border-radius: 6px; overflow: hidden; margin-bottom: 14px; }
+  .view-toggle button { background: var(--panel); border: 0; color: var(--fg-muted);
+                        padding: 6px 14px; cursor: pointer; font: inherit;
+                        border-right: 1px solid var(--border); }
+  .view-toggle button:last-child { border-right: 0; }
+  .view-toggle button.active { background: var(--accent); color: white; }
+  .view-panel { display: none; }
+  .view-panel.active { display: block; }
+
+  /* ---- TABLES ---- */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 12px; text-align: left; vertical-align: top;
+           border-bottom: 1px solid var(--border); }
+  th { color: var(--fg-muted); font-weight: 600; font-size: 12px;
+       text-transform: uppercase; letter-spacing: 0.4px; }
+  tr:last-child td { border-bottom: 0; }
+  td.sev-crit  { color: var(--crit); font-weight: 600; }
+  td.sev-warn  { color: var(--warn); font-weight: 600; }
+  td.sev-info  { color: var(--info); font-weight: 600; }
+  td.sev-ok    { color: var(--ok);   font-weight: 600; }
+  tr.sev-crit  { background: var(--crit-bg); }
+  tr.sev-warn  { background: var(--warn-bg); }
+  tr.sev-info  { background: var(--info-bg); }
+  tr.sev-ok    { background: var(--ok-bg); }
+
+  /* ---- DIFF VIEWER ---- */
+  .diff { border: 1px solid var(--border); border-radius: 6px;
+          margin-bottom: 18px; overflow: hidden; }
+  .diff-header { background: var(--panel-2); padding: 8px 12px;
+                 border-bottom: 1px solid var(--border); display: flex;
+                 justify-content: space-between; font-size: 12.5px; }
+  .diff-header .path { font-family: ui-monospace, monospace; color: var(--fg); }
+  .diff pre { border: 0; border-radius: 0; }
+  .l-add { display: block; background: var(--added-bg); color: var(--added); }
+  .l-del { display: block; background: var(--removed-bg); color: var(--removed); }
+  .l-ctx { display: block; color: var(--fg-muted); }
+  .annotation { padding: 10px 14px; background: var(--info-bg);
+                border-top: 1px solid var(--border); font-size: 12.5px; }
+  .annotation strong { color: var(--accent); }
+
+  /* ---- MERMAID (only used for sequence/state/class diagrams) ---- */
+  .mermaid { background: var(--panel-2); padding: 16px; border-radius: 6px;
+             border: 1px solid var(--border); text-align: center; }
+
+  /* ---- UTILITY ---- */
+  .muted { color: var(--fg-muted); }
+  .pill  { display: inline-block; padding: 2px 8px; border-radius: 10px;
+           background: var(--panel-2); color: var(--fg-muted); font-size: 11.5px;
+           border: 1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <h1><!-- FILL: title --></h1>
+    <div class="meta">
+      <!-- FILL: metadata
+        Recommended fields, separated by &middot;:
+          - <a href="GH_PR_URL">PR #N on GitHub</a>  (REQUIRED if PR exists,
+            otherwise a compare URL: github.com/OWNER/REPO/compare/BASE...HEAD)
+          - branch <code>feature-branch</code> &rarr; <code>main</code>
+          - @author
+          - N files, +XXX / -YYY
+          - N commits
+      -->
+    </div>
+  </div>
+  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+    <span id="theme-icon">☀️</span> <span id="theme-label">Light</span>
+  </button>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="summary">Summary</button>
+  <button data-tab="glossary">Glossary</button>
+  <button data-tab="architecture">Architecture</button>
+  <button data-tab="diff">Annotated Diff</button>
+  <button data-tab="risk">Risk Assessment</button>
+  <button data-tab="unknowns">Assumptions &amp; Unknowns</button>
+</nav>
+
+<main>
+
+  <!-- ============================= SUMMARY ============================= -->
+  <section class="tab-panel active" id="tab-summary">
+    <div class="card">
+      <h2>Executive Summary</h2>
+      <!-- FILL: 3-6 sentence summary. End with the single biggest thing a
+           reviewer should scrutinize. -->
+    </div>
+  </section>
+
+  <!-- ============================ GLOSSARY ============================ -->
+  <section class="tab-panel" id="tab-glossary">
+    <div class="card">
+      <h2>Glossary &amp; Concept Primer</h2>
+      <p class="caption">Vocabulary an unfamiliar reviewer needs before the
+        rest of the dashboard makes sense.</p>
+      <!-- FILL: <dl> of terms, or a table. Define every acronym, type, and
+           internal-module name that appears in the diff. -->
+    </div>
+  </section>
+
+  <!-- ========================== ARCHITECTURE ========================== -->
+  <section class="tab-panel" id="tab-architecture">
+
+    <!-- FILL: this is the centerpiece tab. Aim for 3-6 distinct diagrams
+         for a substantive PR. Each diagram lives in its own .card with:
+           - <h2> stating the question it answers
+           - <p class="caption"> one-liner framing
+           - the diagram itself (HTML/CSS boxes OR mermaid)
+
+         DEFAULT to HTML/CSS box diagrams using the primitives below. Use
+         mermaid ONLY for sequenceDiagram, stateDiagram-v2, or classDiagram
+         where its auto-layout earns its keep.
+
+         Example HTML/CSS module map skeleton (delete and replace):
+    -->
+
+    <div class="card">
+      <h2>Module map: what touches what</h2>
+      <p class="caption">Dashed boxes are new or modified by this PR.</p>
+      <div class="view-toggle" data-group="modmap">
+        <button class="active" data-view="after">After</button>
+        <button data-view="before">Before</button>
+        <button data-view="diff">Diff</button>
+      </div>
+
+      <div class="view-panel active" data-group="modmap" data-view="after">
+        <div class="diagram">
+          <div class="diagram-row">
+            <div class="node">User CR</div>
+            <div class="arrow"><span class="label">applies</span></div>
+            <div class="node new">Webhook (new)</div>
+            <div class="arrow dashed"><span class="label">validates</span></div>
+            <div class="node">Controller</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="view-panel" data-group="modmap" data-view="before">
+        <div class="diagram">
+          <div class="diagram-row">
+            <div class="node">User CR</div>
+            <div class="arrow"></div>
+            <div class="node">Controller</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="view-panel" data-group="modmap" data-view="diff">
+        <div class="diagram">
+          <p class="muted">Diff view: highlight only the boxes/edges
+             that changed.</p>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--info-bg);
+              border-style:dashed;border-color:var(--accent);"></span>
+              new or modified</span>
+        <span><span class="swatch" style="background:var(--panel);"></span>
+              pre-existing</span>
+      </div>
+    </div>
+
+    <!-- Mermaid example (use only for sequence / state / class). Delete if
+         no such diagram is warranted. -->
+    <!--
+    <div class="card">
+      <h2>Reconcile sequence</h2>
+      <p class="caption">Time-ordered interaction between controller and API
+        server during a single reconcile.</p>
+      <div class="mermaid">
+sequenceDiagram
+    participant C as Controller
+    participant API as kube-apiserver
+    participant CR as CustomResource
+    C->>API: GET CR
+    API-->>C: CR object
+    C->>C: reconcile()
+    C->>API: PATCH status
+    API-->>C: ok
+      </div>
+    </div>
+    -->
+
+    <!-- More diagram cards go here: data-flow, migration flowchart,
+         schema side-by-side, capabilities comparison table, commit-shape
+         breakdown, etc. -->
+
+  </section>
+
+  <!-- ============================ DIFF =================================== -->
+  <section class="tab-panel" id="tab-diff">
+    <div class="card">
+      <h2>Annotated Diff</h2>
+      <p class="caption"><!-- FILL: "all hunks" or "5 of 23 hunks shown;
+        omitted hunks listed at the end." --></p>
+
+      <!-- Repeat this block per hunk: -->
+      <div class="diff">
+        <div class="diff-header">
+          <span class="path"><!-- FILL: path/to/file.go --></span>
+          <span><!-- FILL: lines 142-158 --></span>
+        </div>
+<pre><!-- FILL: hunk content, wrapping lines as:
+<span class="l-add">+ added line</span>
+<span class="l-del">- removed line</span>
+<span class="l-ctx">  context line</span>
+--></pre>
+        <div class="annotation"><strong>Why:</strong>
+          <!-- FILL: 1-3 sentences explaining the intent, not the mechanics. -->
+        </div>
+      </div>
+
+      <!-- For medium/large PRs, list omitted hunks at the end -->
+    </div>
+  </section>
+
+  <!-- ============================ RISK =================================== -->
+  <section class="tab-panel" id="tab-risk">
+    <div class="card">
+      <h2>Risk Assessment</h2>
+      <p class="caption">Severity: <span class="pill" style="color:var(--crit)">CRIT</span>
+        <span class="pill" style="color:var(--warn)">WARN</span>
+        <span class="pill" style="color:var(--info)">INFO</span>
+        <span class="pill" style="color:var(--ok)">OK</span></p>
+      <table>
+        <thead><tr><th>Axis</th><th>Severity</th><th>Finding</th></tr></thead>
+        <tbody>
+          <!-- FILL: one row per axis. Use sev-crit / sev-warn / sev-info /
+               sev-ok on the <tr>. Mark axes that don't apply as INFO with
+               "Not applicable" rather than dropping them. -->
+          <tr class="sev-info">
+            <td>Concurrency</td>
+            <td class="sev-info">INFO</td>
+            <td>Not applicable — single-threaded reconcile.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ========================= UNKNOWNS ============================== -->
+  <section class="tab-panel" id="tab-unknowns">
+    <div class="card">
+      <h2>Assumptions &amp; Unknowns</h2>
+      <p class="caption">Everything I'm guessing, couldn't verify, or would
+        need to ask the author about. All hedging lives here.</p>
+      <!-- FILL: bulleted list. Be honest about what you didn't read. -->
+    </div>
+  </section>
+
+</main>
+
+<!-- Mermaid is loaded lazily — only fires if a .mermaid element exists.
+     If you don't use mermaid, this script tag can be deleted entirely. -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+(function() {
+  // ---- Tabs ----
+  const tabs = document.querySelectorAll('nav.tabs button');
+  const panels = document.querySelectorAll('.tab-panel');
+  let mermaidRunFor = new Set();  // tabs whose mermaid blocks have been rendered
+
+  function activate(tabName) {
+    tabs.forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
+    panels.forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabName));
+    // Lazy-render any mermaid blocks in this tab the first time it's shown.
+    // This dodges the "hidden tab measures as zero size" bug.
+    if (window.mermaid && !mermaidRunFor.has(tabName)) {
+      const blocks = document.querySelectorAll('#tab-' + tabName + ' .mermaid');
+      if (blocks.length) {
+        mermaid.run({ nodes: blocks }).catch(e => console.warn('mermaid:', e));
+        mermaidRunFor.add(tabName);
+      }
+    }
+  }
+  tabs.forEach(b => b.addEventListener('click', () => activate(b.dataset.tab)));
+
+  // ---- Theme toggle ----
+  const root = document.documentElement;
+  const stored = localStorage.getItem('pr-dash-theme');
+  const initialTheme = stored || 'dark';
+  applyTheme(initialTheme);
+
+  function applyTheme(t) {
+    root.setAttribute('data-theme', t);
+    localStorage.setItem('pr-dash-theme', t);
+    document.getElementById('theme-icon').textContent  = t === 'dark' ? '☀️' : '🌙';
+    document.getElementById('theme-label').textContent = t === 'dark' ? 'Light' : 'Dark';
+    if (window.mermaid) {
+      mermaid.initialize({ startOnLoad: false, theme: t === 'dark' ? 'dark' : 'default' });
+      // Re-run all already-rendered diagrams so they pick up the new palette.
+      mermaidRunFor.clear();
+      const active = document.querySelector('nav.tabs button.active');
+      if (active) {
+        // Force re-render of the visible tab's mermaid blocks.
+        const blocks = document.querySelectorAll(
+          '#tab-' + active.dataset.tab + ' .mermaid');
+        blocks.forEach(el => {
+          // mermaid stamps a processed flag and replaces innerHTML; restore source.
+          if (el.dataset.src) el.textContent = el.dataset.src;
+          el.removeAttribute('data-processed');
+        });
+        if (blocks.length) mermaid.run({ nodes: blocks }).catch(()=>{});
+        mermaidRunFor.add(active.dataset.tab);
+      }
+    }
+  }
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    applyTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+  });
+
+  // Stash mermaid source on each block so theme re-init can restore it.
+  document.querySelectorAll('.mermaid').forEach(el => {
+    el.dataset.src = el.textContent;
+  });
+
+  // ---- Mermaid initial setup (do not use startOnLoad) ----
+  if (window.mermaid) {
+    mermaid.initialize({ startOnLoad: false,
+                         theme: initialTheme === 'dark' ? 'dark' : 'default' });
+    // Render the initial tab's mermaid blocks (if any).
+    const blocks = document.querySelectorAll('#tab-summary .mermaid');
+    if (blocks.length) {
+      mermaid.run({ nodes: blocks }).catch(e => console.warn('mermaid:', e));
+      mermaidRunFor.add('summary');
+    }
+  }
+
+  // ---- View toggle (Before / After / Diff) ----
+  document.querySelectorAll('.view-toggle').forEach(group => {
+    const name = group.dataset.group;
+    group.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        group.querySelectorAll('button')
+             .forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.view-panel[data-group="' + name + '"]')
+                .forEach(p => p.classList.toggle('active',
+                                                 p.dataset.view === btn.dataset.view));
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>
