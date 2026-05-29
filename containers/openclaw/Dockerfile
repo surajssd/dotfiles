@@ -42,8 +42,9 @@ RUN chmod -R a+w /home/node /home/linuxbrew
 # on every exec tool call. macOS `container` exposes that path via VirtioFS as a
 # bind mount, which rejects chmod on the mount root with EPERM. This shim
 # narrows that chmod to best-effort (matches the rest of openclaw's codebase).
+# The shim is injected into NODE_OPTIONS by entrypoint.sh at runtime, so that
+# it survives callers (e.g. clawbox) that pass their own NODE_OPTIONS via --env.
 COPY --chmod=644 openclaw-fs-shim.js /usr/local/lib/openclaw-fs-shim.js
-ENV NODE_OPTIONS="--require=/usr/local/lib/openclaw-fs-shim.js"
 
 # Copy /home/node and /home/linuxbrew to seed directories at /opt/
 # (outside mount shadows) so the entrypoint can populate bind-mounted

@@ -36,4 +36,13 @@ seed_dir_if_needed() {
 seed_dir_if_needed "/opt/node-home-seed" "/home/node"
 seed_dir_if_needed "/opt/linuxbrew-seed" "/home/linuxbrew"
 
+# Ensure the openclaw fs shim is always preloaded by node, even when the
+# caller (e.g. clawbox) sets its own NODE_OPTIONS and overrides our ENV.
+# The shim swallows EPERM from chmod on /home/node/.openclaw, which macOS
+# VirtioFS bind mounts reject. See containers/openclaw/openclaw-fs-shim.js.
+SHIM_FLAG="--require=/usr/local/lib/openclaw-fs-shim.js"
+if [[ "${NODE_OPTIONS:-}" != *"${SHIM_FLAG}"* ]]; then
+    export NODE_OPTIONS="${SHIM_FLAG}${NODE_OPTIONS:+ ${NODE_OPTIONS}}"
+fi
+
 exec "$@"
