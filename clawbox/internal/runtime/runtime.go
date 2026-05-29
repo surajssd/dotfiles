@@ -19,6 +19,10 @@ type Runtime interface {
 	ListContainers(prefix string) ([]ContainerInfo, error)
 	SystemStatus() error
 
+	// Images
+	LocalImageDigest(image string) (string, error)
+	PullImage(image string) error
+
 	// Volumes
 	EnsureVolume(name string, size string) error
 

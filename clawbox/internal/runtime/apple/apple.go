@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	"github.com/surajssd/dotfiles/clawbox/internal/runtime"
@@ -299,4 +300,37 @@ func containsExactToken(text, name string) bool {
 		}
 	}
 	return false
+}
+
+// digestRE matches an OCI/Docker manifest digest anywhere in a string.
+var digestRE = regexp.MustCompile(`sha256:[a-f0-9]{64}`)
+
+// LocalImageDigest returns the manifest digest (sha256:...) of an image stored
+// locally by the Apple "container" CLI. Returns ("", nil) when the image is
+// not present locally so callers can treat absence as "needs pull".
+//
+// The Apple container CLI's JSON shape for `image inspect` is not stable
+// across versions, so instead of binding to a struct we scrape the output for
+// the first sha256 digest. Any sha256 attached to the image (manifest digest,
+// index digest) is a valid identity for comparison purposes — what matters is
+// that the *same* image yields the *same* string, and re-pulling a changed
+// remote yields a different one.
+func (r *Runtime) LocalImageDigest(image string) (string, error) {
+	cmd := exec.Command("container", "image", "inspect", image)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		// Treat any failure (missing image, unsupported subcommand, etc.) as
+		// "no local digest known" — caller will fall back to pulling.
+		return "", nil
+	}
+	match := digestRE.FindString(string(out))
+	return match, nil
+}
+
+// PullImage runs `container image pull <ref>` with stdout/stderr passthrough.
+func (r *Runtime) PullImage(image string) error {
+	cmd := exec.Command("container", "image", "pull", image)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
