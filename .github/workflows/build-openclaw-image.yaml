@@ -6,6 +6,9 @@ on:
     paths:
     - "containers/openclaw/**"
     - ".github/workflows/build-openclaw-image.yaml"
+  schedule:
+  # 1:00 AM PST = 09:00 UTC. Runs Mondays and Thursdays.
+  - cron: "0 9 * * 1,4"
   workflow_dispatch:
 
 env:
