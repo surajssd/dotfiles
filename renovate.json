@@ -1,0 +1,41 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard"
+  ],
+  "automerge": false,
+  "configMigration": true,
+  "docker": {
+    "pinDigests": true
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "go dependencies (non-major)"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Track litellm version in litellm-proxy.sh",
+      "fileMatch": ["^local-bin/litellm-proxy\\.sh$"],
+      "matchStrings": [
+        "readonly LITELLM_VERSION=\"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "ghcr.io/berriai/litellm",
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Track ubuntu image in debug-node.sh",
+      "fileMatch": ["^local-bin/debug-node\\.sh$"],
+      "matchStrings": [
+        "image: mcr.microsoft.com/mirror/docker/library/ubuntu:(?<currentValue>[0-9.]+)"
+      ],
+      "depNameTemplate": "ubuntu",
+      "datasourceTemplate": "docker"
+    }
+  ]
+}
