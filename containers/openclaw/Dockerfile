@@ -38,6 +38,13 @@ WORKDIR /home/node
 USER root
 RUN chmod -R a+w /home/node /home/linuxbrew
 
+# Workaround: openclaw's src/infra/exec-approvals.ts chmods /home/node/.openclaw
+# on every exec tool call. macOS `container` exposes that path via VirtioFS as a
+# bind mount, which rejects chmod on the mount root with EPERM. This shim
+# narrows that chmod to best-effort (matches the rest of openclaw's codebase).
+COPY --chmod=644 openclaw-fs-shim.js /usr/local/lib/openclaw-fs-shim.js
+ENV NODE_OPTIONS="--require=/usr/local/lib/openclaw-fs-shim.js"
+
 # Copy /home/node and /home/linuxbrew to seed directories at /opt/
 # (outside mount shadows) so the entrypoint can populate bind-mounted
 # directories on first run.
