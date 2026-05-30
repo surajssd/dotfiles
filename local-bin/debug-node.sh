@@ -78,7 +78,7 @@ spec:
   restartPolicy: Never
   containers:
   - name: debugger
-    image: mcr.microsoft.com/mirror/docker/library/ubuntu:24.04
+    image: mcr.microsoft.com/mirror/docker/library/ubuntu:26.04
     stdin: true
     tty: true
     command: ["chroot", "/host", "/bin/bash"]$(
