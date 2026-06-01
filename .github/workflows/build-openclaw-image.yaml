@@ -43,7 +43,7 @@ jobs:
       run: echo "timestamp=$(TZ=America/Los_Angeles date +%Y%m%d-%H%M%S)" >> "${GITHUB_OUTPUT}"
 
     - name: Build and push
-      uses: docker/build-push-action@v6
+      uses: docker/build-push-action@v7
       with:
         context: containers/openclaw
         platforms: linux/amd64,linux/arm64
