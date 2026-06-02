@@ -37,3 +37,48 @@ function gpom() {
     fi
     git pull --ff origin "$branch"
 }
+
+# Inspired by: https://github.com/jsturtevant/dotfiles/blob/main/aliases/gitalias
+wt() {
+    # Portable prompt+read: zsh's `read` has no -p flag, so print first.
+    _wt_prompt() {
+        printf '%s' "$1" >&2
+        read "$2"
+    }
+
+    if ! git diff --quiet || ! git diff --cached --quiet; then
+        echo "You have uncommitted changes."
+        _wt_prompt "Stash changes before switching? (y/N) " confirm
+        if [[ "$confirm" =~ ^[Yy]$ ]]; then
+            git stash push -m "Auto-stash before wt switch"
+        else
+            echo "Aborting."
+            return 1
+        fi
+    fi
+
+    local dir
+    if command -v fzf >/dev/null 2>&1; then
+        dir=$(git worktree list | fzf --height=50% --reverse \
+            --preview 'git -C {1} log --oneline -10' \
+            --preview-window=right:35% | awk '{print $1}')
+    else
+        # Fallback when fzf is not installed: numbered menu selection.
+        # Avoid shell-specific array indexing so this works in both bash and zsh.
+        local list count choice
+        list=$(git worktree list)
+        if [[ -z "$list" ]]; then
+            echo "No worktrees found."
+            return 1
+        fi
+        count=$(printf '%s\n' "$list" | wc -l | tr -d ' ')
+        printf '%s\n' "$list" | nl -w3 -s') '
+        _wt_prompt "Select worktree (1-${count}): " choice
+        if ! [[ "$choice" =~ ^[0-9]+$ ]] || ((choice < 1 || choice > count)); then
+            echo "Invalid selection."
+            return 1
+        fi
+        dir=$(printf '%s\n' "$list" | sed -n "${choice}p" | awk '{print $1}')
+    fi
+    [[ -n "$dir" ]] && cd "$dir"
+}
