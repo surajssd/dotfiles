@@ -1,3 +1,8 @@
+# Directory of this (symlinked) zshrc, resolved to its real repo location.
+# ${(%):-%x} is the path of this file; :A resolves the symlink, :h takes
+# its parent directory. Reference ${ZSHRC_DIR} anywhere below.
+ZSHRC_DIR="${${(%):-%x}:A:h}"
+
 # Add the dir ~/.local/bin and ~/go/bin to the PATH.
 # First is used to download random binaries, custom scripts, etc.
 # Second contains the binaries built by local go code.
@@ -55,25 +60,13 @@ command -v fzf &>/dev/null && {
 #=================================================================
 # my aliases
 
-# GIT related
-alias gs="git status"
-alias gcmt="git commit -s -S "
-alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
-alias grba="git rebase -S -i --autosquash "
-alias gca="git commit --amend --no-edit -S "
-alias grbm="git rebase -S -i"
-
-function gcm() {
-    git checkout $(git symbolic-ref refs/remotes/origin/HEAD | cut -d/ -f4)
-}
-
-function gpum() {
-    git pull --ff upstream $(git branch --show-current)
-}
-
-function gpom() {
-    git pull --ff origin $(git branch --show-current)
-}
+# Source all alias files living next to this zshrc.
+if [[ -d "${ZSHRC_DIR}/aliases" ]]; then
+    for alias_file in "${ZSHRC_DIR}/aliases/"*; do
+        [[ -f "$alias_file" ]] && source "$alias_file"
+    done
+    unset alias_file
+fi
 
 #=================================================================
 # All Kubernetes related stuff
