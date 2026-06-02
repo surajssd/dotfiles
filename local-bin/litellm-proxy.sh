@@ -108,18 +108,19 @@ function create_codex_config() {
     rm -f "${CODEX_CONFIG_FILE}"
     # Master key is inlined as a static Authorization header (matches LiteLLM
     # `general_settings.master_key`); no env var or env file needed.
+    # NOTE: codex >= 0.135.0 removed the legacy top-level `profile = "..."` key
+    # (and the `[profiles.*]` V1 system). Profiles are now layered files selected
+    # via `--profile <name>` (loading `<name>.config.toml`). To keep plain `codex`
+    # working with no flag, put the model selection directly at the top level.
     cat >"${CODEX_CONFIG_FILE}" <<'EOF'
-profile = "github"
+model          = "gpt-5.5"
+model_provider = "github"
 
 [model_providers.github]
 name         = "GitHub Models via LiteLLM"
 base_url     = "http://localhost:4000/v1"
 wire_api     = "responses"
 http_headers = { Authorization = "Bearer sk-" }
-
-[profiles.github]
-model_provider = "github"
-model          = "gpt-5.5"
 EOF
 }
 
