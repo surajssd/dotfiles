@@ -1,4 +1,5 @@
-# GIT related
+# git related aliases
+
 alias gs="git status"
 alias gcmt="git commit -s -S "
 alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
@@ -7,13 +8,32 @@ alias gca="git commit --amend --no-edit -S "
 alias grbm="git rebase -S -i"
 
 function gcm() {
-    git checkout $(git symbolic-ref refs/remotes/origin/HEAD | cut -d/ -f4)
+    local default_branch
+    default_branch=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null)
+    default_branch=${default_branch#origin/}
+    if [[ -z "$default_branch" ]]; then
+        echo "❌ Could not determine origin's default branch (run: git remote set-head origin -a)" >&2
+        return 1
+    fi
+    git checkout "$default_branch"
 }
 
 function gpum() {
-    git pull --ff upstream $(git branch --show-current)
+    local branch
+    branch=$(git branch --show-current)
+    if [[ -z "$branch" ]]; then
+        echo "❌ Not on a branch (detached HEAD?)" >&2
+        return 1
+    fi
+    git pull --ff upstream "$branch"
 }
 
 function gpom() {
-    git pull --ff origin $(git branch --show-current)
+    local branch
+    branch=$(git branch --show-current)
+    if [[ -z "$branch" ]]; then
+        echo "❌ Not on a branch (detached HEAD?)" >&2
+        return 1
+    fi
+    git pull --ff origin "$branch"
 }
