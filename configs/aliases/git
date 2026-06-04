@@ -1,4 +1,6 @@
 # git related aliases
+# This file is sourced by both bash and zsh; lint it as bash.
+# shellcheck shell=bash
 
 alias gs="git status"
 alias gcmt="git commit -s -S "
@@ -43,9 +45,12 @@ wt() {
     # Portable prompt+read: zsh's `read` has no -p flag, so print first.
     _wt_prompt() {
         printf '%s' "$1" >&2
-        read "$2"
+        read -r "$2"
     }
 
+    # Assigned indirectly by _wt_prompt via `read "$2"`, which shellcheck
+    # cannot trace; declaring it local mirrors `choice` below.
+    local confirm
     if ! git diff --quiet || ! git diff --cached --quiet; then
         echo "You have uncommitted changes."
         _wt_prompt "Stash changes before switching? (y/N) " confirm
@@ -80,7 +85,9 @@ wt() {
         fi
         dir=$(printf '%s\n' "$list" | sed -n "${choice}p" | awk '{print $1}')
     fi
-    [[ -n "$dir" ]] && cd "$dir"
+    if [[ -n "$dir" ]]; then
+        cd "$dir" || return 1
+    fi
 }
 
 # Create a new worktree with a new branch and cd into it
