@@ -94,7 +94,7 @@ wta() {
     fi
 
     # Check if we're in a git repository
-    if ! git rev-parse --git-dir > /dev/null 2>&1; then
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
         echo "Error: Not in a git repository"
         return 1
     fi
@@ -124,6 +124,72 @@ wta() {
         echo "Branch: $(git branch --show-current)"
     else
         echo "Failed to create worktree"
+        return 1
+    fi
+}
+
+# Create a worktree from an open PR (interactive fzf picker) and cd into it
+wtpr() {
+    if ! command -v gh >/dev/null 2>&1; then
+        echo "❌ GitHub CLI (gh) is required for wtpr" >&2
+        return 1
+    fi
+    if ! command -v fzf >/dev/null 2>&1; then
+        echo "❌ fzf is required for wtpr" >&2
+        return 1
+    fi
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        echo "❌ Not in a git repository" >&2
+        return 1
+    fi
+
+    # Pick an open PR. `column` aligns the number|branch|author: title fields so
+    # fzf's {1} placeholder maps to the PR number for the preview.
+    local pr
+    pr=$(gh pr list --state open --json number,title,headRefName,author \
+        --template '{{range .}}{{.number}}|{{.headRefName}}|{{.author.login}}: {{.title}}{{"\n"}}{{end}}' |
+        column -t -s '|' |
+        fzf --height=50% --reverse --header="Select PR to checkout as worktree" \
+            --preview 'gh pr view {1} --comments=false' \
+            --preview-window=right:40%)
+    [[ -z "$pr" ]] && return 0
+
+    local pr_number branch
+    pr_number=$(echo "$pr" | awk '{print $1}')
+    branch=$(echo "$pr" | awk '{print $2}')
+
+    # Match wta's naming: ../<repo-dir>-<branch> with slashes sanitized.
+    local current_dir_name safe_branch worktree_dir
+    current_dir_name="$(basename "$PWD")"
+    safe_branch="${branch//\//-}"
+    worktree_dir="../${current_dir_name}-${safe_branch}"
+
+    if [[ -d "$worktree_dir" ]]; then
+        echo "❌ Directory '$worktree_dir' already exists" >&2
+        return 1
+    fi
+
+    echo "⏳ Fetching PR #${pr_number} (${branch})..."
+
+    # PRs filed against an "upstream" remote (fork workflow) expose
+    # pull/N/head there; otherwise fall back to origin.
+    local remote="origin"
+    if git remote get-url upstream &>/dev/null &&
+        git fetch upstream "pull/${pr_number}/head:${branch}" 2>/dev/null; then
+        remote="upstream"
+    elif ! git fetch origin "pull/${pr_number}/head:${branch}" 2>/dev/null; then
+        echo "❌ Failed to fetch PR #${pr_number} from upstream or origin" >&2
+        return 1
+    fi
+
+    if git worktree add "$worktree_dir" "$branch"; then
+        cd "$worktree_dir" || return 1
+        # Best-effort upstream tracking; for fork PRs the ref may not exist.
+        git branch --set-upstream-to="${remote}/${branch}" "$branch" 2>/dev/null || true
+        echo "✅ Worktree created at ${worktree_dir} on branch ${branch}"
+        echo "ℹ️  Now in: $(pwd)"
+    else
+        echo "❌ Failed to create worktree for PR #${pr_number}" >&2
         return 1
     fi
 }
