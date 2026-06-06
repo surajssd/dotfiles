@@ -7,14 +7,24 @@ REPO_DIR="$(realpath "${SCRIPT_DIR}/..")"
 
 mkdir -p ~/.local/bin
 
+# Files in local-bin/ that must NOT be symlinked into PATH
+# (sourceable libraries, git hook scripts, etc.). Keep in sync — see CLAUDE.md.
+readonly LOCAL_BIN_SKIP=(util.sh git-autopush-post-commit)
+
 echo "⏳ Installing scripts from ${REPO_DIR}/local-bin dir ..."
 # all the files in the 'local-bin' directory will be
 # symlinked in ~/.local/bin
 shopt -s nullglob
 for filename in "${REPO_DIR}"/local-bin/*; do
     sym=$(basename "$filename")
-    # Skip util.sh — it is a sourceable library, not an executable
-    [[ "$sym" == "util.sh" ]] && continue
+    skip=false
+    for s in "${LOCAL_BIN_SKIP[@]}"; do
+        [[ "$sym" == "$s" ]] && {
+            skip=true
+            break
+        }
+    done
+    [[ "$skip" == true ]] && continue
     ln -sf "$filename" ~/.local/bin/"$sym"
 done
 shopt -u nullglob

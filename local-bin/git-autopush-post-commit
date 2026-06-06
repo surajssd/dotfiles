@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+#
+# auto-push post-commit hook (managed by `ssd post-commit`).
+#
+# Symlinked to <repo>/.git/hooks/post-commit and run by git after a commit.
+# On a commit to main/master it pushes the branch; if the remote has moved, it
+# rebases onto it and retries. The commit is already finalized before this hook
+# runs and git ignores a post-commit hook's exit status, so nothing here can
+# endanger the commit — the worst case is "not pushed", reported loudly.
+
+set -euo pipefail
+
+# Never block on an interactive credential/username prompt in a non-interactive
+# hook: git returns an error instead of hanging. Agent-loaded SSH keys are
+# unaffected.
+export GIT_TERMINAL_PROMPT=0
+
+# Git exports its per-invocation environment into hooks — GIT_DIR,
+# GIT_INDEX_FILE, GIT_WORK_TREE, GIT_PREFIX, … — pinned to the commit that just
+# ran. If left set, every nested `git push/pull/rebase` below would target that
+# captured GIT_DIR/index instead of discovering the repo from $PWD. That is
+# actively wrong inside a worktree (where $PWD's .git is a *file*). Clearing them
+# makes nested git behave like a plain shell invocation. `git rev-parse
+# --local-env-vars` prints a fixed, non-empty list of those names, and bash
+# `unset NAME...` never fails (even for already-unset names), so this is safe
+# under `set -e`. The word-splitting is intentional.
+# shellcheck disable=SC2046
+unset $(git rev-parse --local-env-vars)
+
+# Only auto-sync trunk. Detached HEAD (no symbolic ref) → nothing to do; the
+# `if !` guards the assignment so set -e does not fire on the non-zero exit.
+if ! branch="$(git symbolic-ref --quiet --short HEAD)"; then
+    exit 0
+fi
+case "${branch}" in
+main | master) ;;
+*) exit 0 ;;
+esac
+
+# Per-repo configurable remote; defaults to origin. `|| true` because
+# `git config --get` exits non-zero when the key is absent (would trip set -e).
+remote="$(git config --get autosync.remote || true)"
+remote="${remote:-origin}"
+
+# Local-only repo (no such remote) → quietly skip; the commit is fine.
+if ! git remote get-url "${remote}" >/dev/null 2>&1; then
+    echo "ℹ️  autosync: remote '${remote}' not configured; skipping push" >&2
+    exit 0
+fi
+
+max=3
+attempt=1
+while ((attempt <= max)); do
+    # Push FIRST (optimistic concurrency): in the common case the remote has NOT
+    # moved, so this is one network round-trip with zero rebase and zero
+    # commit-hash rewriting. We pay for a pull only when actually needed. Output
+    # is intentionally NOT suppressed so the user sees why a push failed.
+    if git push "${remote}" "${branch}"; then
+        echo "✅ autosync: pushed ${branch} → ${remote}"
+        exit 0
+    fi
+
+    echo "⏳ autosync: push rejected; rebasing onto ${remote}/${branch} (attempt ${attempt}/${max})…" >&2
+
+    # Push was rejected (remote moved) or the network is down. Either way, try to
+    # rebase onto the remote. --rebase/--autostash are passed EXPLICITLY so global
+    # pull.rebase / rebase.autoStash settings cannot change our behavior. Explicit
+    # remote+branch avoids depending on upstream tracking (often unset for
+    # direct-commit repos).
+    if ! git pull --rebase --autostash "${remote}" "${branch}"; then
+        # Conflict → a rebase is mid-flight: abort it (this also restores the
+        # autostash, leaving the worktree exactly as before). Offline → no rebase
+        # started and the abort is a harmless no-op (stderr suppressed). Either
+        # way we stop cleanly: bounded, no hang, no loop.
+        git rebase --abort >/dev/null 2>&1 || true
+        echo "❌ autosync: cannot rebase onto ${remote}/${branch} (conflict or offline). Commit is safe." >&2
+        echo "   Resolve manually: git pull --rebase ${remote} ${branch} && git push ${remote} ${branch}" >&2
+        exit 0
+    fi
+
+    attempt=$((attempt + 1))
+done
+
+echo "❌ autosync: gave up after ${max} attempts (remote kept moving). Commit is safe; run: git push ${remote} ${branch}" >&2
+exit 0

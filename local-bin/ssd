@@ -362,6 +362,98 @@ function kubeconfig() {
     fi
 }
 
+function usage_post_commit() {
+    echo "🛠️ Usage: ${SSD_PATH} post-commit [Options]"
+    echo ""
+    echo "Install an auto-push post-commit hook into the current git repo."
+    echo "Commits to main/master are pushed automatically; if the remote has"
+    echo "moved, the hook rebases onto it and retries. The remote defaults to"
+    echo "'origin' and can be overridden with: git config autosync.remote <name>"
+    echo ""
+    echo "Options:"
+    echo "    --remove      Remove the hook (only if it points to ours)"
+    echo "    --help, -h    Show this help message"
+}
+
+function install_post_commit() {
+    local remove=false
+
+    while [[ $# -gt 0 ]]; do
+        case "${1:-}" in
+        --remove)
+            remove=true
+            shift
+            ;;
+        --help | help | -h)
+            usage_post_commit
+            exit 0
+            ;;
+        *)
+            err "Unknown option: ${1:-}"
+            usage_post_commit
+            exit 1
+            ;;
+        esac
+    done
+
+    # Resolve our own real path (ssd is symlinked into ~/.local/bin) and the hook
+    # script that sits next to it in the repo's local-bin/.
+    local script_dir hook_src
+    script_dir="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
+    hook_src="${script_dir}/git-autopush-post-commit"
+
+    if [[ ! -f "${hook_src}" ]]; then
+        err "Hook script not found: ${hook_src}"
+        exit 1
+    fi
+    if [[ ! -x "${hook_src}" ]]; then
+        err "Hook script is not executable: ${hook_src} (run: chmod +x '${hook_src}')"
+        exit 1
+    fi
+
+    # Worktree-safe hooks dir. It comes back relative to CWD, so create it and
+    # then absolutize. Our shell env is clean here (this is NOT running as a
+    # hook), so there is no GIT_DIR/index pollution to clear.
+    local hooks_dir
+    if ! hooks_dir="$(git rev-parse --git-path hooks 2>/dev/null)"; then
+        err "Not inside a git repository"
+        exit 1
+    fi
+    mkdir -p "${hooks_dir}"
+    hooks_dir="$(realpath "${hooks_dir}")"
+
+    local dest="${hooks_dir}/post-commit"
+
+    if [[ "${remove}" == true ]]; then
+        if [[ -L "${dest}" && "$(readlink "${dest}")" == "${hook_src}" ]]; then
+            rm "${dest}"
+            echo "✅ Removed auto-push hook from ${dest}"
+        else
+            err "No ssd-managed post-commit hook here; leaving ${dest} untouched"
+            exit 1
+        fi
+        return 0
+    fi
+
+    # Idempotent: already our symlink.
+    if [[ -L "${dest}" && "$(readlink "${dest}")" == "${hook_src}" ]]; then
+        echo "✅ Auto-push hook already installed at ${dest}"
+        return 0
+    fi
+
+    # Something else is there (different hook, other symlink, or broken symlink):
+    # preserve it with a timestamped backup so no existing hook is ever lost.
+    if [[ -e "${dest}" || -L "${dest}" ]]; then
+        local backup
+        backup="${dest}.bak.$(date "+%Y-%m-%b-%d-%H-%M-%S")"
+        mv "${dest}" "${backup}"
+        echo "ℹ️  Backed up existing post-commit hook → ${backup}"
+    fi
+
+    ln -sf "${hook_src}" "${dest}"
+    echo "✅ Installed auto-push hook: ${dest} → ${hook_src}"
+}
+
 function usage_global() {
     echo "🛠️ Usage: ${SSD_PATH} <subcommand> [options]"
     echo ""
@@ -372,6 +464,7 @@ function usage_global() {
     echo "    browser             Force a website to allow copy-paste in Chromium-based browsers"
     echo "    password, pass      Generate a random password and copy to clipboard"
     echo "    kubeconfig, k       Move kubeconfig to ~/.kubeconfigs/ and symlink to ~/.kube/config"
+    echo "    post-commit         Install auto-push post-commit hook in the current repo"
     echo "    help, --help, -h    Show this help message"
 }
 
@@ -401,6 +494,10 @@ password | pass)
 kubeconfig | k)
     shift
     kubeconfig "$@"
+    ;;
+post-commit)
+    shift
+    install_post_commit "$@"
     ;;
 help | --help | -h)
     usage_global

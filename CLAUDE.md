@@ -132,4 +132,4 @@ Each skill is a subdirectory under `skills/` containing a `SKILL.md` file that d
 - Installation scripts assume both repos are present and will attempt to process both
 - Symlinks mean changes in this repo are immediately reflected in home directory
 - The `make update` command pulls latest from both repositories and reinstalls
-- The `install-local-bin.sh` installer skips `util.sh` (it's a shared library, not a standalone script). If you add another library file to `local-bin/`, update the installer's skip list
+- The `install-local-bin.sh` installer skips files listed in its `LOCAL_BIN_SKIP` array (e.g. `util.sh`, a shared library, and `git-autopush-post-commit`, a git hook script — neither belongs in PATH). If you add another library or hook file to `local-bin/`, add its basename to `LOCAL_BIN_SKIP`
