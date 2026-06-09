@@ -90,13 +90,14 @@ wt() {
     fi
 }
 
-# Create a new worktree with a new branch and cd into it
+# Create (or switch to) a worktree for a branch and cd into it.
+# New branch: creates it. Existing branch: cd to its worktree, or make one.
 wta() {
     local branch_name="$1"
 
     if [[ -z "$branch_name" ]]; then
         echo "Usage: wta <branch-name>"
-        echo "Creates a new worktree with a new branch and changes into it."
+        echo "Creates (or switches to) a worktree for <branch-name> and changes into it."
         return 1
     fi
 
@@ -106,10 +107,25 @@ wta() {
         return 1
     fi
 
-    # Check if branch already exists
+    local branch_exists=0
     if git show-ref --verify --quiet "refs/heads/$branch_name"; then
-        echo "Error: Branch '$branch_name' already exists"
-        return 1
+        branch_exists=1
+    fi
+
+    # If the branch already exists and is checked out in a worktree, go there.
+    if [[ $branch_exists -eq 1 ]]; then
+        local existing_wt
+        existing_wt=$(git worktree list --porcelain | awk -v b="refs/heads/$branch_name" '
+            /^worktree /      { wt = substr($0, 10) }
+            $0 == "branch " b { print wt; exit }
+        ')
+        if [[ -n "$existing_wt" ]]; then
+            echo "Branch '$branch_name' already exists; switching to its worktree."
+            cd "$existing_wt" || return 1
+            echo "Now in: $(pwd)"
+            echo "Branch: $(git branch --show-current)"
+            return 0
+        fi
     fi
 
     local current_dir_name
@@ -124,15 +140,21 @@ wta() {
         return 1
     fi
 
-    echo "Creating worktree '$worktree_dir' with new branch '$branch_name'..."
-    if git worktree add -b "$branch_name" "$worktree_dir"; then
-        cd "$worktree_dir" || return 1
-        echo "Now in: $(pwd)"
-        echo "Branch: $(git branch --show-current)"
+    # Existing branch with no worktree → reuse it; otherwise create a new branch.
+    if [[ $branch_exists -eq 1 ]]; then
+        echo "Creating worktree '$worktree_dir' for existing branch '$branch_name'..."
+        git worktree add "$worktree_dir" "$branch_name"
     else
+        echo "Creating worktree '$worktree_dir' with new branch '$branch_name'..."
+        git worktree add -b "$branch_name" "$worktree_dir"
+    fi || {
         echo "Failed to create worktree"
         return 1
-    fi
+    }
+
+    cd "$worktree_dir" || return 1
+    echo "Now in: $(pwd)"
+    echo "Branch: $(git branch --show-current)"
 }
 
 # Create a worktree from an open PR (interactive fzf picker) and cd into it
