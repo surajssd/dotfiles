@@ -3,7 +3,7 @@
 # gather_pr_context.sh — preflight checks + gather all PR context for the review panel.
 #
 # Usage:
-#   gather_pr_context.sh --preflight-only   # prints `export VAR=...` lines; exit 1 on failure
+#   gather_pr_context.sh --preflight-only   # prints shell-safe VAR=... lines; exit 1 on failure
 #   gather_pr_context.sh <WORKDIR>          # writes <WORKDIR>/context/* and meta.env
 #
 # Everything every reviewer reads is produced here, so the panel sees identical inputs.
@@ -172,8 +172,17 @@ else
         # where `pullRequest` (or any ancestor) is null — e.g. a token lacking the
         # `read:pull_request` scope — yields an empty node list instead of jq
         # iterating null, exiting non-zero, and aborting the script before meta.env.
+        # Distinguish three outcomes so a failed/permission-denied fetch is never
+        # silently rendered as "no unresolved threads 🎉" (which would read as a clean
+        # PR): (1) the call itself failed → empty THREADS_JSON; (2) GraphQL returned a
+        # top-level `.errors` array, or `pullRequest` is null (typically a missing
+        # `read:pull_request` scope or no visibility) → fetch problem; (3) a real
+        # payload → count and render.
         if [ -z "${THREADS_JSON}" ]; then
             echo "_Could not fetch review threads (GraphQL call failed — check the token's read:pull_request scope)._"
+        elif [ "$(echo "${THREADS_JSON}" | jq -r 'if (.errors | length // 0) > 0 then "err" elif .data.repository.pullRequest == null then "err" else "ok" end' 2>/dev/null || echo err)" = "err" ]; then
+            ERRMSG="$(echo "${THREADS_JSON}" | jq -r '(.errors[0].message // "pullRequest not visible") | gsub("\n"; " ")' 2>/dev/null || echo "unknown error")"
+            echo "_Could not fetch review threads: ${ERRMSG}. (Often a missing \`read:pull_request\` token scope.) Treat thread status as UNKNOWN, not resolved._"
         else
             COUNT="$(echo "${THREADS_JSON}" | jq '[(.data.repository.pullRequest.reviewThreads.nodes? // [])[] | select(.isResolved==false)] | length' 2>/dev/null || echo 0)"
             if [ "${COUNT}" = "0" ]; then
@@ -185,7 +194,7 @@ else
                   (.data.repository.pullRequest.reviewThreads.nodes? // [])[]
                   | select(.isResolved==false)
                   | "## `\(.path // "general"):\(.line // "?")`\((if .isOutdated then " _(outdated)_" else "" end))\n"
-                    + ([(.comments.nodes? // [])[] | "- **\(.author.login // "unknown")**: \(.body | gsub("\n"; " "))"] | join("\n"))
+                    + ([(.comments.nodes? // [])[] | "- **\(.author.login // "unknown")**: \((.body // "") | gsub("\n"; " "))"] | join("\n"))
                     + "\n"' 2>/dev/null || echo "_(failed to format threads)_"
             fi
         fi

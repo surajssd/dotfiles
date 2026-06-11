@@ -67,15 +67,21 @@ fi
 # 2) Embedded context. Every block — not just the diff — carries untrusted content
 #    (PR bodies and commit messages routinely contain their own ``` code fences),
 #    so a plain ``` wrapper can be broken out of, leaking the rest of the block into
-#    the prompt structure. We fence with TILDES instead (pure-tilde lines are rare in
-#    real diffs/prose) and size each fence adaptively: scan the block for its longest
-#    run of pure tildes and use one tilde longer. That guarantees the content cannot
-#    close its own fence, and a bare tilde fence is valid CommonMark on both ends
-#    (unlike the old `~~~ DIFF ~~~`, whose closing line illegally carried a label).
+#    the prompt structure. We fence with TILDES instead and size each fence adaptively:
+#    one longer than the longest tilde run already in the block. CommonMark lets a
+#    closing fence carry ≤3 leading spaces and trailing spaces, so we must count
+#    `   ~~~~  ` as a tilde run too — not only pure-tilde lines — or indented untrusted
+#    content could still close the fence early. A bare tilde fence is valid CommonMark
+#    on both ends (unlike the old `~~~ DIFF ~~~`, whose closing line illegally carried
+#    a label). Keep this in sync with the copy in run_reviewer.sh.
 safe_fence() {
     local file="$1" longest len
-    # Longest run of pure-tilde characters on any single line in the block (0 if none).
-    longest="$(awk '/^~+$/ { if (length > m) m = length } END { print m + 0 }' "${file}")"
+    longest="$(awk 'match($0, /^ {0,3}(~+) *$/, a) { if (length(a[1]) > m) m = length(a[1]) } END { print m + 0 }' "${file}" 2>/dev/null)"
+    # Fallback for awk builds without 3-arg match() (e.g. mawk): strip ≤3 leading and
+    # trailing spaces, then measure pure-tilde lines.
+    if [ -z "${longest}" ]; then
+        longest="$(sed -E 's/^ {0,3}//; s/ *$//' "${file}" | awk '/^~+$/ { if (length > m) m = length } END { print m + 0 }')"
+    fi
     len=$((longest + 1))
     [ "${len}" -lt 4 ] && len=4
     printf '%.0s~' $(seq 1 "${len}")

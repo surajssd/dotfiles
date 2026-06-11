@@ -28,10 +28,12 @@ token):
 | `copilot` | ❌ (ignores stdin) | prompt as **argv**; same oversize fallback |
 | `agency` | ❌ (ignores stdin) | prompt as **argv**; same oversize fallback |
 
-For the argv-only tools, when instructions+context+diff would exceed a safe cap (~96 KiB),
-`run_reviewer.sh` omits the embedded diff and tells the agent — which runs in the repo working
-tree — to obtain it with `git diff <base>...HEAD`. That's why `run_reviewer.sh` takes the diff
-via `--diff-file`/`--base` separately from the diff-less `--prompt-file`.
+For the argv-only tools, `run_reviewer.sh` measures the **whole assembled prompt** (instructions
++ context + diff) against a safe cap (~96 KiB). If it's over, it omits the embedded diff and tells
+the agent — which runs in the repo working tree — to obtain it with `git diff <base>...HEAD`; if
+even the diff-less prompt is over the cap, it hard-truncates as a last resort. That's why
+`run_reviewer.sh` takes the diff via `--diff-file`/`--base` separately from the diff-less
+`--prompt-file`.
 
 | Tool | Headless invocation | Read-only flag | Model flag | Notes |
 |---|---|---|---|---|
@@ -53,11 +55,13 @@ panel. Reads the prompt from stdin in `-p` mode, so no argv size limit applies.
 
 ### codex
 ```bash
-printf '%s' "$PROMPT" | codex exec --sandbox read-only --skip-git-repo-check --color never -
+printf '%s' "$PROMPT" | codex exec --sandbox read-only --skip-git-repo-check --color never [-m "$MODEL"] -
 ```
 `codex exec` is the non-interactive entry point (alias `codex e`); the trailing `-` makes it read
 the prompt from stdin. `--sandbox read-only` blocks writes. `--skip-git-repo-check` avoids a
-refusal if run from an unusual cwd.
+refusal if run from an unusual cwd. Put `-m <model>` *before* the `-` so the flag is
+unambiguously a flag and not mistaken for the stdin positional (verified: codex parses `… -m X -`
+fine, but flags-before-positional is the safe convention).
 
 ### gemini
 ```bash

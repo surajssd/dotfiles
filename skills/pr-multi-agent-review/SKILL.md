@@ -12,7 +12,12 @@ Nothing is posted to GitHub. Every artifact is a local file in a temp directory.
 
 **Requirements.** `git` and at least one reviewer CLI are mandatory. `gh` + `jq` are needed for PR description and unresolved-thread context — without either, the skill degrades gracefully (diff + commits only) and says so. A `timeout`/`gtimeout` binary is used if present; otherwise a built-in bash watchdog enforces the per-reviewer timeout. The scripts avoid GNU-only flags (`readlink -f`, `mktemp --suffix`) so they run on stock macOS as well as Linux.
 
-**Trust boundary (read this).** The panel feeds *untrusted* PR content — body, commit messages, third-party review comments, the diff — into reviewer CLIs, and three of them (`copilot`, `opencode`, `agency`) run with `--allow-all-tools` and no hard read-only sandbox. A malicious PR could attempt prompt-injection against those tools. Run this skill on **PRs you trust**, or isolate the no-sandbox tools (throwaway worktree, network off) when reviewing fork/contributor branches. Step 5 covers the specifics.
+**Trust boundary (read this).** Two distinct exposures, because the panel feeds *untrusted* PR content — body, commit messages, third-party review comments, the diff — into the reviewer CLIs:
+
+- **Prompt-injection → tool execution.** Three tools (`copilot`, `opencode`, `agency`) run with `--allow-all-tools` and no hard read-only sandbox, so a malicious PR could attempt to drive them. Run this skill on **PRs you trust**, or isolate those tools (throwaway worktree, network off) when reviewing fork/contributor branches.
+- **Data egress.** Every reviewer streams the PR content to its model provider (Anthropic, OpenAI, GitHub, Google, …). If an external contributor pasted a secret into a PR body or comment, running the panel sends it to those third parties. Don't review PRs containing sensitive data you can't share with the reviewers' backends.
+
+Step 5 covers the specifics.
 
 **The orchestrator (you) never reviews the code yourself.** Your job is to gather context, dispatch the panel, and collate. If you inject your own opinions as if they were a reviewer's, you destroy the signal of how many *independent* tools agreed. You may reconcile and judge their findings during collation, but the findings must originate from the panel.
 
@@ -126,7 +131,7 @@ Why embed the context in the prompt rather than point reviewers at the files? Th
 `run_reviewer.sh` takes the diff via `--diff-file` so it can adapt prompt *delivery* per tool — that adaptation is the whole reason large PRs don't break:
 
 - **stdin-capable tools** (`claude`, `codex`, `gemini`) get the diff-less prompt **plus the diff** concatenated onto **stdin**, which has no size limit.
-- **argv-only tools** (`opencode`, `copilot`, `agency`) get the prompt as one argv string, which is bounded (Linux caps a single argument at 128 KiB). If instructions+context+diff would exceed a safe cap, the script **omits the embedded diff and instructs the agent to run `git diff "$BASE"...HEAD` itself** — it's running in the repo, so it can. No reviewer ever dies with `E2BIG`/"Argument list too long".
+- **argv-only tools** (`opencode`, `copilot`, `agency`) get the prompt as one argv string, which is bounded (Linux caps a single argument at 128 KiB). The script measures the **whole assembled prompt** (instructions + context + diff, not just the diff); if it would exceed a safe cap it **omits the embedded diff and instructs the agent to run `git diff "$BASE"...HEAD` itself** — it's running in the repo, so it can — and if even the diff-less prompt is over the cap it hard-truncates as a last resort. No reviewer ever dies with `E2BIG`/"Argument list too long".
 
 Read `references/review-prompt.md` yourself once so you know what you're asking the panel to produce — it directs each reviewer to cover correctness, security, performance, error handling, concurrency, API/compat, **test quality**, **human + agentic documentation**, to end with a **manual testing plan**, all cited to `file:line`, and to wrap the whole review between `===PR-REVIEW-BEGIN===`/`===PR-REVIEW-END===` sentinels.
 
