@@ -12,64 +12,94 @@ every tool to wrap its review in `===PR-REVIEW-BEGIN===`/`===PR-REVIEW-END===` s
 `run_reviewer.sh` extracts between them, which is how the TUI progress chatter that `copilot`
 and `agency` print to stdout gets stripped out of the saved review.
 
+## Prompt delivery: stdin vs argv
+
+The diff can be large, and on **Linux a single argv element is capped at 128 KiB**
+(`MAX_ARG_STRLEN`) — independent of the much larger total `ARG_MAX`. So delivery is split by
+what each CLI empirically supports (verified by piping a probe prompt and checking the echoed
+token):
+
+| Tool | Reads piped stdin? | Delivery used |
+|---|---|---|
+| `claude` | ✅ | full prompt + diff on **stdin** |
+| `codex` | ✅ (with trailing `-`) | full prompt + diff on **stdin** |
+| `gemini` | ✅ (with `-p ""`) | full prompt + diff on **stdin** |
+| `opencode` | ❌ (ignores stdin) | prompt as **argv**; oversize diff omitted → agent runs `git diff` itself |
+| `copilot` | ❌ (ignores stdin) | prompt as **argv**; same oversize fallback |
+| `agency` | ❌ (ignores stdin) | prompt as **argv**; same oversize fallback |
+
+For the argv-only tools, when instructions+context+diff would exceed a safe cap (~96 KiB),
+`run_reviewer.sh` omits the embedded diff and tells the agent — which runs in the repo working
+tree — to obtain it with `git diff <base>...HEAD`. That's why `run_reviewer.sh` takes the diff
+via `--diff-file`/`--base` separately from the diff-less `--prompt-file`.
+
 | Tool | Headless invocation | Read-only flag | Model flag | Notes |
 |---|---|---|---|---|
-| `claude` | `claude -p "<prompt>"` | `--permission-mode plan` | `--model <id>` | Plan mode can't edit/run mutating tools. |
-| `codex` | `codex exec "<prompt>"` | `--sandbox read-only` | `-m <id>` | `exec` is the non-interactive subcommand. |
-| `gemini` | `gemini -p "<prompt>"` | `--approval-mode plan` | `-m <id>` | `plan` approval mode is read-only. |
-| `opencode` | `opencode run "<prompt>"` | *(none)* | `-m provider/model` | No hard read-only; rely on prompt + git check. Model needs `provider/` prefix. |
-| `copilot` | `copilot -p "<prompt>"` | *(none)* | `--model <id>` | Needs `--allow-all-tools` for non-interactive; no read-only switch, so rely on prompt + git check. Add `--no-color`. |
-| `agency` | `agency copilot -- -p "<prompt>"` | *(none)* | via pass-through `-- --model <id>` | `agency copilot` wraps Copilot CLI; everything after `--` is forwarded. Same caveats as copilot. |
+| `claude` | `claude -p` (prompt on stdin) | `--permission-mode plan` | `--model <id>` | Plan mode can't edit/run mutating tools. |
+| `codex` | `codex exec -` (stdin) | `--sandbox read-only` | `-m <id>` | Trailing `-` makes `exec` read the prompt from stdin. |
+| `gemini` | `gemini -p "" ` (stdin appended) | `--approval-mode plan` | `-m <id>` | Also needs `--skip-trust` or it refuses in an "untrusted directory". |
+| `opencode` | `opencode run "<prompt>"` | *(none)* | `-m provider/model` | argv-only. No hard read-only; rely on prompt + git check. Model needs `provider/` prefix. |
+| `copilot` | `copilot -p "<prompt>"` | *(none)* | `--model <id>` | argv-only. Needs `--allow-all-tools` for non-interactive; no read-only switch. Add `--no-color`. |
+| `agency` | `agency copilot -- -p "<prompt>"` | *(none)* | via pass-through `-- --model <id>` | argv-only. `agency copilot` wraps Copilot CLI; everything after `--` is forwarded. |
 
 ## Per-tool detail
 
 ### claude
 ```bash
-claude -p "$PROMPT" --permission-mode plan [--model "$MODEL"]
+printf '%s' "$PROMPT" | claude -p --permission-mode plan [--model "$MODEL"]
 ```
 Plan mode is genuinely read-only — it cannot apply edits or run mutating bash. Safest of the
-panel. Reads stdin too, but passing the prompt as an arg is simplest.
+panel. Reads the prompt from stdin in `-p` mode, so no argv size limit applies.
 
 ### codex
 ```bash
-codex exec "$PROMPT" --sandbox read-only --skip-git-repo-check [-m "$MODEL"]
+printf '%s' "$PROMPT" | codex exec --sandbox read-only --skip-git-repo-check --color never -
 ```
-`codex exec` is the non-interactive entry point (alias `codex e`). `--sandbox read-only` blocks
-writes. `--skip-git-repo-check` avoids a refusal if run from an unusual cwd. Add `--color never`
-to keep output clean if needed.
+`codex exec` is the non-interactive entry point (alias `codex e`); the trailing `-` makes it read
+the prompt from stdin. `--sandbox read-only` blocks writes. `--skip-git-repo-check` avoids a
+refusal if run from an unusual cwd.
 
 ### gemini
 ```bash
-gemini -p "$PROMPT" --approval-mode plan [-m "$MODEL"]
+printf '%s' "$PROMPT" | gemini -p "" --approval-mode plan --skip-trust [-m "$MODEL"]
 ```
-`--approval-mode plan` is the read-only mode ("prompt for approval" vs "plan = read-only").
-Avoid `-y/--yolo` here — that's the opposite of what we want for a reviewer.
+`gemini -p ""` runs headless and appends piped stdin to the (empty) prompt value, so the prompt
+arrives via stdin (no argv limit). `--approval-mode plan` is the read-only mode. **`--skip-trust`
+is required**: without it gemini refuses to run in a directory it hasn't been told to trust and
+exits immediately (this is why an unguarded gemini run shows up as an instant error). Avoid
+`-y/--yolo` — that's the opposite of what we want for a reviewer.
 
 ### opencode
 ```bash
 opencode run "$PROMPT" [-m "$MODEL"]
 ```
-No hard read-only flag. The prompt forbids edits; we additionally diff `git status` before/after
-the whole panel to catch stray writes. Model id must be `provider/model` (e.g.
-`anthropic/claude-sonnet-4-5`), unlike the others — if the user gives a bare model name for
-opencode, ask which provider or leave it default.
+**argv-only** — `opencode run` ignores stdin and takes the message as a positional argument, so a
+huge prompt risks `E2BIG` on Linux; `run_reviewer.sh` caps it and falls back to a "run `git diff`
+yourself" pointer. No hard read-only flag; the prompt forbids edits and we diff `git status`
+before/after the panel. Model id must be `provider/model` (e.g. `anthropic/claude-sonnet-4-5`),
+unlike the others — if the user gives a bare model name for opencode, ask which provider or leave
+it default.
 
 ### copilot
 ```bash
-COPILOT_ALLOW_ALL=1 copilot -p "$PROMPT" --allow-all-tools --no-color [--model "$MODEL"]
+copilot -p "$PROMPT" --allow-all-tools --no-color [--model "$MODEL"]
 ```
-Non-interactive mode requires `--allow-all-tools` (or the env var) or it will hang waiting for
-permission confirmations. No read-only switch exists, so the prompt's "do not modify files"
-instruction plus the post-run git check are the guardrails.
+**argv-only** — ignores stdin (a piped-only prompt makes it hang or wander), so the prompt goes in
+argv with the oversize fallback above. `--allow-all-tools` is required for non-interactive mode or
+it hangs waiting for permission confirmations. No read-only switch exists, so the prompt's "do not
+modify files" instruction plus the post-run git check are the guardrails — see the trust-boundary
+note in SKILL.md, since this tool runs fully enabled.
 
 ### agency (agency copilot)
 ```bash
 agency copilot -- -p "$PROMPT" --allow-all-tools --no-color [--model "$MODEL"]
 ```
 `agency copilot` runs GitHub Copilot CLI through Microsoft's Agency wrapper. Arguments after
-`--` are forwarded to the underlying copilot, so the flags match the `copilot` row. This is the
-tool the user most often wants to run **twice with different models** (e.g. a Claude model and a
-GPT model) — each run becomes its own panel entry with a distinct label.
+`--` are forwarded to the underlying copilot, so the flags match the `copilot` row — including
+being **argv-only** (ignores stdin) and running fully tool-enabled (see the trust-boundary note
+in SKILL.md). This is the tool the user most often wants to run **twice with different models**
+(e.g. a Claude model and a GPT model) — each run becomes its own panel entry with a distinct
+label.
 
 On its **first** invocation, `agency` downloads and caches the Copilot CLI binary (you'll see
 "Downloading copilot-darwin-arm64.tar.gz…" on stderr), which adds a few seconds one time — not

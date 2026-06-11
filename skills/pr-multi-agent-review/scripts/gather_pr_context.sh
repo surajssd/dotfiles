@@ -16,7 +16,12 @@ err() {
 
 # --- Resolve the base/feature branch (shared by both modes) -------------------
 detect_branches() {
-    git fetch origin --quiet 2>/dev/null || true
+    # The orchestrator calls this script twice (once --preflight-only, once for
+    # the full gather), so it would otherwise fetch twice. Set PR_REVIEW_SKIP_FETCH=1
+    # on the second call to reuse the refs the first one already updated.
+    if [ "${PR_REVIEW_SKIP_FETCH:-0}" != "1" ]; then
+        git fetch origin --quiet 2>/dev/null || true
+    fi
 
     # `|| true` on each probe: under `set -e` + `pipefail` a failing git call
     # (e.g. no `origin` remote) would otherwise abort the whole script before
@@ -55,9 +60,13 @@ detect_branches() {
 # --- Preflight-only mode ------------------------------------------------------
 if [ "${1:-}" = "--preflight-only" ]; then
     detect_branches
-    echo "export DEFAULT_BRANCH='${DEFAULT_BRANCH}'"
-    echo "export CURRENT_BRANCH='${CURRENT_BRANCH}'"
-    echo "export BASE='${BASE}'"
+    # Use `printf %q` so the values are shell-safe to eval/source even when a branch
+    # name contains metacharacters. git permits `'`, `;`, `$()`, etc. in ref names,
+    # so naive `export VAR='${branch}'` would let a branch like `x';id;#` execute
+    # code in the caller. %q emits a guaranteed-safe quoted token instead.
+    printf 'DEFAULT_BRANCH=%q\n' "${DEFAULT_BRANCH}"
+    printf 'CURRENT_BRANCH=%q\n' "${CURRENT_BRANCH}"
+    printf 'BASE=%q\n' "${BASE}"
     exit 0
 fi
 
@@ -99,6 +108,12 @@ write_no_pr() {
 
 if ! command -v gh >/dev/null 2>&1; then
     write_no_pr "gh CLI not found — no GitHub PR context available."
+elif ! command -v jq >/dev/null 2>&1; then
+    # We parse every gh payload with jq. Without it, the first jq call below would
+    # abort the whole script under `set -e` *after* writing diff/commits/changed-files
+    # but *before* the PR description and threads — a half-populated workspace. Guard
+    # here so a missing jq degrades to best-effort, exactly like a missing gh.
+    write_no_pr "jq not found — install jq for PR description and review-thread context."
 elif ! PR_JSON="$(gh pr view --json number,url,title,body,author,labels,additions,deletions 2>/dev/null)"; then
     write_no_pr "No GitHub PR is associated with branch '${CURRENT_BRANCH}' yet."
 else
@@ -117,7 +132,7 @@ else
         echo "**Title:** $(echo "${PR_JSON}" | jq -r '.title')"
         echo "**Author:** $(echo "${PR_JSON}" | jq -r '.author.login')"
         echo "**URL:** ${PR_URL}"
-        echo "**Labels:** $(echo "${PR_JSON}" | jq -r '[.labels[].name] | join(", ") // "none"')"
+        echo "**Labels:** $(echo "${PR_JSON}" | jq -r 'if (.labels | length) == 0 then "none" else ([.labels[].name] | join(", ")) end')"
         echo "**Changes:** +$(echo "${PR_JSON}" | jq -r '.additions') / -$(echo "${PR_JSON}" | jq -r '.deletions')"
         echo
         echo "## Body"
@@ -126,6 +141,8 @@ else
     } >"${CTX}/pr-description.md"
 
     # Unresolved review threads (humans AND the Copilot bot) via GraphQL.
+    # Caps at 100 threads / 30 comments each — far beyond any realistic PR, so not
+    # paginated; a PR exceeding that would silently miss the overflow.
     # shellcheck disable=SC2016  # $owner/$repo/$pr are GraphQL variables (bound via -f/-F), not shell vars — must stay literal.
     THREADS_JSON="$(gh api graphql \
         -f owner="${OWNER}" -f repo="${REPO}" -F pr="${PR_NUMBER}" \
@@ -151,35 +168,42 @@ else
     {
         echo "# Unresolved GitHub Review Threads"
         echo
+        # The `?` and `// []` below make this null-safe: a 200-with-errors response
+        # where `pullRequest` (or any ancestor) is null — e.g. a token lacking the
+        # `read:pull_request` scope — yields an empty node list instead of jq
+        # iterating null, exiting non-zero, and aborting the script before meta.env.
         if [ -z "${THREADS_JSON}" ]; then
-            echo "_Could not fetch review threads (GraphQL call failed)._"
+            echo "_Could not fetch review threads (GraphQL call failed — check the token's read:pull_request scope)._"
         else
-            COUNT="$(echo "${THREADS_JSON}" | jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved==false)] | length')"
+            COUNT="$(echo "${THREADS_JSON}" | jq '[(.data.repository.pullRequest.reviewThreads.nodes? // [])[] | select(.isResolved==false)] | length' 2>/dev/null || echo 0)"
             if [ "${COUNT}" = "0" ]; then
                 echo "_No unresolved review threads. 🎉_"
             else
                 echo "${COUNT} unresolved thread(s). Each reviewer should judge whether the current diff addresses these."
                 echo
                 echo "${THREADS_JSON}" | jq -r '
-                  .data.repository.pullRequest.reviewThreads.nodes[]
+                  (.data.repository.pullRequest.reviewThreads.nodes? // [])[]
                   | select(.isResolved==false)
                   | "## `\(.path // "general"):\(.line // "?")`\((if .isOutdated then " _(outdated)_" else "" end))\n"
-                    + ([.comments.nodes[] | "- **\(.author.login // "unknown")**: \(.body | gsub("\n"; " "))"] | join("\n"))
-                    + "\n"'
+                    + ([(.comments.nodes? // [])[] | "- **\(.author.login // "unknown")**: \(.body | gsub("\n"; " "))"] | join("\n"))
+                    + "\n"' 2>/dev/null || echo "_(failed to format threads)_"
             fi
         fi
     } >"${CTX}/unresolved-threads.md"
 fi
 
 # --- meta.env for the orchestrator --------------------------------------------
+# `printf %q` for the same reason as preflight: these values (branch names, and
+# OWNER/REPO/URL derived from GitHub data) are sourced by the orchestrator, so they
+# must be shell-safe regardless of metacharacters.
 {
-    echo "OWNER='${OWNER}'"
-    echo "REPO='${REPO}'"
-    echo "PR_NUMBER='${PR_NUMBER}'"
-    echo "PR_URL='${PR_URL}'"
-    echo "BASE='${BASE}'"
-    echo "CURRENT_BRANCH='${CURRENT_BRANCH}'"
-    echo "DEFAULT_BRANCH='${DEFAULT_BRANCH}'"
+    printf 'OWNER=%q\n' "${OWNER}"
+    printf 'REPO=%q\n' "${REPO}"
+    printf 'PR_NUMBER=%q\n' "${PR_NUMBER}"
+    printf 'PR_URL=%q\n' "${PR_URL}"
+    printf 'BASE=%q\n' "${BASE}"
+    printf 'CURRENT_BRANCH=%q\n' "${CURRENT_BRANCH}"
+    printf 'DEFAULT_BRANCH=%q\n' "${DEFAULT_BRANCH}"
 } >"${CTX}/meta.env"
 
 echo "✅ Context gathered in ${CTX}"
