@@ -11,11 +11,10 @@
 # --no-diff — the diff).
 #
 # --no-diff omits the diff block. run_reviewer.sh uses this because it delivers the
-# diff itself (piped on stdin for stdin-capable tools, or as a "run git diff
-# yourself" pointer for argv-only tools when the diff is too big to embed) — so the
-# diff must NOT also be baked into the shared prompt, or it would appear twice / blow
-# the argv limit. A human running build_prompt.sh by hand omits the flag to get the
-# complete prompt.
+# diff itself: it appends the full diff to this prompt and pipes the whole thing to
+# every reviewer on stdin (no size limit). So the diff must NOT also be baked into the
+# shared prompt here, or it would appear twice. A human running build_prompt.sh by hand
+# omits the flag to get the complete prompt.
 #
 # Why embed instead of pointing reviewers at file paths: the panel CLIs disagree
 # wildly on filesystem sandboxing — opencode hard-rejects any path outside its
