@@ -8,7 +8,7 @@ Personal shell configurations, custom utility scripts, and installation automati
 cd ~/code
 git clone https://github.com/surajssd/dotfiles
 cd dotfiles
-make clone-private   # optional: clone private dotfiles submodule
+make clone-private   # optional: clone private dotfiles repo (separate clone)
 make install-all
 ```
 
@@ -34,11 +34,8 @@ make pull-master
 make update
 ```
 
-If you don't have `make` installed:
-
-```bash
-./installers/install-all.sh
-```
+`make` is required to install (the Go tools build via `go install`, which only
+the Make targets run).
 
 ## Repository Structure
 
@@ -46,7 +43,7 @@ If you don't have `make` installed:
 - `local-bin/` — Custom utility scripts (symlinked to `~/.local/bin`)
 - `skills/` — Claude Code skills (symlinked to `~/.claude/skills/`)
 - `installers/` — Installation automation scripts
-- `dotfilesprivate/` — Git submodule for private/sensitive configs and scripts
+- `dotfilesprivate/` — private/sensitive configs and scripts (separate git clone, not a submodule)
 
 ## How It Works
 

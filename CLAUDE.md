@@ -72,7 +72,7 @@ All shell scripts must follow these standards:
 
 ### Symlink-Based Installation
 
-All installers create symlinks (not copies) so that `git pull` immediately updates active configs and scripts. Installers use absolute paths via `realpath` or `pwd` for reliable symlinking and handle both public and private repositories in sequence.
+All installers create symlinks (not copies) so that `git pull` immediately updates active configs and scripts. Installers use absolute paths via `realpath` or `pwd` for reliable symlinking and handle both public and private repositories in sequence. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) lives in `installers/lib.sh`, sourced by `install-local-bin.sh` and `install-skills.sh`.
 
 ### OS-Specific Config Handling
 

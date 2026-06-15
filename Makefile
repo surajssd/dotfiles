@@ -1,44 +1,56 @@
-.PHONY: install-local-bin
-install-local-bin:
-	./installers/install-local-bin.sh
+.DEFAULT_GOAL := help
 
-.PHONY: install-configs
-install-configs:
+# Symlink installers (delegate to scripts)
+.PHONY: install-configs install-local-bin install-skills
+# Go-tool installers (skip with an info message when dir absent)
+.PHONY: install-azure-capacity-finder install-clawbox
+# Orchestration / maintenance
+.PHONY: install-all update pull-master test clone-private clone-azure-capacity-finder help
+
+# Build+install a Go tool in $(1) if its dir exists; otherwise skip.
+define go-install
+@if [ -d "$(1)" ]; then \
+	echo "⏳ Installing $(1) ..."; \
+	cd "$(1)" && go install .; \
+	echo "✅ $(1) installed to ~/go/bin"; \
+else \
+	echo "ℹ️  $(1) not present, skipping"; \
+fi
+endef
+
+help: ## Show this help
+	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*?## "} {printf "  \033[36m%-32s\033[0m %s\n", $$1, $$2}'
+
+install-configs: ## Install config files (shell, git, gpg, tmux, starship, k9s)
 	./installers/install-configs.sh
 
-.PHONY: install-skills
-install-skills:
+install-local-bin: ## Install scripts to ~/.local/bin
+	./installers/install-local-bin.sh
+
+install-skills: ## Install Claude Code skills to ~/.claude/skills
 	./installers/install-skills.sh
 
-.PHONY: install-azure-capacity-finder
-install-azure-capacity-finder:
-	cd azure-capacity-finder && go install .
+install-azure-capacity-finder: ## Install azure-capacity-finder Go tool (skipped if not cloned)
+	$(call go-install,azure-capacity-finder)
 
-.PHONY: install-clawbox
-install-clawbox:
-	cd clawbox && go install .
+install-clawbox: ## Install clawbox Go tool (skipped if absent)
+	$(call go-install,clawbox)
 
-.PHONY: test
-test:
-	cd clawbox && $(MAKE) test
+install-all: install-configs install-local-bin install-skills install-azure-capacity-finder install-clawbox ## Install everything
 
-.PHONY: install-all
-install-all:
-	./installers/install-all.sh
+update: pull-master install-all ## Pull latest from all repos, then reinstall
 
-.PHONY: pull-master
-pull-master:
+pull-master: ## Pull latest from public + private + azure-capacity-finder
 	git pull --ff origin master
 	if [ -d dotfilesprivate ]; then cd dotfilesprivate && git pull --ff origin master; fi
 	if [ -d azure-capacity-finder ]; then cd azure-capacity-finder && git pull --ff origin main; fi
 
-.PHONY: update
-update: pull-master install-all
+test: ## Run clawbox tests
+	$(MAKE) -C clawbox test
 
-.PHONY: clone-private
-clone-private:
+clone-private: ## Clone the private dotfiles repo
 	git clone git@github.com:surajssd/dotfilesprivate.git
 
-.PHONY: clone-azure-capacity-finder
-clone-azure-capacity-finder:
+clone-azure-capacity-finder: ## Clone azure-capacity-finder
 	git clone git@github.com:surajssd/azure-capacity-finder.git

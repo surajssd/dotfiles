@@ -4,30 +4,20 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(realpath "${SCRIPT_DIR}/..")"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib.sh"
 
-mkdir -p ~/.claude/skills
+DEST=~/.claude/skills
 
 echo "⏳ Installing skills from ${REPO_DIR}/skills dir ..."
-shopt -s nullglob
-for skilldir in "${REPO_DIR}"/skills/*/; do
-    [ -d "$skilldir" ] || continue
-    skill=$(basename "$skilldir")
-    ln -sfn "$skilldir" ~/.claude/skills/"$skill"
-done
-shopt -u nullglob
+link_tree dir "${REPO_DIR}/skills" "$DEST"
 echo "✅ Installation successful for public skills!"
 
-if [ -d "${REPO_DIR}/dotfilesprivate/skills" ]; then
+if [[ -d "${REPO_DIR}/dotfilesprivate/skills" ]]; then
     echo "⏳ Installing skills from ${REPO_DIR}/dotfilesprivate/skills ..."
-    shopt -s nullglob
-    for skilldir in "${REPO_DIR}"/dotfilesprivate/skills/*/; do
-        [ -d "$skilldir" ] || continue
-        skill=$(basename "$skilldir")
-        ln -sfn "$skilldir" ~/.claude/skills/"$skill"
-    done
-    shopt -u nullglob
+    link_tree dir "${REPO_DIR}/dotfilesprivate/skills" "$DEST"
     echo "✅ Installation successful for private skills!"
 fi
 
 # Clean up dead symlinks.
-find ~/.claude/skills -type l ! -exec test -e {} \; -delete
+prune_dead_symlinks "$DEST"
