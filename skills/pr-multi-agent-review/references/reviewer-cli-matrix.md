@@ -12,37 +12,48 @@ every tool to wrap its review in `===PR-REVIEW-BEGIN===`/`===PR-REVIEW-END===` s
 `run_reviewer.sh` extracts between them, which is how the TUI progress chatter that `copilot`
 and `agency` print to stdout gets stripped out of the saved review.
 
-## Prompt delivery: stdin vs argv
+## Prompt delivery: stdin for every tool
 
-The diff can be large, and on **Linux a single argv element is capped at 128 KiB**
-(`MAX_ARG_STRLEN`) — independent of the much larger total `ARG_MAX`. So delivery is split by
-what each CLI empirically supports (verified by piping a probe prompt and checking the echoed
-token):
+Early versions of this skill split delivery in two: a handful of "stdin-capable" tools got the
+prompt piped on stdin, while `opencode`/`copilot`/`agency` were treated as **argv-only** and got
+the prompt as a single command-line argument — bounded on **Linux to 128 KiB per argv element**
+(`MAX_ARG_STRLEN`). For a large PR the argv path silently dropped the diff (telling the agent to
+run `git diff` itself) or hard-truncated the prompt, so those reviewers reviewed a crippled input.
 
-| Tool | Reads piped stdin? | Delivery used |
-|---|---|---|
-| `claude` | ✅ | full prompt + diff on **stdin** |
-| `codex` | ✅ (with trailing `-`) | full prompt + diff on **stdin** |
-| `gemini` | ✅ (with `-p ""`) | full prompt + diff on **stdin** |
-| `opencode` | ❌ (ignores stdin) | prompt as **argv**; oversize diff omitted → agent runs `git diff` itself |
-| `copilot` | ❌ (ignores stdin) | prompt as **argv**; same oversize fallback |
-| `agency` | ❌ (ignores stdin) | prompt as **argv**; same oversize fallback |
+That split was based on a wrong assumption. **All six CLIs read the full prompt from stdin** —
+re-verified on 2026-06-12 (copilot 1.0.61, agency 2026.6.10.8, opencode on gemini-3.1) by piping a
+450 KiB prompt whose only real instruction sat at the very *tail* and confirming the tool acted on
+it (so nothing was truncated). `run_reviewer.sh` therefore now delivers **every** tool's prompt —
+instructions + context + the full embedded diff — on **stdin** via a file redirect (`tool < file`,
+not a pipe, so a tool that exits without draining stdin doesn't trigger SIGPIPE). There is no argv
+cap, no diff-pointer fallback, and no truncation for any tool.
 
-For the argv-only tools, `run_reviewer.sh` measures the **whole assembled prompt** (instructions
-+ context + diff) against a safe cap (~96 KiB). If it's over, it omits the embedded diff and tells
-the agent — which runs in the repo working tree — to obtain it with `git diff <base>...HEAD`; if
-even the diff-less prompt is over the cap, it hard-truncates as a last resort. That's why
-`run_reviewer.sh` takes the diff via `--diff-file`/`--base` separately from the diff-less
-`--prompt-file`.
+| Tool | Delivery |
+|---|---|
+| `claude` | full prompt + diff on **stdin** |
+| `codex` | full prompt + diff on **stdin** (trailing `-`) |
+| `gemini` | full prompt + diff on **stdin** (`-p ""`) |
+| `opencode` | full prompt + diff on **stdin** (`run ""`) |
+| `copilot` | full prompt + diff on **stdin** (`-p ""`) |
+| `agency` | full prompt + diff on **stdin** (forwarded `-p ""`) |
+
+### Context window (copilot / agency)
+
+`copilot` and `agency` are run with `--context long_context`, which selects the larger
+context-window tier for tiered-pricing models **without changing the user's configured model**
+(verified the flag works on copilot and that `agency copilot --` forwards it). This is what lets a
+big PR fit. If a model still overflows — it has no long-context tier, or the diff exceeds even the
+long window — `run_reviewer.sh` detects the overflow error and writes a status telling the user to
+re-run that label with `--model <larger-context model>` rather than silently swapping the model.
 
 | Tool | Headless invocation | Read-only flag | Model flag | Notes |
 |---|---|---|---|---|
 | `claude` | `claude -p` (prompt on stdin) | `--permission-mode plan` | `--model <id>` | Plan mode can't edit/run mutating tools. |
 | `codex` | `codex exec -` (stdin) | `--sandbox read-only` | `-m <id>` | Trailing `-` makes `exec` read the prompt from stdin. |
 | `gemini` | `gemini -p "" ` (stdin appended) | `--approval-mode plan` | `-m <id>` | Also needs `--skip-trust` or it refuses in an "untrusted directory". |
-| `opencode` | `opencode run "<prompt>"` | *(none)* | `-m provider/model` | argv-only. No hard read-only; rely on prompt + git check. Model needs `provider/` prefix. |
-| `copilot` | `copilot -p "<prompt>"` | *(none)* | `--model <id>` | argv-only. Needs `--allow-all-tools` for non-interactive; no read-only switch. Add `--no-color`. |
-| `agency` | `agency copilot -- -p "<prompt>"` | *(none)* | via pass-through `-- --model <id>` | argv-only. `agency copilot` wraps Copilot CLI; everything after `--` is forwarded. |
+| `opencode` | `opencode run ""` (stdin) | *(none)* | `-m provider/model` | No hard read-only; rely on prompt + git check. Model needs `provider/` prefix. |
+| `copilot` | `copilot -p ""` (stdin) | *(none)* | `--model <id>` | Needs `--allow-all-tools` for non-interactive; no read-only switch. Add `--no-color` and `--context long_context`. |
+| `agency` | `agency copilot -- -p ""` (stdin) | *(none)* | via pass-through `-- --model <id>` | `agency copilot` wraps Copilot CLI; everything after `--` is forwarded (incl. `--context long_context`). |
 
 ## Per-tool detail
 
@@ -75,35 +86,36 @@ exits immediately (this is why an unguarded gemini run shows up as an instant er
 
 ### opencode
 ```bash
-opencode run "$PROMPT" [-m "$MODEL"]
+opencode run "" [-m "$MODEL"] < prompt-file
 ```
-**argv-only** — `opencode run` ignores stdin and takes the message as a positional argument, so a
-huge prompt risks `E2BIG` on Linux; `run_reviewer.sh` caps it and falls back to a "run `git diff`
-yourself" pointer. No hard read-only flag; the prompt forbids edits and we diff `git status`
-before/after the panel. Model id must be `provider/model` (e.g. `anthropic/claude-sonnet-4-5`),
-unlike the others — if the user gives a bare model name for opencode, ask which provider or leave
-it default.
+`opencode run ""` takes an empty positional and reads the prompt from **stdin** (verified — a
+450 KiB stdin prompt with its instruction at the tail round-trips intact). No hard read-only flag;
+the prompt forbids edits and we diff `git status` before/after the panel. Model id must be
+`provider/model` (e.g. `anthropic/claude-sonnet-4-5`), unlike the others — if the user gives a bare
+model name for opencode, ask which provider or leave it default.
 
 ### copilot
 ```bash
-copilot -p "$PROMPT" --allow-all-tools --no-color [--model "$MODEL"]
+copilot -p "" --allow-all-tools --no-color --context long_context [--model "$MODEL"] < prompt-file
 ```
-**argv-only** — ignores stdin (a piped-only prompt makes it hang or wander), so the prompt goes in
-argv with the oversize fallback above. `--allow-all-tools` is required for non-interactive mode or
-it hangs waiting for permission confirmations. No read-only switch exists, so the prompt's "do not
-modify files" instruction plus the post-run git check are the guardrails — see the trust-boundary
-note in SKILL.md, since this tool runs fully enabled.
+The prompt is read from **stdin** (verified — `copilot -p "" < file`, and even `copilot < file`,
+both work; a 450 KiB tail-token prompt round-trips). `--allow-all-tools` is required for
+non-interactive mode or it hangs waiting for permission confirmations. `--context long_context`
+selects the larger context-window tier so a big PR fits without changing the configured model. No
+read-only switch exists, so the prompt's "do not modify files" instruction plus the post-run git
+check are the guardrails — see the trust-boundary note in SKILL.md, since this tool runs fully
+enabled.
 
 ### agency (agency copilot)
 ```bash
-agency copilot -- -p "$PROMPT" --allow-all-tools --no-color [--model "$MODEL"]
+agency copilot -- -p "" --allow-all-tools --no-color --context long_context [--model "$MODEL"] < prompt-file
 ```
 `agency copilot` runs GitHub Copilot CLI through Microsoft's Agency wrapper. Arguments after
 `--` are forwarded to the underlying copilot, so the flags match the `copilot` row — including
-being **argv-only** (ignores stdin) and running fully tool-enabled (see the trust-boundary note
-in SKILL.md). This is the tool the user most often wants to run **twice with different models**
-(e.g. a Claude model and a GPT model) — each run becomes its own panel entry with a distinct
-label.
+reading the prompt from **stdin** (verified) and forwarding `--context long_context`, and running
+fully tool-enabled (see the trust-boundary note in SKILL.md). This is the tool the user most often
+wants to run **twice with different models** (e.g. a Claude model and a GPT model) — each run
+becomes its own panel entry with a distinct label.
 
 On its **first** invocation, `agency` downloads and caches the Copilot CLI binary (you'll see
 "Downloading copilot-darwin-arm64.tar.gz…" on stderr), which adds a few seconds one time — not

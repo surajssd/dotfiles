@@ -118,7 +118,7 @@ The label is yours to choose — make it readable and unique (it becomes the rev
 
 ## Step 5: Dispatch the panel
 
-Every reviewer gets the **same** instructions + context so differences in output reflect the models, not the prompt. The wrinkle is *diff delivery*: it's what makes large PRs work, and it differs by tool, so `run_reviewer.sh` owns it. You build a **diff-less** prompt with `build_prompt.sh --no-diff` and hand the diff to `run_reviewer.sh` separately:
+Every reviewer gets the **same** instructions + context so differences in output reflect the models, not the prompt. Diff *delivery* is now uniform — every tool gets the full diff on stdin — but `run_reviewer.sh` still owns it, because it appends the diff and handles the per-tool invocation. You build a **diff-less** prompt with `build_prompt.sh --no-diff` and hand the diff to `run_reviewer.sh` separately:
 
 ```bash
 "$SKILL_DIR/scripts/build_prompt.sh" --no-diff \
@@ -128,10 +128,10 @@ Every reviewer gets the **same** instructions + context so differences in output
 
 Why embed the context in the prompt rather than point reviewers at the files? The panel CLIs disagree sharply on filesystem sandboxing — `opencode` hard-rejects any path outside its working directory (so it would read *nothing* from a `/tmp` context dir), others need per-tool `--add-dir` flags. Embedding sidesteps all of it: every reviewer gets byte-identical inputs with zero file-permission friction, and can still read the repo it's running in for surrounding context.
 
-`run_reviewer.sh` takes the diff via `--diff-file` so it can adapt prompt *delivery* per tool — that adaptation is the whole reason large PRs don't break:
+`run_reviewer.sh` takes the diff via `--diff-file` and embeds it into each reviewer's prompt, then delivers the whole thing the same way for every tool — that uniformity is the reason large PRs don't break:
 
-- **stdin-capable tools** (`claude`, `codex`, `gemini`) get the diff-less prompt **plus the diff** concatenated onto **stdin**, which has no size limit.
-- **argv-only tools** (`opencode`, `copilot`, `agency`) get the prompt as one argv string, which is bounded (Linux caps a single argument at 128 KiB). The script measures the **whole assembled prompt** (instructions + context + diff, not just the diff); if it would exceed a safe cap it **omits the embedded diff and instructs the agent to run `git diff "$BASE"...HEAD` itself** — it's running in the repo, so it can — and if even the diff-less prompt is over the cap it hard-truncates as a last resort. No reviewer ever dies with `E2BIG`/"Argument list too long".
+- **Every reviewer** (`claude`, `codex`, `gemini`, `opencode`, `copilot`, `agency`) gets the diff-less prompt **plus the full diff** concatenated onto **stdin**, via a file redirect, which has no size limit. (All six CLIs were verified to read the full prompt from stdin — a 450 KiB tail-token probe round-tripped intact — so the older "argv-only, omit the diff on overflow" path is gone.)
+- **`copilot` and `agency`** additionally run with `--context long_context`, which selects the larger context-window tier so a big PR fits **without changing the model you've configured**. If a model still overflows (no long tier, or the diff exceeds even the long window), `run_reviewer.sh` detects it and writes an `errored` status telling you to re-run that label with `--model <larger-context model>` — it never silently swaps your model.
 
 Read `references/review-prompt.md` yourself once so you know what you're asking the panel to produce — it directs each reviewer to cover correctness, security, performance, error handling, concurrency, API/compat, **test quality**, **human + agentic documentation**, to end with a **manual testing plan**, all cited to `file:line`, and to wrap the whole review between `===PR-REVIEW-BEGIN===`/`===PR-REVIEW-END===` sentinels.
 
@@ -141,11 +141,11 @@ Then launch **one background task per panel entry** — they're independent and 
 "$SKILL_DIR/scripts/run_reviewer.sh" \
   --label "<label>" --tool "<tool>" --model "<model-or-empty>" \
   --prompt-file "$WORKDIR/review-prompt.nodiff.txt" \
-  --diff-file "$WORKDIR/context/diff.patch" --base "$BASE" \
+  --diff-file "$WORKDIR/context/diff.patch" \
   --output-file "$WORKDIR/reviews/<label>.md" --timeout 900
 ```
 
-Launch each as a **background Bash task** (`run_in_background: true`) so they run concurrently and you get notified as each finishes. `run_reviewer.sh` owns every per-tool quirk — headless flag, read-only mode, model flag, stdin-vs-argv delivery, the timeout (with a pure-bash watchdog fallback when neither `timeout` nor `gtimeout` is installed), capturing stdout/stderr, and **extracting the review from between the sentinels** so the TUI progress chatter that `copilot`/`agency` print to stdout doesn't pollute the review. It writes the cleaned review to `<label>.md`, the unfiltered capture to `<label>.md.raw`, and a one-line status to `<label>.md.status`.
+Launch each as a **background Bash task** (`run_in_background: true`) so they run concurrently and you get notified as each finishes. `run_reviewer.sh` owns every per-tool quirk — headless flag, read-only mode, model flag, stdin delivery, the timeout (with a pure-bash watchdog fallback when neither `timeout` nor `gtimeout` is installed), capturing stdout/stderr, and **extracting the review from between the sentinels** so the TUI progress chatter that `copilot`/`agency` print to stdout doesn't pollute the review. It writes the cleaned review to `<label>.md`, the unfiltered capture to `<label>.md.raw`, and a one-line status to `<label>.md.status`.
 
 ### Read-only and the untrusted-input boundary
 
@@ -157,7 +157,7 @@ Mitigate, don't pretend it's airtight:
 - For untrusted branches, prefer reviewing inside a throwaway git worktree and/or with networking disabled for the `copilot`/`opencode`/`agency` runs.
 - Before dispatching, capture `git status --porcelain` as a baseline; after the panel finishes, diff it again. If a reviewer wrote a stray file, note it; don't blindly revert (you might clobber the user's uncommitted work).
 
-As each task completes, glance at its `.status` and the head of its review file. `ok` = a clean sentinel-wrapped review. `ok-empty` = the tool ran but emitted no sentinels (it likely refused or rambled); the salvaged/raw output is kept so you can judge it. `errored` = it crashed, timed out (a stub `.md` is still written so the member stays visible to collation), or auth failed. A missing reviewer is information, not something to hide or silently retry more than once.
+As each task completes, glance at its `.status` and the head of its review file. `ok` = a clean sentinel-wrapped review. `ok-empty` = the tool ran but emitted no sentinels (it likely refused or rambled); the salvaged/raw output is kept so you can judge it. `errored` = it crashed, timed out (a stub `.md` is still written so the member stays visible to collation), or auth failed — and now also covers **context overflow**: a status of "prompt exceeded the model's context window; re-run this label with `--model <larger-context model>`" means even `--context long_context` couldn't hold the PR, so relay that suggestion to the user rather than treating it as a generic crash. A missing reviewer is information, not something to hide or silently retry more than once.
 
 ## Step 6: Collate into the final report
 

@@ -8,19 +8,18 @@
 #       --output-file <f> [--timeout <secs>]
 #
 # --prompt-file holds the instructions + PR context WITHOUT the diff. The diff is
-# passed separately (--diff-file) because delivery differs per tool:
+# passed separately (--diff-file) and appended here, because the assembled prompt
+# (identity + instructions + context + diff) is delivered to EVERY tool the same way:
+# on stdin, via a file redirect (`tool < prompt`). stdin has no argv size limit, so
+# large PRs are fine, and a file redirect (not a pipe) means a tool that exits without
+# draining stdin does NOT make us take SIGPIPE. All six CLIs (claude, codex, gemini,
+# opencode, copilot, agency) were verified to read the full prompt from stdin — see
+# the dated note in references/reviewer-cli-matrix.md.
 #
-#   - stdin-capable tools (claude, codex, gemini) get the FULL prompt (instructions
-#     + context + diff) on stdin via a file redirect (`tool < prompt`). stdin has no
-#     argv size limit, so large PRs are fine, and a file redirect (not a pipe) means
-#     a tool that exits without draining stdin does NOT make us take SIGPIPE.
-#   - argv-only tools (opencode, copilot, agency) get the prompt as a single argv
-#     string. argv is bounded (Linux: MAX_ARG_STRLEN = 128 KiB PER ARGUMENT). If the
-#     ASSEMBLED prompt (identity + instructions + context + diff — not just the diff)
-#     would exceed a safe cap, we OMIT the diff and instruct the agent — which runs in
-#     the repo working tree — to obtain it via `git diff <base>...HEAD`. If even the
-#     diff-less prompt is over the cap, we hard-truncate as a last resort. No reviewer
-#     ever dies with "Argument list too long".
+# copilot and agency additionally get `--context long_context` so a large PR fits
+# their window without swapping the user's configured model. If a model still
+# overflows (no long tier, or the diff exceeds even the long window), the status
+# dispatch detects the overflow and tells the user to re-run with `--model <bigger>`.
 #
 # Writes the review to --output-file and a one-line status to <output-file>.status.
 # Always exits 0 (a failed reviewer is recorded, not fatal) so a background fan-out
@@ -61,6 +60,10 @@ while [ $# -gt 0 ]; do
         shift 2
         ;;
     --base)
+        # Still accepted (SKILL.md passes it) but no longer consumed: the diff is now
+        # always embedded on stdin, so the old "run git diff <base>...HEAD yourself"
+        # pointer that used BASE is gone. Kept for interface stability.
+        # shellcheck disable=SC2034
         BASE="$2"
         shift 2
         ;;
@@ -101,17 +104,6 @@ mkdir -p "$(dirname "${OUTPUT_FILE}")"
 # otherwise reports as "GitHub Copilot CLI"). The collator keys on the label.
 IDENTITY="You are the panel member labelled \"${LABEL}\"${MODEL:+ (model: ${MODEL})}. Begin your review's \"# Review by …\" heading with exactly \"${LABEL}\" so your output is attributed correctly when collated."
 
-# Delivery mode by the tool's verified stdin support (see reviewer-cli-matrix.md).
-case "${TOOL}" in
-claude | codex | gemini) DELIVERY="stdin" ;;
-*) DELIVERY="argv" ;;
-esac
-
-# Stay under Linux's 128 KiB MAX_ARG_STRLEN per-argument limit (macOS ARG_MAX is
-# ~1 MiB total, so Linux is binding). 96 KiB leaves headroom for the other argv
-# elements the CLI adds. Only argv-delivery tools are bound by this.
-ARGV_CAP=$((96 * 1024))
-
 # safe_fence FILE — longest fence that the file's content cannot close. CommonMark
 # lets a closing fence carry ≤3 leading spaces and trailing spaces, so we must treat
 # `   ~~~~  ` as a tilde run too, not only pure-tilde lines — otherwise indented
@@ -130,8 +122,8 @@ safe_fence() {
 }
 
 # Assemble identity + instructions + non-diff context + (optionally) the diff, into
-# a file. We always materialise the prompt to a file: stdin tools read it via redirect
-# (no SIGPIPE), argv tools have it read into a variable below.
+# a file. Every tool reads this file on stdin via a redirect (no SIGPIPE), so there
+# is no argv size limit and the full diff is always embedded.
 PROMPT_BUILT="$(mktemp)"
 trap 'rm -f "${PROMPT_BUILT}"' EXIT
 
@@ -151,57 +143,9 @@ append_full_diff() {
     } >>"${PROMPT_BUILT}"
 }
 
-append_diff_pointer() {
-    # base_ref must be a real ref for the suggested command to run, and it's printf %q
-    # so a branch name with shell metacharacters can't inject when a tool-enabled agent
-    # runs the suggestion. Fall back to a literal default ref, not prose.
-    local base_ref
-    base_ref="$(printf '%q' "${BASE:-origin/HEAD}")"
-    {
-        printf '\n## The diff (ground truth)\n\n'
-        printf 'The diff is too large to embed for this tool. You are running inside the\n'
-        printf 'repository working tree, so obtain it yourself with:\n\n'
-        printf '    git diff %s...HEAD\n\n' "${base_ref}"
-        printf 'Read individual files at HEAD for surrounding context as needed.\n'
-    } >>"${PROMPT_BUILT}"
-}
-
+# stdin has no size limit, so always embed the real diff when one was provided.
 if [ -n "${DIFF_FILE}" ] && [ -s "${DIFF_FILE}" ]; then
-    if [ "${DELIVERY}" = "stdin" ]; then
-        # stdin: no size limit, always embed the real diff.
-        append_full_diff
-    else
-        # argv: decide on the ASSEMBLED prompt size, not just the diff. The non-diff
-        # context (PR body, threads, commit bodies) shares the same 128 KiB argv slot.
-        nondiff_bytes="$(wc -c <"${PROMPT_BUILT}")"
-        diff_bytes="$(wc -c <"${DIFF_FILE}")"
-        if [ "$((nondiff_bytes + diff_bytes))" -le "${ARGV_CAP}" ]; then
-            append_full_diff
-        else
-            # Diff won't fit. If even the non-diff prompt is over budget, truncate it
-            # FIRST (keeping the head, where instructions + sentinel rules live) and
-            # reserve room, so the "fetch the diff yourself" pointer we append next is
-            # never itself cut off — the agent always gets the guidance to read git.
-            if [ "${nondiff_bytes}" -gt "$((ARGV_CAP - 600))" ]; then
-                err "⚠️  [${LABEL}] non-diff context exceeds the argv budget; truncating it."
-                truncated="$(head -c "$((ARGV_CAP - 600))" "${PROMPT_BUILT}")"
-                printf '%s\n\n[context truncated to fit the argument-size limit for this tool]\n' "${truncated}" >"${PROMPT_BUILT}"
-            fi
-            append_diff_pointer
-        fi
-    fi
-fi
-
-# Read the assembled prompt for argv tools. After the logic above it is guaranteed to
-# fit, but clamp defensively in case the instruction body alone is pathologically large.
-if [ "${DELIVERY}" = "argv" ]; then
-    if [ "$(wc -c <"${PROMPT_BUILT}")" -gt "${ARGV_CAP}" ]; then
-        err "⚠️  [${LABEL}] assembled prompt still exceeds ${ARGV_CAP}B; hard-truncating."
-        PROMPT="$(head -c "$((ARGV_CAP - 200))" "${PROMPT_BUILT}")"
-        PROMPT="${PROMPT}"$'\n\n[prompt truncated to fit the argument-size limit for this tool; read files in the repo for anything missing]'
-    else
-        PROMPT="$(cat "${PROMPT_BUILT}")"
-    fi
+    append_full_diff
 fi
 
 # Pick a timeout mechanism. Prefer GNU `timeout`/`gtimeout`; if neither exists
@@ -215,15 +159,14 @@ elif command -v gtimeout >/dev/null 2>&1; then
 fi
 
 # Run "$@" under a ${TIMEOUT}s guard, sending its stdout to ${RAW_FILE} and stderr to
-# ${ERR_FILE}. stdin tools get the prompt via a file redirect from ${PROMPT_BUILT}
-# (a redirect, not a pipe — a tool that exits early without reading stdin won't make
-# us take SIGPIPE and misreport a good review as failed). argv tools read /dev/null.
+# ${ERR_FILE}. The prompt arrives via a file redirect from ${PROMPT_BUILT} (a redirect,
+# not a pipe — a tool that exits early without reading stdin won't make us take SIGPIPE
+# and misreport a good review as failed).
 # Redirects are applied to the command itself (not inherited through backgrounding),
 # so the output files are owned and flushed by the command and are fully visible once
 # `wait` returns. Returns 124 on timeout (matching coreutils).
 run_guarded() {
-    local in=/dev/null
-    [ "${DELIVERY}" = "stdin" ] && in="${PROMPT_BUILT}"
+    local in="${PROMPT_BUILT}"
 
     if [ -n "${TIMEOUT_BIN}" ]; then
         "${TIMEOUT_BIN}" "${TIMEOUT}" "$@" <"${in}" >"${RAW_FILE}" 2>"${ERR_FILE}"
@@ -289,9 +232,10 @@ run_guarded() {
     return "${rc}"
 }
 
-# Build the per-tool command. stdin tools take NO prompt in argv (it arrives via the
-# redirect); argv tools embed ${PROMPT}. Model flag goes BEFORE any positional/stdin
-# marker. Each branch mirrors a row in references/reviewer-cli-matrix.md.
+# Build the per-tool command. The prompt arrives on stdin for EVERY tool (via the
+# redirect in run_guarded), so each command takes an empty prompt slot — `-p ""`,
+# `run ""`, etc. — and the model flag goes BEFORE any positional/stdin marker. Each
+# branch mirrors a row in references/reviewer-cli-matrix.md.
 declare -a CMD
 case "${TOOL}" in
 claude)
@@ -312,16 +256,21 @@ gemini)
     [ -n "${MODEL}" ] && CMD+=(-m "${MODEL}")
     ;;
 opencode)
-    CMD=(opencode run "${PROMPT}")
+    # `opencode run ""` + stdin: opencode reads the prompt from stdin (verified).
+    CMD=(opencode run "")
     [ -n "${MODEL}" ] && CMD+=(-m "${MODEL}")
     ;;
 copilot)
-    CMD=(copilot -p "${PROMPT}" --allow-all-tools --no-color)
+    # Prompt on stdin (verified copilot reads it). `--context long_context` expands the
+    # window so a large PR fits without swapping the configured model; an overflow on a
+    # model with no long tier is detected below and reported with a --model suggestion.
+    CMD=(copilot -p "" --allow-all-tools --no-color --context long_context)
     [ -n "${MODEL}" ] && CMD+=(--model "${MODEL}")
     ;;
 agency)
-    # `agency copilot` forwards everything after `--` to the underlying Copilot CLI.
-    CMD=(agency copilot -- -p "${PROMPT}" --allow-all-tools --no-color)
+    # `agency copilot` forwards everything after `--` to the underlying Copilot CLI,
+    # including the prompt on stdin and `--context long_context` (verified forwarded).
+    CMD=(agency copilot -- -p "" --allow-all-tools --no-color --context long_context)
     [ -n "${MODEL}" ] && CMD+=(--model "${MODEL}")
     ;;
 *)
@@ -338,7 +287,7 @@ agency)
     ;;
 esac
 
-echo "⏳ [${LABEL}] running ${TOOL}${MODEL:+ (model: ${MODEL})} via ${DELIVERY} ..." >&2
+echo "⏳ [${LABEL}] running ${TOOL}${MODEL:+ (model: ${MODEL})} via stdin ..." >&2
 START="$(date +%s)"
 
 # Run the reviewer. run_guarded owns the redirects (to RAW_FILE / ERR_FILE) so the
@@ -396,6 +345,36 @@ write_stub() {
     } >"${OUTPUT_FILE}"
 }
 
+# Did the reviewer fail because the prompt overflowed the model's context window?
+# This is the issue #2 case: copilot/agency on a model whose window (even the
+# long_context tier) can't hold a large PR. We surface an actionable message instead
+# of a cryptic exit code so the user knows to re-run with a larger-context --model.
+#
+# Intrinsic gate FIRST: a sentinel-clean review is NEVER reclassified as overflow.
+# Beyond that, the two greps are deliberately asymmetric to avoid false-positives on a
+# review that merely *discusses* context limits (a review of THIS skill does exactly
+# that):
+#   - `context_length_exceeded` is an underscored API error code that never appears in
+#     ordinary review prose, so it's safe to match on stdout OR stderr.
+#   - the natural-language phrases ("maximum context length", "request too large", …)
+#     DO appear in prose, so they are matched on stderr ONLY — the model's own error
+#     stream — never on stdout.
+looks_like_context_overflow() {
+    has_both_sentinels && return 1
+    grep -qiE 'context_length_exceeded' "${RAW_FILE}" "${ERR_FILE}" 2>/dev/null && return 0
+    grep -qiE 'context (window|length)|maximum context length|too many tokens|exceeds.*context|maximum.*tokens|request too large|input is too long|prompt is too long' \
+        "${ERR_FILE}" 2>/dev/null
+}
+
+# Record an overflow result: stub .md (so collation still sees the member) plus an
+# actionable status telling the user to retry this label on a larger-context model.
+OVERFLOW_HINT="prompt exceeded the model's context window; re-run this label with --model <larger-context model>"
+record_overflow() {
+    write_stub "CONTEXT OVERFLOW"
+    echo "errored: ${OVERFLOW_HINT}" >"${STATUS_FILE}"
+    err "❌ [${LABEL}] ${OVERFLOW_HINT}"
+}
+
 # Decide status. Distinguish the common exit codes rather than collapsing all
 # failures into "FAILED": 124 = timeout, 126 = found-but-not-executable, 127 =
 # command not found (e.g. CLI vanished from PATH mid-run).
@@ -413,23 +392,36 @@ elif [ "${RC}" -eq 0 ] && [ -s "${RAW_FILE}" ]; then
         echo "ok: ${TOOL}${MODEL:+ ${MODEL}} in ${ELAPSED}s" >"${STATUS_FILE}"
         echo "✅ [${LABEL}] done in ${ELAPSED}s" >&2
     elif [ -s "${OUTPUT_FILE}" ]; then
-        # Output but no clean sentinel pair — glyph-stripped salvage. Flag ok-empty so
-        # the collator knows this may be tool-call noise, not a sentinel-clean review.
+        # Output but no clean sentinel pair — glyph-stripped salvage. Salvage WINS over
+        # an overflow guess: we have recoverable content, so keep it rather than clobber
+        # it with a stub. Flag ok-empty so the collator knows this may be tool-call
+        # noise, not a sentinel-clean review.
         echo "ok-empty: ${TOOL} emitted no clean sentinel pair; salvaged raw output in ${ELAPSED}s" >"${STATUS_FILE}"
         err "⚠️  [${LABEL}] finished but no standalone sentinel pair found; salvaged raw output."
+    elif looks_like_context_overflow; then
+        # No extractable output AND stderr shows a context-overflow error.
+        record_overflow
     else
         cp "${RAW_FILE}" "${OUTPUT_FILE}"
         echo "ok-empty: ${TOOL} produced no extractable review in ${ELAPSED}s" >"${STATUS_FILE}"
         err "⚠️  [${LABEL}] finished but produced no usable review."
     fi
 elif [ "${RC}" -eq 0 ]; then
-    write_stub "PRODUCED NO OUTPUT"
-    echo "ok-empty: ${TOOL} exited 0 with empty output in ${ELAPSED}s" >"${STATUS_FILE}"
-    err "⚠️  [${LABEL}] exited 0 but wrote nothing to stdout."
+    if looks_like_context_overflow; then
+        record_overflow
+    else
+        write_stub "PRODUCED NO OUTPUT"
+        echo "ok-empty: ${TOOL} exited 0 with empty output in ${ELAPSED}s" >"${STATUS_FILE}"
+        err "⚠️  [${LABEL}] exited 0 but wrote nothing to stdout."
+    fi
 else
-    write_stub "FAILED"
-    echo "errored: exit ${RC} after ${ELAPSED}s" >"${STATUS_FILE}"
-    err "❌ [${LABEL}] failed (exit ${RC}); see ${ERR_FILE}"
+    if looks_like_context_overflow; then
+        record_overflow
+    else
+        write_stub "FAILED"
+        echo "errored: exit ${RC} after ${ELAPSED}s" >"${STATUS_FILE}"
+        err "❌ [${LABEL}] failed (exit ${RC}); see ${ERR_FILE}"
+    fi
 fi
 
 exit 0
