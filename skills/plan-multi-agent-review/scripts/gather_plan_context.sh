@@ -55,8 +55,16 @@ esac
 PLAN_NAME="$(basename "${PLAN_PATH}")"
 
 # Resolve the repo we vet the plan against and ESTABLISH it as the anchor for every
-# lookup. git -C means we never depend on the caller's cwd.
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "${PWD}")"
+# lookup. git -C means we never depend on the caller's cwd. The skill is meaningless
+# outside a git repo — `git ls-files` is the grounding authority — so fail fast rather
+# than silently falling back to $PWD (which yields an empty file list and mis-flags every
+# referenced path as "missing").
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -z "${REPO_ROOT}" ]; then
+    err "❌ plan-multi-agent-review must be run inside the git repository the plan targets"
+    err "   (git rev-parse --show-toplevel found no repo at ${PWD})"
+    exit 1
+fi
 CURRENT_BRANCH="$(git -C "${REPO_ROOT}" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '(no branch)')"
 
 CTX="${WORKDIR}/context"
@@ -95,9 +103,12 @@ is_path_shaped() {
 # Paths live in inline-code spans and in H2–H4 heading tails. Pull those lines, strip URLs
 # and word-leading absolute/home paths (a path that STARTS with '/' or '~' is external, not
 # a repo-relative claim — but we must not chop the '/' inside scripts/run_reviewer.sh, so we
-# only strip when the '/'/'~' is at a word boundary), then carve path-like runs. The token
-# regex starts at an alphanumeric, so backtick/heading/ordinal punctuation falls away and a
-# trailing `:line` ref (config.go:88) splits off on the ':'.
+# only strip when the '/'/'~' is at a word boundary, preserving that boundary char via \1),
+# then carve path-like runs. The token regex allows ONE optional leading dot so dotfiles and
+# dot-directories survive intact (`.github/...`, `.cursor/rules/...`, `.env`); requiring an
+# alphanumeric right after that dot means a `..` run can't start a token, so this doesn't
+# resurrect "../.." traversal references. A trailing `:line` ref (config.go:88) still splits
+# off on the ':'.
 extract_tokens() {
     {
         # shellcheck disable=SC2016  # literal backticks: matching inline-code spans in the plan, not expanding vars.
@@ -105,8 +116,8 @@ extract_tokens() {
         grep -E '^#{2,4} ' "${PLAN_PATH}" 2>/dev/null || true
     } |
         sed -E 's#https?://[^ ]+##g' |
-        sed -E 's#(^|[[:space:]])[~/][^[:space:]]*##g' |
-        grep -oE '[A-Za-z0-9_][A-Za-z0-9._/+-]*' || true
+        sed -E 's#(^|[[:space:]])[~/][^[:space:]]*#\1#g' |
+        grep -oE '\.?[A-Za-z0-9_][A-Za-z0-9._/+-]*' || true
 }
 
 ALL_FILES="$(mktemp "${TMP_WORK}/all.XXXXXX")"

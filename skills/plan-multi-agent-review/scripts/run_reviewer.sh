@@ -7,19 +7,21 @@
 #       --prompt-file <f> [--diff-file <f>] [--base <ref>] \
 #       --output-file <f> [--timeout <secs>]
 #
-# --prompt-file holds the instructions + PR context WITHOUT the diff. The diff is
-# passed separately (--diff-file) and appended here, because the assembled prompt
-# (identity + instructions + context + diff) is delivered to EVERY tool the same way:
-# on stdin, via a file redirect (`tool < prompt`). stdin has no argv size limit, so
-# large PRs are fine, and a file redirect (not a pipe) means a tool that exits without
-# draining stdin does NOT make us take SIGPIPE. All six CLIs (claude, codex, gemini,
-# opencode, copilot, agency) were verified to read the full prompt from stdin — see
-# the dated note in references/reviewer-cli-matrix.md.
+# --prompt-file holds the full self-contained review prompt (instructions + plan context),
+# already assembled by build_prompt.sh. This skill has no diff, so --diff-file is passed
+# EMPTY ("") and the diff-append path below stays inert; the argument is retained only for
+# interface parity with the shared pr-multi-agent-review copy of this script. The assembled
+# prompt (identity + prompt-file [+ diff, when one is given]) is delivered to EVERY tool the
+# same way: on stdin, via a file redirect (`tool < prompt`). stdin has no argv size limit, so
+# a large plan plus many embedded files is fine, and a file redirect (not a pipe) means a tool
+# that exits without draining stdin does NOT make us take SIGPIPE. All six CLIs (claude, codex,
+# gemini, opencode, copilot, agency) were verified to read the full prompt from stdin — see the
+# dated note in references/reviewer-cli-matrix.md.
 #
-# copilot and agency additionally get `--context long_context` so a large PR fits
-# their window without swapping the user's configured model. If a model still
-# overflows (no long tier, or the diff exceeds even the long window), the status
-# dispatch detects the overflow and tells the user to re-run with `--model <bigger>`.
+# copilot and agency additionally get `--context long_context` so a large plan + embedded files
+# fit their window without swapping the user's configured model. If a model still overflows (no
+# long tier, or the prompt exceeds even the long window), the status dispatch detects the
+# overflow and tells the user to re-run with `--model <bigger>`.
 #
 # Writes the review to --output-file and a one-line status to <output-file>.status.
 # Always exits 0 (a failed reviewer is recorded, not fatal) so a background fan-out
@@ -60,9 +62,9 @@ while [ $# -gt 0 ]; do
         shift 2
         ;;
     --base)
-        # Still accepted (SKILL.md passes it) but no longer consumed: the diff is now
-        # always embedded on stdin, so the old "run git diff <base>...HEAD yourself"
-        # pointer that used BASE is gone. Kept for interface stability.
+        # Accepted but unused. This plan-review skill never passes --base (there is no diff
+        # to bound); the argument is kept only for interface parity with the shared
+        # pr-multi-agent-review copy of this script. Kept for interface stability.
         # shellcheck disable=SC2034
         BASE="$2"
         shift 2
@@ -262,8 +264,8 @@ opencode)
     ;;
 copilot)
     # Prompt on stdin (verified copilot reads it). `--context long_context` expands the
-    # window so a large PR fits without swapping the configured model; an overflow on a
-    # model with no long tier is detected below and reported with a --model suggestion.
+    # window so a large plan + embedded files fit without swapping the configured model; an
+    # overflow on a model with no long tier is detected below and reported with a --model suggestion.
     CMD=(copilot -p "" --allow-all-tools --no-color --context long_context)
     [ -n "${MODEL}" ] && CMD+=(--model "${MODEL}")
     ;;
@@ -346,9 +348,9 @@ write_stub() {
 }
 
 # Did the reviewer fail because the prompt overflowed the model's context window?
-# This is the issue #2 case: copilot/agency on a model whose window (even the
-# long_context tier) can't hold a large PR. We surface an actionable message instead
-# of a cryptic exit code so the user knows to re-run with a larger-context --model.
+# This is the issue #2 case: copilot/agency on a model whose window (even the long_context
+# tier) can't hold a large plan plus its embedded referenced files. We surface an actionable
+# message instead of a cryptic exit code so the user knows to re-run with a larger --model.
 #
 # Intrinsic gate FIRST: a sentinel-clean review is NEVER reclassified as overflow.
 # Beyond that, the two greps are deliberately asymmetric to avoid false-positives on a

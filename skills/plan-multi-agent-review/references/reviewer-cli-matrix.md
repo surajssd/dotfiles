@@ -59,14 +59,14 @@ in `gather_plan_context.sh` keeps this rare; the rest is left to live repo explo
 
 ### claude
 ```bash
-printf '%s' "$PROMPT" | claude -p --permission-mode plan [--model "$MODEL"]
+claude -p --permission-mode plan [--model "$MODEL"] < prompt-file
 ```
 Plan mode is genuinely read-only — it cannot apply edits or run mutating bash. Safest of the
 panel. Reads the prompt from stdin in `-p` mode, so no argv size limit applies.
 
 ### codex
 ```bash
-printf '%s' "$PROMPT" | codex exec --sandbox read-only --skip-git-repo-check --color never [-m "$MODEL"] -
+codex exec --sandbox read-only --skip-git-repo-check --color never [-m "$MODEL"] - < prompt-file
 ```
 `codex exec` is the non-interactive entry point (alias `codex e`); the trailing `-` makes it read
 the prompt from stdin. `--sandbox read-only` blocks writes. `--skip-git-repo-check` avoids a
@@ -76,7 +76,7 @@ fine, but flags-before-positional is the safe convention).
 
 ### gemini
 ```bash
-printf '%s' "$PROMPT" | gemini -p "" --approval-mode plan --skip-trust [-m "$MODEL"]
+gemini -p "" --approval-mode plan --skip-trust [-m "$MODEL"] < prompt-file
 ```
 `gemini -p ""` runs headless and appends piped stdin to the (empty) prompt value, so the prompt
 arrives via stdin (no argv limit). `--approval-mode plan` is the read-only mode. **`--skip-trust`
