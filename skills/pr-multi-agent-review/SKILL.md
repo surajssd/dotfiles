@@ -118,7 +118,7 @@ The label is yours to choose — make it readable and unique (it becomes the rev
 
 ## Step 5: Dispatch the panel
 
-Every reviewer gets the **same** instructions + context so differences in output reflect the models, not the prompt. The wrinkle is *diff delivery*: it's what makes large PRs work, and it differs by tool, so `run_reviewer.sh` owns it. You build a **diff-less** prompt with `build_prompt.sh --no-diff` and hand the diff to `run_reviewer.sh` separately:
+Every reviewer gets the **same** instructions + context so differences in output reflect the models, not the prompt. Diff *delivery* is now uniform — every tool gets the full diff on stdin — but `run_reviewer.sh` still owns it, because it appends the diff and handles the per-tool invocation. You build a **diff-less** prompt with `build_prompt.sh --no-diff` and hand the diff to `run_reviewer.sh` separately:
 
 ```bash
 "$SKILL_DIR/scripts/build_prompt.sh" --no-diff \
@@ -141,7 +141,7 @@ Then launch **one background task per panel entry** — they're independent and 
 "$SKILL_DIR/scripts/run_reviewer.sh" \
   --label "<label>" --tool "<tool>" --model "<model-or-empty>" \
   --prompt-file "$WORKDIR/review-prompt.nodiff.txt" \
-  --diff-file "$WORKDIR/context/diff.patch" --base "$BASE" \
+  --diff-file "$WORKDIR/context/diff.patch" \
   --output-file "$WORKDIR/reviews/<label>.md" --timeout 900
 ```
 

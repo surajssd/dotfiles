@@ -350,16 +350,19 @@ write_stub() {
 # long_context tier) can't hold a large PR. We surface an actionable message instead
 # of a cryptic exit code so the user knows to re-run with a larger-context --model.
 #
-# Intrinsic gate FIRST: a sentinel-clean review is NEVER reclassified as overflow,
-# so a genuine review that merely *discusses* context windows can't false-positive.
-# API-literal signatures (which don't appear in ordinary review prose) are matched in
-# either stream; the generic English phrases are matched in stderr ONLY, where a
-# model's own error lives — never in the review text on stdout.
+# Intrinsic gate FIRST: a sentinel-clean review is NEVER reclassified as overflow.
+# Beyond that, the two greps are deliberately asymmetric to avoid false-positives on a
+# review that merely *discusses* context limits (a review of THIS skill does exactly
+# that):
+#   - `context_length_exceeded` is an underscored API error code that never appears in
+#     ordinary review prose, so it's safe to match on stdout OR stderr.
+#   - the natural-language phrases ("maximum context length", "request too large", …)
+#     DO appear in prose, so they are matched on stderr ONLY — the model's own error
+#     stream — never on stdout.
 looks_like_context_overflow() {
     has_both_sentinels && return 1
-    grep -qiE 'context_length_exceeded|request too large|input is too long|prompt is too long|maximum context length' \
-        "${RAW_FILE}" "${ERR_FILE}" 2>/dev/null && return 0
-    grep -qiE 'context (window|length)|too many tokens|exceeds.*context|maximum.*tokens' \
+    grep -qiE 'context_length_exceeded' "${RAW_FILE}" "${ERR_FILE}" 2>/dev/null && return 0
+    grep -qiE 'context (window|length)|maximum context length|too many tokens|exceeds.*context|maximum.*tokens|request too large|input is too long|prompt is too long' \
         "${ERR_FILE}" 2>/dev/null
 }
 
@@ -388,14 +391,16 @@ elif [ "${RC}" -eq 0 ] && [ -s "${RAW_FILE}" ]; then
     if [ -s "${OUTPUT_FILE}" ] && has_both_sentinels; then
         echo "ok: ${TOOL}${MODEL:+ ${MODEL}} in ${ELAPSED}s" >"${STATUS_FILE}"
         echo "✅ [${LABEL}] done in ${ELAPSED}s" >&2
-    elif looks_like_context_overflow; then
-        # Output, but no clean review and stderr shows a context-overflow error.
-        record_overflow
     elif [ -s "${OUTPUT_FILE}" ]; then
-        # Output but no clean sentinel pair — glyph-stripped salvage. Flag ok-empty so
-        # the collator knows this may be tool-call noise, not a sentinel-clean review.
+        # Output but no clean sentinel pair — glyph-stripped salvage. Salvage WINS over
+        # an overflow guess: we have recoverable content, so keep it rather than clobber
+        # it with a stub. Flag ok-empty so the collator knows this may be tool-call
+        # noise, not a sentinel-clean review.
         echo "ok-empty: ${TOOL} emitted no clean sentinel pair; salvaged raw output in ${ELAPSED}s" >"${STATUS_FILE}"
         err "⚠️  [${LABEL}] finished but no standalone sentinel pair found; salvaged raw output."
+    elif looks_like_context_overflow; then
+        # No extractable output AND stderr shows a context-overflow error.
+        record_overflow
     else
         cp "${RAW_FILE}" "${OUTPUT_FILE}"
         echo "ok-empty: ${TOOL} produced no extractable review in ${ELAPSED}s" >"${STATUS_FILE}"
