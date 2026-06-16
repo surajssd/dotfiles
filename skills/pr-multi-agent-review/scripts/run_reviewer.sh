@@ -3,9 +3,14 @@
 # run_reviewer.sh — run ONE reviewer CLI headlessly and read-only, capturing its review.
 #
 # Usage:
-#   run_reviewer.sh --label <l> --tool <t> --model <m-or-empty> \
+#   run_reviewer.sh --label <l> --tool <t> --model <m-or-empty> [--effort <e>] \
 #       --prompt-file <f> [--diff-file <f>] [--base <ref>] \
 #       --output-file <f> [--timeout <secs>]
+#
+# --effort sets per-tool reasoning effort (copilot/agency --effort, codex
+# model_reasoning_effort, opencode --variant). Valid values differ per tool; the
+# orchestrator supplies one the chosen tool accepts. claude/gemini have no such flag,
+# so an --effort given for them is ignored with a note. Empty = tool default.
 #
 # --prompt-file holds the instructions + PR context WITHOUT the diff. The diff is
 # passed separately (--diff-file) and appended here, because the assembled prompt
@@ -36,7 +41,7 @@ err() {
     echo "$*" >&2
 }
 
-LABEL="" TOOL="" MODEL="" PROMPT_FILE="" DIFF_FILE="" BASE="" OUTPUT_FILE="" TIMEOUT=600
+LABEL="" TOOL="" MODEL="" EFFORT="" PROMPT_FILE="" DIFF_FILE="" BASE="" OUTPUT_FILE="" TIMEOUT=600
 while [ $# -gt 0 ]; do
     case "$1" in
     --label)
@@ -49,6 +54,10 @@ while [ $# -gt 0 ]; do
         ;;
     --model)
         MODEL="$2"
+        shift 2
+        ;;
+    --effort)
+        EFFORT="$2"
         shift 2
         ;;
     --prompt-file)
@@ -102,7 +111,7 @@ mkdir -p "$(dirname "${OUTPUT_FILE}")"
 # Prepend the reviewer's assigned panel label so its review self-identifies by that
 # label rather than the underlying engine (matters most for `agency copilot`, which
 # otherwise reports as "GitHub Copilot CLI"). The collator keys on the label.
-IDENTITY="You are the panel member labelled \"${LABEL}\"${MODEL:+ (model: ${MODEL})}. Begin your review's \"# Review by …\" heading with exactly \"${LABEL}\" so your output is attributed correctly when collated."
+IDENTITY="You are the panel member labelled \"${LABEL}\"${MODEL:+ (model: ${MODEL})}${EFFORT:+ (effort: ${EFFORT})}. Begin your review's \"# Review by …\" heading with exactly \"${LABEL}\" so your output is attributed correctly when collated."
 
 # safe_fence FILE — longest fence that the file's content cannot close. CommonMark
 # lets a closing fence carry ≤3 leading spaces and trailing spaces, so we must treat
@@ -241,11 +250,14 @@ case "${TOOL}" in
 claude)
     CMD=(claude -p --permission-mode plan)
     [ -n "${MODEL}" ] && CMD+=(--model "${MODEL}")
+    [ -n "${EFFORT}" ] && err "ℹ️ [${LABEL}] claude has no reasoning-effort flag in -p mode; ignoring --effort ${EFFORT}"
     ;;
 codex)
     # `-m` before the trailing `-` (stdin marker), so the flag is unambiguously a flag.
     CMD=(codex exec --sandbox read-only --skip-git-repo-check --color never)
     [ -n "${MODEL}" ] && CMD+=(-m "${MODEL}")
+    # Reasoning effort is a config override, not a flag; must also precede the `-`.
+    [ -n "${EFFORT}" ] && CMD+=(-c "model_reasoning_effort=\"${EFFORT}\"")
     CMD+=(-)
     ;;
 gemini)
@@ -254,11 +266,14 @@ gemini)
     # gemini exit immediately when run in a repo it hasn't been told to trust.
     CMD=(gemini -p "" --approval-mode plan --skip-trust)
     [ -n "${MODEL}" ] && CMD+=(-m "${MODEL}")
+    [ -n "${EFFORT}" ] && err "ℹ️ [${LABEL}] gemini has no reasoning-effort flag; ignoring --effort ${EFFORT}"
     ;;
 opencode)
     # `opencode run ""` + stdin: opencode reads the prompt from stdin (verified).
     CMD=(opencode run "")
     [ -n "${MODEL}" ] && CMD+=(-m "${MODEL}")
+    # opencode calls reasoning effort a model "variant" (provider-specific levels).
+    [ -n "${EFFORT}" ] && CMD+=(--variant "${EFFORT}")
     ;;
 copilot)
     # Prompt on stdin (verified copilot reads it). `--context long_context` expands the
@@ -266,12 +281,15 @@ copilot)
     # model with no long tier is detected below and reported with a --model suggestion.
     CMD=(copilot -p "" --allow-all-tools --no-color --context long_context)
     [ -n "${MODEL}" ] && CMD+=(--model "${MODEL}")
+    [ -n "${EFFORT}" ] && CMD+=(--effort "${EFFORT}")
     ;;
 agency)
     # `agency copilot` forwards everything after `--` to the underlying Copilot CLI,
     # including the prompt on stdin and `--context long_context` (verified forwarded).
     CMD=(agency copilot -- -p "" --allow-all-tools --no-color --context long_context)
     [ -n "${MODEL}" ] && CMD+=(--model "${MODEL}")
+    # Forwarded after `--` to Copilot, same as the standalone copilot branch.
+    [ -n "${EFFORT}" ] && CMD+=(--effort "${EFFORT}")
     ;;
 *)
     err "❌ Unknown tool: ${TOOL}"
@@ -287,7 +305,7 @@ agency)
     ;;
 esac
 
-echo "⏳ [${LABEL}] running ${TOOL}${MODEL:+ (model: ${MODEL})} via stdin ..." >&2
+echo "⏳ [${LABEL}] running ${TOOL}${MODEL:+ (model: ${MODEL})}${EFFORT:+ (effort: ${EFFORT})} via stdin ..." >&2
 START="$(date +%s)"
 
 # Run the reviewer. run_guarded owns the redirects (to RAW_FILE / ERR_FILE) so the

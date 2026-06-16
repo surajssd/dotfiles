@@ -46,14 +46,20 @@ the overflow error and writes a status telling the user to re-run that label wit
 <larger-context model>` rather than silently swapping the model. (The ≤10-file / ≤256 KB embed cap
 in `gather_plan_context.sh` keeps this rare; the rest is left to live repo exploration.)
 
-| Tool | Headless invocation | Read-only flag | Model flag | Notes |
-|---|---|---|---|---|
-| `claude` | `claude -p` (prompt on stdin) | `--permission-mode plan` | `--model <id>` | Plan mode can't edit/run mutating tools. |
-| `codex` | `codex exec -` (stdin) | `--sandbox read-only` | `-m <id>` | Trailing `-` makes `exec` read the prompt from stdin. |
-| `gemini` | `gemini -p "" ` (stdin appended) | `--approval-mode plan` | `-m <id>` | Also needs `--skip-trust` or it refuses in an "untrusted directory". |
-| `opencode` | `opencode run ""` (stdin) | *(none)* | `-m provider/model` | No hard read-only; rely on prompt + git check. Model needs `provider/` prefix. |
-| `copilot` | `copilot -p ""` (stdin) | *(none)* | `--model <id>` | Needs `--allow-all-tools` for non-interactive; no read-only switch. Add `--no-color` and `--context long_context`. |
-| `agency` | `agency copilot -- -p ""` (stdin) | *(none)* | via pass-through `-- --model <id>` | `agency copilot` wraps Copilot CLI; everything after `--` is forwarded (incl. `--context long_context`). |
+| Tool | Headless invocation | Read-only flag | Model flag | Effort flag | Notes |
+|---|---|---|---|---|---|
+| `claude` | `claude -p` (prompt on stdin) | `--permission-mode plan` | `--model <id>` | *(none)* | Plan mode can't edit/run mutating tools. No reasoning-effort flag in `-p` mode. |
+| `codex` | `codex exec -` (stdin) | `--sandbox read-only` | `-m <id>` | `-c model_reasoning_effort="<lvl>"` | Trailing `-` makes `exec` read the prompt from stdin. Effort is a config override (precede the `-`). |
+| `gemini` | `gemini -p "" ` (stdin appended) | `--approval-mode plan` | `-m <id>` | *(none)* | Also needs `--skip-trust` or it refuses in an "untrusted directory". No reasoning-effort flag. |
+| `opencode` | `opencode run ""` (stdin) | *(none)* | `-m provider/model` | `--variant <lvl>` | No hard read-only; rely on prompt + git check. Model needs `provider/` prefix. `--variant` is provider-specific reasoning effort. |
+| `copilot` | `copilot -p ""` (stdin) | *(none)* | `--model <id>` | `--effort <lvl>` | Needs `--allow-all-tools` for non-interactive; no read-only switch. Add `--no-color` and `--context long_context`. |
+| `agency` | `agency copilot -- -p ""` (stdin) | *(none)* | via pass-through `-- --model <id>` | via pass-through `-- --effort <lvl>` | `agency copilot` wraps Copilot CLI; everything after `--` is forwarded (incl. `--context long_context`). |
+
+**Effort values differ per tool** — the orchestrator must supply one the chosen tool accepts:
+`copilot`/`agency` `--effort` → `none, low, medium, high, xhigh, max`; `codex`
+`model_reasoning_effort` → `minimal, low, medium, high`; `opencode` `--variant` → provider-specific
+(e.g. `minimal, low, high, max`). `claude`/`gemini` have none — an `--effort` passed for them is
+ignored with a note on stderr and the reviewer still runs.
 
 ## Per-tool detail
 
@@ -66,13 +72,15 @@ panel. Reads the prompt from stdin in `-p` mode, so no argv size limit applies.
 
 ### codex
 ```bash
-codex exec --sandbox read-only --skip-git-repo-check --color never [-m "$MODEL"] - < prompt-file
+codex exec --sandbox read-only --skip-git-repo-check --color never [-m "$MODEL"] [-c model_reasoning_effort="$EFFORT"] - < prompt-file
 ```
 `codex exec` is the non-interactive entry point (alias `codex e`); the trailing `-` makes it read
 the prompt from stdin. `--sandbox read-only` blocks writes. `--skip-git-repo-check` avoids a
 refusal if run from an unusual cwd. Put `-m <model>` *before* the `-` so the flag is
 unambiguously a flag and not mistaken for the stdin positional (verified: codex parses `… -m X -`
-fine, but flags-before-positional is the safe convention).
+fine, but flags-before-positional is the safe convention). Reasoning effort has no dedicated flag;
+it's a config override (`-c model_reasoning_effort="high"`, values `minimal|low|medium|high`),
+which must likewise precede the `-`.
 
 ### gemini
 ```bash
@@ -86,36 +94,39 @@ exits immediately (this is why an unguarded gemini run shows up as an instant er
 
 ### opencode
 ```bash
-opencode run "" [-m "$MODEL"] < prompt-file
+opencode run "" [-m "$MODEL"] [--variant "$EFFORT"] < prompt-file
 ```
 `opencode run ""` takes an empty positional and reads the prompt from **stdin** (verified — a
 450 KiB stdin prompt with its instruction at the tail round-trips intact). No hard read-only flag;
 the prompt forbids edits and we diff `git status` before/after the panel. Model id must be
 `provider/model` (e.g. `anthropic/claude-sonnet-4-5`), unlike the others — if the user gives a bare
-model name for opencode, ask which provider or leave it default.
+model name for opencode, ask which provider or leave it default. `--variant` selects the
+provider-specific reasoning-effort level (e.g. `high`, `max`, `minimal`).
 
 ### copilot
 ```bash
-copilot -p "" --allow-all-tools --no-color --context long_context [--model "$MODEL"] < prompt-file
+copilot -p "" --allow-all-tools --no-color --context long_context [--model "$MODEL"] [--effort "$EFFORT"] < prompt-file
 ```
 The prompt is read from **stdin** (verified — `copilot -p "" < file`, and even `copilot < file`,
 both work; a 450 KiB tail-token prompt round-trips). `--allow-all-tools` is required for
 non-interactive mode or it hangs waiting for permission confirmations. `--context long_context`
 selects the larger context-window tier so a large plan + embedded files fit without changing the
-configured model. No read-only switch exists, so the prompt's "do not modify files" instruction
-plus the post-run git check are the guardrails — see the trust-boundary note in SKILL.md, since
-this tool runs fully enabled and is now pointed at a live repo it can explore.
+configured model. `--effort` (alias `--reasoning-effort`) sets the reasoning level —
+`none|low|medium|high|xhigh|max` ("extra high" = `xhigh`). No read-only switch exists, so the
+prompt's "do not modify files" instruction plus the post-run git check are the guardrails — see the
+trust-boundary note in SKILL.md, since this tool runs fully enabled and is now pointed at a live
+repo it can explore.
 
 ### agency (agency copilot)
 ```bash
-agency copilot -- -p "" --allow-all-tools --no-color --context long_context [--model "$MODEL"] < prompt-file
+agency copilot -- -p "" --allow-all-tools --no-color --context long_context [--model "$MODEL"] [--effort "$EFFORT"] < prompt-file
 ```
 `agency copilot` runs GitHub Copilot CLI through Microsoft's Agency wrapper. Arguments after
 `--` are forwarded to the underlying copilot, so the flags match the `copilot` row — including
-reading the prompt from **stdin** (verified) and forwarding `--context long_context`, and running
-fully tool-enabled (see the trust-boundary note in SKILL.md). This is the tool the user most often
-wants to run **twice with different models** (e.g. a Claude model and a GPT model) — each run
-becomes its own panel entry with a distinct label.
+reading the prompt from **stdin** (verified) and forwarding `--context long_context` and `--effort`,
+and running fully tool-enabled (see the trust-boundary note in SKILL.md). This is the tool the user
+most often wants to run **twice with different models** (e.g. a Claude model and a GPT model) — each
+run becomes its own panel entry with a distinct label.
 
 On its **first** invocation, `agency` downloads and caches the Copilot CLI binary (you'll see
 "Downloading copilot-darwin-arm64.tar.gz…" on stderr), which adds a few seconds one time — not
@@ -131,7 +142,7 @@ when both are in the panel (e.g. `agency-opus` vs `copilot`).
 ## Adding a new reviewer
 
 1. Add its binary name to the `CANDIDATES` array in `scripts/detect_reviewers.sh`.
-2. Add a `case` branch in `scripts/run_reviewer.sh` building its headless + read-only + model command.
+2. Add a `case` branch in `scripts/run_reviewer.sh` building its headless + read-only + model command (and its reasoning-effort flag, if it has one — else `err` a note when `--effort` is non-empty).
 3. Add a row here.
 
 Keep the three in sync — the script is what runs, this table is how a human checks it. After

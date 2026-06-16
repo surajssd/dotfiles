@@ -134,25 +134,37 @@ roster is `claude`, `codex`, `gemini`, `opencode`, `copilot`, and `agency` (agen
 your panel from the `available` lines and tell the user which tools were skipped and why ("`gemini`
 not in PATH — skipping").
 
-### Models: pre-selected by default
+### Models and reasoning effort: pre-selected by default
 
-By default, pass **no model flag** — each tool uses whatever model it's configured with. This
-respects the user's existing setup and is what they want unless they say otherwise.
+By default, pass **no model flag and no effort flag** — each tool uses whatever model and reasoning
+level it's configured with. This respects the user's existing setup and is what they want unless
+they say otherwise.
 
-Override only when the user explicitly names models. The interesting case is running **the same
-tool more than once with different models** — e.g. "run agency copilot with a Claude model and
-again with a GPT model." Model-capable tools accept `--model`/`-m`; the panel just gets two entries
-for that tool, each with a distinct label so their reviews don't collide:
+Override only when the user explicitly names models or a reasoning effort. The interesting case is
+running **the same tool more than once with different models** — e.g. "run agency copilot with a
+Claude model and again with a GPT model." Model-capable tools accept `--model`/`-m`; the panel just
+gets two entries for that tool, each with a distinct label so their reviews don't collide. Each
+panel entry is a `label | tool | model | effort` tuple (model and effort default to empty):
 
-| User asks for | Panel entries (label \| tool \| model) |
+| User asks for | Panel entries (label \| tool \| model \| effort) |
 |---|---|
-| default (no models named) | `claude\|claude\|`, `codex\|codex\|`, … one per available tool |
-| "agency copilot with sonnet and with gpt-5" | `agency-sonnet\|agency\|claude-sonnet-4.5`, `agency-gpt5\|agency\|gpt-5` |
-| "codex on gpt-5-codex" | `codex\|codex\|gpt-5-codex` |
+| default (no models named) | `claude\|claude\|\|`, `codex\|codex\|\|`, … one per available tool |
+| "agency copilot with sonnet and with gpt-5" | `agency-sonnet\|agency\|claude-sonnet-4.5\|`, `agency-gpt5\|agency\|gpt-5\|` |
+| "codex on gpt-5-codex" | `codex\|codex\|gpt-5-codex\|` |
+| "Copilot with extra-high reasoning" | `copilot\|copilot\|\|xhigh` |
+
+**Reasoning effort** is per-tool and the valid values differ — pick one the chosen tool accepts:
+
+| Tool | Effort mechanism | Valid values |
+|---|---|---|
+| `copilot`, `agency` | `--effort` | `none, low, medium, high, xhigh, max` ("extra high" = `xhigh`) |
+| `codex` | `model_reasoning_effort` config | `minimal, low, medium, high` |
+| `opencode` | `--variant` | provider-specific, e.g. `minimal, low, high, max` |
+| `claude`, `gemini` | *(none)* | an effort request is ignored with a note, the reviewer still runs |
 
 The label is yours to choose — make it readable and unique (it becomes the review filename and the
 section header). See `references/reviewer-cli-matrix.md` for exactly how each tool is invoked and
-which support `--model`.
+which support `--model` / `--effort`.
 
 ## Step 5: Dispatch the panel
 
@@ -187,6 +199,7 @@ its working directory** so reviewers can explore the live code; `run_reviewer.sh
 ```bash
 ( cd "$REPO_ROOT" && "$SKILL_DIR/scripts/run_reviewer.sh" \
     --label "<label>" --tool "<tool>" --model "<model-or-empty>" \
+    --effort "<effort-or-empty>" \
     --prompt-file "$WORKDIR/review-prompt.txt" \
     --diff-file "" \
     --output-file "$WORKDIR/reviews/<label>.md" --timeout 900 )
