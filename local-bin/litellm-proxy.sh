@@ -7,7 +7,7 @@ readonly CLAUDE_SETTINGS_FILE="${HOME}/.claude/settings.json"
 readonly CLAUDE_CONFIG_FILE="${HOME}/.claude.json"
 readonly LITELLM_CONFIG_FILE="${HOME}/.config/litellm/config.yaml"
 readonly CODEX_CONFIG_FILE="${HOME}/.codex/config.toml"
-readonly LITELLM_VERSION="v1.89.0"
+readonly LITELLM_VERSION="v1.89.1"
 readonly DEFAULT_LITELLM_IMAGE="ghcr.io/berriai/litellm:${LITELLM_VERSION}"
 readonly LITELLM_IMAGE="${LITELLM_IMAGE:-${DEFAULT_LITELLM_IMAGE}}"
 
