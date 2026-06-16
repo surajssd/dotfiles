@@ -7,17 +7,25 @@ REPO_DIR="$(realpath "${SCRIPT_DIR}/..")"
 # shellcheck source=/dev/null
 source "${SCRIPT_DIR}/lib.sh"
 
-DEST=~/.claude/skills
+# Symlink skills into every agent CLI that reads the SKILL.md format.
+#   ~/.claude/skills  - Claude Code's native global skills path
+#   ~/.agents/skills  - vendor-neutral path read by Codex, Gemini, opencode,
+#                       and Copilot CLI (verified against each tool's docs)
+DESTS=(
+    ~/.claude/skills
+    ~/.agents/skills
+)
 
-echo "⏳ Installing skills from ${REPO_DIR}/skills dir ..."
-link_tree dir "${REPO_DIR}/skills" "$DEST"
-echo "✅ Installation successful for public skills!"
+for DEST in "${DESTS[@]}"; do
+    echo "⏳ Installing public skills into ${DEST} ..."
+    link_tree dir "${REPO_DIR}/skills" "$DEST"
 
-if [[ -d "${REPO_DIR}/dotfilesprivate/skills" ]]; then
-    echo "⏳ Installing skills from ${REPO_DIR}/dotfilesprivate/skills ..."
-    link_tree dir "${REPO_DIR}/dotfilesprivate/skills" "$DEST"
-    echo "✅ Installation successful for private skills!"
-fi
+    if [[ -d "${REPO_DIR}/dotfilesprivate/skills" ]]; then
+        echo "⏳ Installing private skills into ${DEST} ..."
+        link_tree dir "${REPO_DIR}/dotfilesprivate/skills" "$DEST"
+    fi
 
-# Clean up dead symlinks.
-prune_dead_symlinks "$DEST"
+    # Remove only broken symlinks for skills we no longer ship.
+    prune_dead_symlinks "$DEST"
+    echo "✅ Skills installed into ${DEST}"
+done

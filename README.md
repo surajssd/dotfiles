@@ -24,7 +24,7 @@ make install-local-bin
 # Install only config files (shell, git, gpg, starship, tmux, etc.)
 make install-configs
 
-# Install only Claude Code skills to ~/.claude/skills
+# Install only agent skills to ~/.claude/skills and ~/.agents/skills
 make install-skills
 
 # Pull latest from both public and private repos
@@ -41,7 +41,7 @@ the Make targets run).
 
 - `configs/` — Shell configs (bashrc/zshrc), git, gpg, starship, tmux, terraform, k9s
 - `local-bin/` — Custom utility scripts (symlinked to `~/.local/bin`)
-- `skills/` — Claude Code skills (symlinked to `~/.claude/skills/`)
+- `skills/` — Agent skills in `SKILL.md` format (symlinked to `~/.claude/skills/` and `~/.agents/skills/`)
 - `installers/` — Installation automation scripts
 - `dotfilesprivate/` — private/sensitive configs and scripts (separate git clone, not a submodule)
 
@@ -51,4 +51,4 @@ All installers create **symlinks** (not copies), so changes in this repo are imm
 
 - **Scripts:** Symlinked from `local-bin/` to `~/.local/bin/`
 - **Configs:** Symlinked to home directory with OS-specific handling (macOS uses zshrc, Linux uses bashrc)
-- **Skills:** Symlinked from `skills/` to `~/.claude/skills/`
+- **Skills:** Symlinked from `skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (the vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI)

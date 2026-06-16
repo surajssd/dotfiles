@@ -28,7 +28,7 @@ install-configs: ## Install config files (shell, git, gpg, tmux, starship, k9s)
 install-local-bin: ## Install scripts to ~/.local/bin
 	./installers/install-local-bin.sh
 
-install-skills: ## Install Claude Code skills to ~/.claude/skills
+install-skills: ## Install agent skills to ~/.claude/skills and ~/.agents/skills
 	./installers/install-skills.sh
 
 install-azure-capacity-finder: ## Install azure-capacity-finder Go tool (skipped if not cloned)

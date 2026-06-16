@@ -17,7 +17,7 @@ Both repositories mirror the same structure:
 
 - `configs/` - Shell configurations, git configs, and tool settings
 - `local-bin/` - Custom utility scripts
-- `skills/` - Claude Code skills (symlinked to `~/.claude/skills/`)
+- `skills/` - Agent skills in `SKILL.md` format (symlinked to `~/.claude/skills/` and `~/.agents/skills/`)
 - `installers/` - Installation automation scripts (public repo only)
 
 ## Common Commands
@@ -34,7 +34,7 @@ make install-local-bin
 # Install only config files
 make install-configs
 
-# Install only Claude Code skills to ~/.claude/skills
+# Install only agent skills to ~/.claude/skills and ~/.agents/skills
 make install-skills
 
 # Pull latest from both public and private repos
@@ -54,7 +54,7 @@ make clone-private
   - macOS: Uses `zshrc`, `gpg-agent-mac.conf`, `gpg.conf`, k9s skin to `~/Library/Application Support/k9s/skins/`
   - Linux: Uses `bashrc`, `gpg-agent-linux.conf`, k9s skin to `~/.config/k9s/skins/`
   - Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`, `global-claude-config.md`
-- **Skills**: Symlinked from `skills/` and `dotfilesprivate/skills/` to `~/.claude/skills/`
+- **Skills**: Symlinked from `skills/` and `dotfilesprivate/skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI)
 
 ## Shell Script Conventions
 
@@ -122,9 +122,9 @@ Since configs are symlinked, editing the file in the repo immediately affects th
 
 This repository uses [Conventional Commits](https://www.conventionalcommits.org/) format. Scope should reflect the component being changed (e.g., `feat(litellm-proxy):`, `fix(shell):`, `docs(conventional-commits):`).
 
-## Adding Claude Code Skills
+## Adding Agent Skills
 
-Each skill is a subdirectory under `skills/` containing a `SKILL.md` file that defines the skill's behavior, triggers, and allowed tools. After adding or modifying skills, run `make install-skills` to symlink them to `~/.claude/skills/`.
+Each skill is a subdirectory under `skills/` containing a `SKILL.md` file that defines the skill's behavior, triggers, and allowed tools. After adding or modifying skills, run `make install-skills` to symlink them to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (the shared path read by Codex, Gemini, opencode, and Copilot CLI).
 
 ## Important Notes
 
