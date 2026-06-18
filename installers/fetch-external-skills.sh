@@ -22,7 +22,7 @@ SKILLS=(
     "fetch|https://github.com/mattpocock/skills|github.com/mattpocock|skills/productivity/grilling|grilling"
     "fetch|https://github.com/mattpocock/skills|github.com/mattpocock|skills/engineering/domain-modeling|domain-modeling"
     "fetch|https://github.com/mattpocock/skills|github.com/mattpocock|skills/engineering/grill-with-docs|grill-with-docs"
-    "fetch|https://github.com/bastos/skills|github.com/bastos|conventional-commits|conventional-commits"
+    "preserve|https://github.com/bastos/skills|github.com/bastos|conventional-commits|conventional-commits"
 )
 
 die() {
