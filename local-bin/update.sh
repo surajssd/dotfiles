@@ -18,7 +18,9 @@ update_brew() {
     brew update
 
     echo "⏳ Running brew upgrade..."
-    brew upgrade
+    # --yes (Homebrew's "ask mode" is the default since v4.4) skips the
+    # interactive y/n confirmation so unattended runs don't hang.
+    brew upgrade --yes
 
     echo "✅ Brew update and upgrade complete."
 }
