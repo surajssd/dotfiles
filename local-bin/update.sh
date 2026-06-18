@@ -67,10 +67,41 @@ update_omz() {
     done
 }
 
+update_dotfiles() {
+    local script_path repo_dir
+    # Resolve through the ~/.local/bin symlink to the real script in the repo,
+    # then walk up from local-bin/ to the dotfiles repo root.
+    script_path="$(realpath "${BASH_SOURCE[0]}")"
+    repo_dir="$(dirname "$(dirname "${script_path}")")"
+
+    if [[ ! -f "${repo_dir}/Makefile" ]]; then
+        echo "ℹ️ Dotfiles Makefile not found at ${repo_dir}, skipping dotfiles update."
+        return
+    fi
+
+    if ! command -v make &>/dev/null; then
+        echo "ℹ️ make not found, skipping dotfiles update."
+        return
+    fi
+
+    echo "⏳ Updating dotfiles via 'make update' in ${repo_dir}..."
+    (cd "${repo_dir}" && make update)
+
+    echo "✅ Dotfiles update complete."
+}
+
 echo "ℹ️ Detected OS: ${OS}"
 
-update_brew
-update_apt
-update_omz
+# Wrap the run sequence in a brace group so Bash parses it fully before
+# executing. update_dotfiles runs 'make update', which 'git pull's this very
+# script; pre-parsing plus the trailing 'exit' guarantees Bash never re-reads
+# the file after it changes on disk.
+{
+    update_brew
+    update_apt
+    update_omz
+    update_dotfiles
 
-echo "✅ System update complete."
+    echo "✅ System update complete."
+    exit 0
+}
