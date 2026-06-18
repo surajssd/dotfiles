@@ -12,8 +12,9 @@
 
 set -euo pipefail
 
-# Candidate roster. `agency` is the `agency copilot` wrapper.
-CANDIDATES=(claude codex gemini opencode copilot agency)
+# Candidate roster. `agency` is the `agency copilot` wrapper; `agy` is the Google
+# Antigravity CLI.
+CANDIDATES=(claude codex agy opencode copilot agency)
 
 is_installed() {
     command -v "$1" >/dev/null 2>&1

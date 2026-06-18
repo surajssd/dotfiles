@@ -1,6 +1,6 @@
 ---
 name: pr-multi-agent-review
-description: Orchestrate a panel of local AI coding CLIs (claude, codex, gemini, opencode, copilot, agency copilot) to independently review the Pull Request currently checked out, then collate their findings into one consensus-first markdown report plus a visual HTML dashboard. Use this whenever the user wants a "multi-agent", "panel", "multi-model", or "second opinion" review of the current branch/PR, asks to "review this PR with several agents / models", wants reviews "collated" or "cross-checked" across tools, or wants the review to also cover tests, a manual testing plan, documentation updates, and unresolved GitHub review threads. Nothing is posted to GitHub — the output is local files. Do NOT use for reviewing a pasted snippet, a remote PR that is not checked out, or when the user wants a single reviewer (use pr-review-dashboard for a solo visual review).
+description: Orchestrate a panel of local AI coding CLIs (claude, codex, agy, opencode, copilot, agency copilot) to independently review the Pull Request currently checked out, then collate their findings into one consensus-first markdown report plus a visual HTML dashboard. Use this whenever the user wants a "multi-agent", "panel", "multi-model", or "second opinion" review of the current branch/PR, asks to "review this PR with several agents / models", wants reviews "collated" or "cross-checked" across tools, or wants the review to also cover tests, a manual testing plan, documentation updates, and unresolved GitHub review threads. Nothing is posted to GitHub — the output is local files. Do NOT use for reviewing a pasted snippet, a remote PR that is not checked out, or when the user wants a single reviewer (use pr-review-dashboard for a solo visual review).
 allowed-tools: Bash, Read, Write, Skill
 ---
 
@@ -14,7 +14,7 @@ Nothing is posted to GitHub. Every artifact is a local file in a temp directory.
 
 **Trust boundary (read this).** Two distinct exposures, because the panel feeds *untrusted* PR content — body, commit messages, third-party review comments, the diff — into the reviewer CLIs:
 
-- **Prompt-injection → tool execution.** Three tools (`copilot`, `opencode`, `agency`) run with `--allow-all-tools` and no hard read-only sandbox, so a malicious PR could attempt to drive them. Run this skill on **PRs you trust**, or isolate those tools (throwaway worktree, network off) when reviewing fork/contributor branches.
+- **Prompt-injection → tool execution.** Four tools (`copilot`, `opencode`, `agency`, `agy`) run without a hard read-only sandbox — the first three with `--allow-all-tools`, `agy` with its auto-approving `--sandbox` — so a malicious PR could attempt to drive them. Run this skill on **PRs you trust**, or isolate those tools (throwaway worktree, network off) when reviewing fork/contributor branches.
 - **Data egress.** Every reviewer streams the PR content to its model provider (Anthropic, OpenAI, GitHub, Google, …). If an external contributor pasted a secret into a PR body or comment, running the panel sends it to those third parties. Don't review PRs containing sensitive data you can't share with the reviewers' backends.
 
 Step 5 covers the specifics.
@@ -100,7 +100,7 @@ Only run tools that are actually installed — invoking a missing binary wastes 
 "$SKILL_DIR/scripts/detect_reviewers.sh"
 ```
 
-It prints one line per candidate: `available <label> <tool>` or `missing <tool>`. The candidate roster is `claude`, `codex`, `gemini`, `opencode`, `copilot`, and `agency` (agency copilot). Build your panel from the `available` lines and tell the user which tools were skipped and why ("`gemini` not in PATH — skipping").
+It prints one line per candidate: `available <label> <tool>` or `missing <tool>`. The candidate roster is `claude`, `codex`, `agy` (Google Antigravity CLI), `opencode`, `copilot`, and `agency` (agency copilot). Build your panel from the `available` lines and tell the user which tools were skipped and why ("`agy` not in PATH — skipping").
 
 ### Models and reasoning effort: pre-selected by default
 
@@ -115,7 +115,7 @@ Override only when the user explicitly names models or a reasoning effort. The i
 | "codex on gpt-5-codex" | `codex\|codex\|gpt-5-codex\|` |
 | "Copilot with extra-high reasoning" | `copilot\|copilot\|\|xhigh` |
 
-**Reasoning effort** is per-tool and the valid values differ — pick one the chosen tool accepts: `copilot`/`agency` use `--effort` (`none, low, medium, high, xhigh, max`; "extra high" = `xhigh`); `codex` uses the `model_reasoning_effort` config (`minimal, low, medium, high`); `opencode` uses `--variant` (provider-specific, e.g. `minimal, low, high, max`). `claude` and `gemini` have no reasoning-effort flag, so an effort request for them is ignored with a note and the reviewer still runs.
+**Reasoning effort** is per-tool and the valid values differ — pick one the chosen tool accepts: `copilot`/`agency` use `--effort` (`none, low, medium, high, xhigh, max`; "extra high" = `xhigh`); `codex` uses the `model_reasoning_effort` config (`minimal, low, medium, high`); `opencode` uses `--variant` (provider-specific, e.g. `minimal, low, high, max`). `claude` and `agy` have no reasoning-effort flag, so an effort request for them is ignored with a note and the reviewer still runs.
 
 The label is yours to choose — make it readable and unique (it becomes the review filename and the section header). See `references/reviewer-cli-matrix.md` for exactly how each tool is invoked and which support `--model` / `--effort`.
 
@@ -133,7 +133,7 @@ Why embed the context in the prompt rather than point reviewers at the files? Th
 
 `run_reviewer.sh` takes the diff via `--diff-file` and embeds it into each reviewer's prompt, then delivers the whole thing the same way for every tool — that uniformity is the reason large PRs don't break:
 
-- **Every reviewer** (`claude`, `codex`, `gemini`, `opencode`, `copilot`, `agency`) gets the diff-less prompt **plus the full diff** concatenated onto **stdin**, via a file redirect, which has no size limit. (All six CLIs were verified to read the full prompt from stdin — a 450 KiB tail-token probe round-tripped intact — so the older "argv-only, omit the diff on overflow" path is gone.)
+- **Every reviewer** (`claude`, `codex`, `agy`, `opencode`, `copilot`, `agency`) gets the diff-less prompt **plus the full diff** concatenated onto **stdin**, via a file redirect, which has no size limit. (Five of the six CLIs were verified to read the full prompt from stdin — a 450 KiB tail-token probe round-tripped intact — so the older "argv-only, omit the diff on overflow" path is gone. `agy` is wired the same way by analogy to its gemini-cli lineage but is not yet live-verified — smoke-test it.)
 - **`copilot` and `agency`** additionally run with `--context long_context`, which selects the larger context-window tier so a big PR fits **without changing the model you've configured**. If a model still overflows (no long tier, or the diff exceeds even the long window), `run_reviewer.sh` detects it and writes an `errored` status telling you to re-run that label with `--model <larger-context model>` — it never silently swaps your model.
 
 Read `references/review-prompt.md` yourself once so you know what you're asking the panel to produce — it directs each reviewer to cover correctness, security, performance, error handling, concurrency, API/compat, **test quality**, **human + agentic documentation**, to end with a **manual testing plan**, all cited to `file:line`, and to wrap the whole review between `===PR-REVIEW-BEGIN===`/`===PR-REVIEW-END===` sentinels.
@@ -153,7 +153,7 @@ Launch each as a **background Bash task** (`run_in_background: true`) so they ru
 
 ### Read-only and the untrusted-input boundary
 
-Read-only is enforced where the tool supports it (codex `--sandbox read-only`, gemini `--approval-mode plan`, claude `--permission-mode plan`). **`copilot`, `opencode`, and `agency` have no hard read-only switch and run with `--allow-all-tools`** — only the prompt asks them not to write. That is a real exposure: the prompt embeds *untrusted* PR content (body, commit messages, third-party review-thread comments, the diff), and a crafted "ignore previous instructions…" payload could drive a fully tool-enabled agent. The post-run `git status` check catches tracked-file writes only — not reads, network calls, or untracked files.
+Read-only is enforced where the tool supports it (codex `--sandbox read-only`, claude `--permission-mode plan`). **`copilot`, `opencode`, `agency`, and `agy` have no hard read-only switch** — `copilot`/`opencode`/`agency` run with `--allow-all-tools`, and `agy` runs with `--sandbox` (terminal-restricted but auto-approving), so only the prompt asks them not to write. That is a real exposure: the prompt embeds *untrusted* PR content (body, commit messages, third-party review-thread comments, the diff), and a crafted "ignore previous instructions…" payload could drive a fully tool-enabled agent. The post-run `git status` check catches tracked-file writes only — not reads, network calls, or untracked files.
 
 Mitigate, don't pretend it's airtight:
 

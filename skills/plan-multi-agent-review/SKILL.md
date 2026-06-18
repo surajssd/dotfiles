@@ -1,6 +1,6 @@
 ---
 name: plan-multi-agent-review
-description: Orchestrate a panel of local AI coding CLIs (claude, codex, gemini, opencode, copilot, agency copilot) to independently review a PLAN FILE against the code repository it targets, then collate their findings into one consensus-first markdown report. Use this whenever the user wants a "multi-agent", "panel", "multi-model", or "second opinion" review of a plan / plan file / design doc / implementation plan, asks to "review this plan with several agents / models", or wants plan reviews "collated" or "cross-checked" across tools. The two inputs are a plan file (explicit path, required) and the repo; the sole output is a review of the plan. Nothing is posted anywhere — output is local files in a temp dir. Do NOT use to review a Pull Request or a git diff (use pr-multi-agent-review), a pasted snippet, or when the user wants a single reviewer.
+description: Orchestrate a panel of local AI coding CLIs (claude, codex, agy, opencode, copilot, agency copilot) to independently review a PLAN FILE against the code repository it targets, then collate their findings into one consensus-first markdown report. Use this whenever the user wants a "multi-agent", "panel", "multi-model", or "second opinion" review of a plan / plan file / design doc / implementation plan, asks to "review this plan with several agents / models", or wants plan reviews "collated" or "cross-checked" across tools. The two inputs are a plan file (explicit path, required) and the repo; the sole output is a review of the plan. Nothing is posted anywhere — output is local files in a temp dir. Do NOT use to review a Pull Request or a git diff (use pr-multi-agent-review), a pasted snippet, or when the user wants a single reviewer.
 allowed-tools: Bash, Read, Write
 ---
 
@@ -24,8 +24,9 @@ as Linux.
 **Trust boundary (read this).** Two distinct exposures, because the panel feeds the *plan* and
 repo files into the reviewer CLIs and lets them explore a live working tree:
 
-- **Prompt-injection → tool execution.** Three tools (`copilot`, `opencode`, `agency`) run with
-  `--allow-all-tools` and no hard read-only sandbox. Because this skill points every reviewer at a
+- **Prompt-injection → tool execution.** Four tools (`copilot`, `opencode`, `agency`, `agy`) run
+  without a hard read-only sandbox — the first three with `--allow-all-tools`, `agy` with its
+  auto-approving `--sandbox`. Because this skill points every reviewer at a
   **live repo as its working directory** so it can verify the plan, a malicious file in that repo
   (or a crafted instruction inside the plan) could attempt to drive those tools. Run this on repos
   and plans you trust, or isolate those tools (throwaway worktree, network off).
@@ -130,9 +131,9 @@ the report. Detect what's available:
 ```
 
 It prints one line per candidate: `available <label> <tool>` or `missing <tool>`. The candidate
-roster is `claude`, `codex`, `gemini`, `opencode`, `copilot`, and `agency` (agency copilot). Build
-your panel from the `available` lines and tell the user which tools were skipped and why ("`gemini`
-not in PATH — skipping").
+roster is `claude`, `codex`, `agy` (Google Antigravity CLI), `opencode`, `copilot`, and `agency`
+(agency copilot). Build your panel from the `available` lines and tell the user which tools were
+skipped and why ("`agy` not in PATH — skipping").
 
 ### Models and reasoning effort: pre-selected by default
 
@@ -160,7 +161,7 @@ panel entry is a `label | tool | model | effort` tuple (model and effort default
 | `copilot`, `agency` | `--effort` | `none, low, medium, high, xhigh, max` ("extra high" = `xhigh`) |
 | `codex` | `model_reasoning_effort` config | `minimal, low, medium, high` |
 | `opencode` | `--variant` | provider-specific, e.g. `minimal, low, high, max` |
-| `claude`, `gemini` | *(none)* | an effort request is ignored with a note, the reviewer still runs |
+| `claude`, `agy` | *(none)* | an effort request is ignored with a note, the reviewer still runs |
 
 The label is yours to choose — make it readable and unique (it becomes the review filename and the
 section header). See `references/reviewer-cli-matrix.md` for exactly how each tool is invoked and
@@ -215,9 +216,10 @@ cleaned review to `<label>.md`, the unfiltered capture to `<label>.md.raw`, and 
 
 ### Read-only and the untrusted-input boundary
 
-Read-only is enforced where the tool supports it (codex `--sandbox read-only`, gemini
-`--approval-mode plan`, claude `--permission-mode plan`). **`copilot`, `opencode`, and `agency` have
-no hard read-only switch and run with `--allow-all-tools`** — only the prompt asks them not to
+Read-only is enforced where the tool supports it (codex `--sandbox read-only`, claude
+`--permission-mode plan`). **`copilot`, `opencode`, `agency`, and `agy` have
+no hard read-only switch** — `copilot`/`opencode`/`agency` run with `--allow-all-tools`, and `agy`
+runs with `--sandbox` (terminal-restricted but auto-approving) — so only the prompt asks them not to
 write. With reviewers now pointed at a live repo as cwd, that is a real exposure: a crafted "ignore
 previous instructions…" payload in a repo file or in the plan could drive a fully tool-enabled
 agent. The post-run `git status` check (Step 7) catches tracked-file writes only — not reads,

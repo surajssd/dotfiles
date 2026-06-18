@@ -18,8 +18,10 @@ The whole prompt — instructions + repo orientation + every embedded referenced
 itself — is delivered to **every** tool on **stdin** via a file redirect (`tool < file`, not a
 pipe, so a tool that exits without draining stdin doesn't trigger SIGPIPE). stdin has no argv size
 limit, so a large plan or large referenced files are fine; there is no truncation for any tool.
-(All six CLIs were verified to read the full prompt from stdin — a 450 KiB tail-token probe
-round-tripped intact — see the dated note in the PR sibling skill that first established this.)
+(Five of the six CLIs were verified to read the full prompt from stdin — a 450 KiB tail-token probe
+round-tripped intact — see the dated note in the PR sibling skill that first established this. The
+sixth, `agy`, is wired by analogy to its gemini-cli lineage and is **not yet live-verified** —
+smoke-test it on a real run.)
 
 Unlike a PR review, there is **no diff**: the plan is the primary artifact and is embedded as the
 final context block. `run_reviewer.sh` is shared with the PR skill and still accepts a `--diff-file`
@@ -30,7 +32,7 @@ inert and no diff block is produced.
 |---|---|
 | `claude` | full prompt on **stdin** |
 | `codex` | full prompt on **stdin** (trailing `-`) |
-| `gemini` | full prompt on **stdin** (`-p ""`) |
+| `agy` | full prompt on **stdin** (`-p ""`) |
 | `opencode` | full prompt on **stdin** (`run ""`) |
 | `copilot` | full prompt on **stdin** (`-p ""`) |
 | `agency` | full prompt on **stdin** (forwarded `-p ""`) |
@@ -50,7 +52,7 @@ in `gather_plan_context.sh` keeps this rare; the rest is left to live repo explo
 |---|---|---|---|---|---|
 | `claude` | `claude -p` (prompt on stdin) | `--permission-mode plan` | `--model <id>` | *(none)* | Plan mode can't edit/run mutating tools. No reasoning-effort flag in `-p` mode. |
 | `codex` | `codex exec -` (stdin) | `--sandbox read-only` | `-m <id>` | `-c model_reasoning_effort="<lvl>"` | Trailing `-` makes `exec` read the prompt from stdin. Effort is a config override (precede the `-`). |
-| `gemini` | `gemini -p "" ` (stdin appended) | `--approval-mode plan` | `-m <id>` | *(none)* | Also needs `--skip-trust` or it refuses in an "untrusted directory". No reasoning-effort flag. |
+| `agy` | `agy -p ""` (stdin) | `--sandbox` (soft) | `--model <id>` | *(none)* | Google Antigravity CLI. No hard read-only mode; `--sandbox` is terminal-restricted **and** auto-approves so a headless run can't hang. No reasoning-effort flag. **Not yet live-verified.** |
 | `opencode` | `opencode run ""` (stdin) | *(none)* | `-m provider/model` | `--variant <lvl>` | No hard read-only; rely on prompt + git check. Model needs `provider/` prefix. `--variant` is provider-specific reasoning effort. |
 | `copilot` | `copilot -p ""` (stdin) | *(none)* | `--model <id>` | `--effort <lvl>` | Needs `--allow-all-tools` for non-interactive; no read-only switch. Add `--no-color` and `--context long_context`. |
 | `agency` | `agency copilot -- -p ""` (stdin) | *(none)* | via pass-through `-- --model <id>` | via pass-through `-- --effort <lvl>` | `agency copilot` wraps Copilot CLI; everything after `--` is forwarded (incl. `--context long_context`). |
@@ -58,7 +60,7 @@ in `gather_plan_context.sh` keeps this rare; the rest is left to live repo explo
 **Effort values differ per tool** — the orchestrator must supply one the chosen tool accepts:
 `copilot`/`agency` `--effort` → `none, low, medium, high, xhigh, max`; `codex`
 `model_reasoning_effort` → `minimal, low, medium, high`; `opencode` `--variant` → provider-specific
-(e.g. `minimal, low, high, max`). `claude`/`gemini` have none — an `--effort` passed for them is
+(e.g. `minimal, low, high, max`). `claude`/`agy` have none — an `--effort` passed for them is
 ignored with a note on stderr and the reviewer still runs.
 
 ## Per-tool detail
@@ -82,15 +84,23 @@ fine, but flags-before-positional is the safe convention). Reasoning effort has 
 it's a config override (`-c model_reasoning_effort="high"`, values `minimal|low|medium|high`),
 which must likewise precede the `-`.
 
-### gemini
+### agy
 ```bash
-gemini -p "" --approval-mode plan --skip-trust [-m "$MODEL"] < prompt-file
+agy -p "" --sandbox --print-timeout "${TIMEOUT}s" [--model "$MODEL"] < prompt-file
 ```
-`gemini -p ""` runs headless and appends piped stdin to the (empty) prompt value, so the prompt
-arrives via stdin (no argv limit). `--approval-mode plan` is the read-only mode. **`--skip-trust`
-is required**: without it gemini refuses to run in a directory it hasn't been told to trust and
-exits immediately (this is why an unguarded gemini run shows up as an instant error). Avoid
-`-y/--yolo` — that's the opposite of what we want for a reviewer.
+`agy` is the Google **Antigravity CLI** (gemini-cli lineage — note the `~/.gemini/antigravity-cli`
+config path). `agy -p ""` (alias `--print`/`--prompt`) runs a single prompt non-interactively and
+reads the prompt from stdin, so no argv size limit applies. Unlike the old gemini CLI it has **no
+hard read-only mode** (`--approval-mode plan` does not exist here); `--sandbox` is the closest —
+the binary documents it as "a sandbox with terminal restrictions" that also **auto-approves** tool
+calls ("Sandbox mode: auto-approve in sandbox") and overrides the per-file "Allow access?" prompt,
+so a headless run reads source freely without hanging on a confirmation. That makes agy *soft*
+read-only (writes aren't hard-blocked), so it sits with copilot/opencode/agency on the trust
+boundary, not with claude/codex. `--print-timeout` (default 5m) is pinned to the outer timeout so a
+long review isn't truncated. Avoid `--dangerously-skip-permissions` — that auto-approves shell too,
+the opposite of what a reviewer wants. **Caveat:** agy starts a local language-server process and
+binds a localhost port, which the offline test sandbox blocks, so its stdin round-trip is wired by
+analogy to gemini-cli and **not yet live-verified** — smoke-test on a real plan + repo.
 
 ### opencode
 ```bash

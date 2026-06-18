@@ -9,7 +9,7 @@
 #
 # --effort sets per-tool reasoning effort (copilot/agency --effort, codex
 # model_reasoning_effort, opencode --variant). Valid values differ per tool; the
-# orchestrator supplies one the chosen tool accepts. claude/gemini have no such flag,
+# orchestrator supplies one the chosen tool accepts. claude/agy have no such flag,
 # so an --effort given for them is ignored with a note. Empty = tool default.
 #
 # --prompt-file holds the full self-contained review prompt (instructions + plan context),
@@ -19,9 +19,10 @@
 # prompt (identity + prompt-file [+ diff, when one is given]) is delivered to EVERY tool the
 # same way: on stdin, via a file redirect (`tool < prompt`). stdin has no argv size limit, so
 # a large plan plus many embedded files is fine, and a file redirect (not a pipe) means a tool
-# that exits without draining stdin does NOT make us take SIGPIPE. All six CLIs (claude, codex,
-# gemini, opencode, copilot, agency) were verified to read the full prompt from stdin — see the
-# dated note in references/reviewer-cli-matrix.md.
+# that exits without draining stdin does NOT make us take SIGPIPE. claude, codex, opencode,
+# copilot, and agency were verified to read the full prompt from stdin; agy (Google
+# Antigravity CLI) is wired by analogy to its gemini-cli lineage but not yet live-verified —
+# see the note in references/reviewer-cli-matrix.md.
 #
 # copilot and agency additionally get `--context long_context` so a large plan + embedded files
 # fit their window without swapping the user's configured model. If a model still overflows (no
@@ -262,13 +263,16 @@ codex)
     [ -n "${EFFORT}" ] && CMD+=(-c "model_reasoning_effort=\"${EFFORT}\"")
     CMD+=(-)
     ;;
-gemini)
-    # `gemini -p ""` + piped stdin: stdin is appended to the (empty) -p value.
-    # --skip-trust avoids the "untrusted directory" refusal that otherwise makes
-    # gemini exit immediately when run in a repo it hasn't been told to trust.
-    CMD=(gemini -p "" --approval-mode plan --skip-trust)
-    [ -n "${MODEL}" ] && CMD+=(-m "${MODEL}")
-    [ -n "${EFFORT}" ] && err "ℹ️ [${LABEL}] gemini has no reasoning-effort flag; ignoring --effort ${EFFORT}"
+agy)
+    # Google Antigravity CLI (gemini-cli lineage). `agy -p ""` runs print mode and reads
+    # the prompt from stdin. It has no hard read-only mode like gemini's `--approval-mode
+    # plan`; `--sandbox` is the nearest — it runs terminal-restricted AND auto-approves tool
+    # calls (so a headless run won't hang on a permission prompt) while still letting the
+    # agent read repo source. `--print-timeout` is pinned to our outer guard so agy's default
+    # 5-minute print wait can't truncate a long review before the watchdog acts.
+    CMD=(agy -p "" --sandbox --print-timeout "${TIMEOUT}s")
+    [ -n "${MODEL}" ] && CMD+=(--model "${MODEL}")
+    [ -n "${EFFORT}" ] && err "ℹ️ [${LABEL}] agy has no reasoning-effort flag; ignoring --effort ${EFFORT}"
     ;;
 opencode)
     # `opencode run ""` + stdin: opencode reads the prompt from stdin (verified).
