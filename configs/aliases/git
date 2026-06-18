@@ -198,35 +198,50 @@ wtpr() {
         return 1
     fi
 
-    echo "⏳ Fetching PR #${pr_number} (${branch})..."
+    echo "⏳ Checking out PR #${pr_number} (${branch})..."
 
-    # PRs filed against an "upstream" remote (fork workflow) expose
-    # pull/N/head there; otherwise fall back to origin.
-    local remote="origin"
-    if git remote get-url upstream &>/dev/null &&
-        git fetch upstream "pull/${pr_number}/head:${branch}" 2>/dev/null; then
-        remote="upstream"
-    elif ! git fetch origin "pull/${pr_number}/head:${branch}" 2>/dev/null; then
-        echo "❌ Failed to fetch PR #${pr_number} from upstream or origin" >&2
+    # Fail early on a pre-existing local branch (mirrors wta's existence check).
+    # This resolves the name-collision case cleanly AND lets the failure cleanup
+    # below delete the branch safely, knowing it was ours.
+    if git show-ref --verify --quiet "refs/heads/${branch}"; then
+        echo "❌ Branch '${branch}' already exists; use 'wt' to switch to it or delete it first" >&2
         return 1
     fi
 
-    if git worktree add "$worktree_dir" "$branch"; then
-        cd "$worktree_dir" || return 1
-        # Best-effort upstream tracking; for fork PRs the ref may not exist.
-        git branch --set-upstream-to="${remote}/${branch}" "$branch" 2>/dev/null || true
-        # Record the PR number against the branch so tooling (e.g. the
-        # pr-review-dashboard skill) can resolve this worktree back to its PR
-        # even after it is merged/closed, when `gh pr view` with no argument
-        # would otherwise find nothing. This key lives in the repo-wide
-        # .git/config and is NOT removed when the worktree is deleted, so a
-        # reused branch name can leave a stale number — consumers sanity-check
-        # it (headRefName/headRefOid) before trusting it.
-        git config "branch.${branch}.prNumber" "$pr_number" 2>/dev/null || true
-        echo "✅ Worktree created at ${worktree_dir} on branch ${branch}"
-        echo "ℹ️  Now in: $(pwd)"
-    else
+    # Create the worktree detached and empty, then let `gh pr checkout` create the
+    # branch and write its tracking config *inside* it. Delegating to gh is what
+    # makes native `gh pr status` / `gh pr view` resolve the PR afterwards —
+    # including cross-fork PRs whose head lives on a third-party fork we have no
+    # remote for. (`--set-upstream-to origin/<branch>` could not: the branch isn't
+    # on origin/upstream, so it failed silently.) `--no-checkout` skips populating
+    # files gh is about to overwrite anyway.
+    local orig_dir="$PWD"
+    if ! git worktree add --detach --no-checkout "$worktree_dir"; then
         echo "❌ Failed to create worktree for PR #${pr_number}" >&2
         return 1
     fi
+    cd "$worktree_dir" || return 1
+
+    # `-b "$branch"` pins the local branch to the PR's headRefName (consistent with
+    # wta and existing worktrees, and deterministic for the breadcrumb below — no
+    # `git branch --show-current` re-read). On failure, back out fully before
+    # removing the worktree.
+    if ! gh pr checkout "$pr_number" -b "$branch"; then
+        echo "❌ Failed to check out PR #${pr_number} with gh" >&2
+        cd "$orig_dir" || return 1
+        git worktree remove --force "$worktree_dir" 2>/dev/null || true
+        git branch -D "$branch" 2>/dev/null || true # safe: verified above it didn't pre-exist
+        return 1
+    fi
+
+    # Record the PR number against the branch as a durable fallback so tooling
+    # (e.g. the pr-review-dashboard skill) can resolve this worktree back to its PR
+    # even after it is merged/closed — gh's branch config covers the live case,
+    # this breadcrumb covers the rest. The key lives in the repo's shared config
+    # (the common git dir, not the per-worktree .git file) and is NOT removed when
+    # the worktree is deleted, so a reused branch name can leave a stale number —
+    # consumers sanity-check it (headRefName/headRefOid) before trusting it.
+    git config "branch.${branch}.prNumber" "$pr_number" 2>/dev/null || true
+    echo "✅ Worktree created at ${worktree_dir} on branch ${branch}"
+    echo "ℹ️  Now in: $(pwd)"
 }
