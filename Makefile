@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
 # Symlink installers (delegate to scripts)
-.PHONY: install-configs install-local-bin install-skills
+.PHONY: install-configs install-local-bin install-skills fetch-external-skills
 # Go-tool installers (skip with an info message when dir absent)
 .PHONY: install-azure-capacity-finder install-clawbox
 # Orchestration / maintenance
@@ -31,6 +31,9 @@ install-local-bin: ## Install scripts to ~/.local/bin
 install-skills: ## Install agent skills to ~/.claude/skills and ~/.agents/skills
 	./installers/install-skills.sh
 
+fetch-external-skills: ## Download external skills (mattpocock, bastos) into skills/ — also run by 'make update'
+	./installers/fetch-external-skills.sh
+
 install-azure-capacity-finder: ## Install azure-capacity-finder Go tool (skipped if not cloned)
 	$(call go-install,azure-capacity-finder)
 
@@ -39,7 +42,7 @@ install-clawbox: ## Install clawbox Go tool (skipped if absent)
 
 install-all: install-configs install-local-bin install-skills install-azure-capacity-finder install-clawbox ## Install everything
 
-update: pull-master install-all ## Pull latest from all repos, then reinstall
+update: pull-master fetch-external-skills install-all ## Pull latest, refresh external skills, then reinstall
 
 pull-master: ## Pull latest from public + private + azure-capacity-finder
 	git pull --ff origin master

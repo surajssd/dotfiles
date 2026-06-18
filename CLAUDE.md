@@ -37,10 +37,13 @@ make install-configs
 # Install only agent skills to ~/.claude/skills and ~/.agents/skills
 make install-skills
 
+# Download external skills (mattpocock, bastos) into skills/ — also run by 'make update'
+make fetch-external-skills
+
 # Pull latest from both public and private repos
 make pull-master
 
-# Update from upstream and reinstall (pull-master + install-all)
+# Update from upstream and reinstall (pull-master + fetch-external-skills + install-all)
 make update
 
 # Clone the private dotfiles repository
@@ -126,10 +129,19 @@ This repository uses [Conventional Commits](https://www.conventionalcommits.org/
 
 Each skill is a subdirectory under `skills/` containing a `SKILL.md` file that defines the skill's behavior, triggers, and allowed tools. After adding or modifying skills, run `make install-skills` to symlink them to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (the shared path read by Codex, Gemini, opencode, and Copilot CLI).
 
+### Vendored external skills
+
+Some skills are vendored (copied) from upstream repos rather than authored here. `installers/fetch-external-skills.sh` drives this via a pipe-delimited registry with two modes:
+
+- **`fetch`**: clone the upstream repo, copy the skill directory flat into `skills/<name>/` (dropping any category nesting), and inject `license: MIT` + `metadata.author` into its `SKILL.md`. The `grilling`, `domain-modeling`, and `grill-with-docs` skills are vendored this way from [`mattpocock/skills`](https://github.com/mattpocock/skills).
+- **`preserve`**: the skill is already vendored and locally customised, so the script verifies it exists and reports its source but never overwrites it. `conventional-commits` (from [`bastos/skills`](https://github.com/bastos/skills)) uses this mode — it carries local edits (a macOS clipboard section and a `README.md`) that must not be clobbered.
+
+Fetched skills are committed to the repo. Run `make fetch-external-skills` to refresh them; the script prints the upstream commit SHA(s), which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs stay offline), but `make update` does run it — after `pull-master` and before `install-all` — so a full update also refreshes the vendored skills. `install-skills.sh` then symlinks the vendored directories like any other local skill.
+
 ## Important Notes
 
 - The private repository (`dotfilesprivate/`) is a separate standalone git clone, not a submodule
 - Installation scripts assume both repos are present and will attempt to process both
 - Symlinks mean changes in this repo are immediately reflected in home directory
-- The `make update` command pulls latest from both repositories and reinstalls
+- The `make update` command pulls latest from both repositories, refreshes the vendored external skills, and reinstalls
 - The `install-local-bin.sh` installer skips files listed in its `LOCAL_BIN_SKIP` array (e.g. `util.sh`, a shared library, and `git-autopush-post-commit`, a git hook script — neither belongs in PATH). If you add another library or hook file to `local-bin/`, add its basename to `LOCAL_BIN_SKIP`
