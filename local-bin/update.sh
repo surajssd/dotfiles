@@ -56,7 +56,21 @@ update_omz() {
     fi
 
     echo "⏳ Updating Oh My Zsh..."
-    zsh -ic "omz update"
+    # Use Oh My Zsh's unattended updater (tools/upgrade.sh) instead of the
+    # 'omz update' CLI. When 'omz update' pulls new commits, _omz::update (in
+    # ~/.oh-my-zsh/lib/cli.zsh) ends by re-exec'ing a fresh *interactive* zsh:
+    #   [[ "$zsh" = -* || -o login ]] && exec -l "${zsh#-}" || exec "$zsh"
+    # Launched from this script, that replacement shell inherits the terminal as
+    # stdin and sits at a prompt, blocking the rest of update.sh until you press
+    # Ctrl+D — which then looks like the script "running again". upgrade.sh runs
+    # the same update but just exits, so control returns here cleanly.
+    if [[ -f "${omz_dir}/tools/upgrade.sh" ]]; then
+        ZSH="${omz_dir}" zsh -f "${omz_dir}/tools/upgrade.sh"
+    else
+        # Fallback for unusual installs: redirect stdin from /dev/null so any
+        # interactive shell OMZ exec's reads EOF immediately instead of blocking.
+        zsh -ic "omz update" </dev/null
+    fi
 
     echo "✅ Oh My Zsh update complete."
 
