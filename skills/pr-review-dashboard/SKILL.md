@@ -63,13 +63,30 @@ If no commits exist between `$BASE` and HEAD, report `❌ No commits found betwe
 
 ### Pull author intent if a GitHub PR exists
 
-The diff tells you *what* changed; the PR description tells you *why* the author thought it should change. That gap is exactly what you need to distinguish "what the diff does" from "what the author intended" in Step 4. If the `gh` CLI is available and the branch has an associated PR, fetch it:
+The diff tells you *what* changed; the PR description tells you *why* the author thought it should change. That gap is exactly what you need to distinguish "what the diff does" from "what the author intended" in Step 4.
+
+Resolving the branch back to its PR is the step most likely to **silently fail**, because `gh pr view` with **no argument** only finds an *open* PR whose head matches the branch's tracked remote. It returns nothing when the PR is already merged or closed, when the branch was checked out into a worktree (e.g. via the `wtpr` helper) whose upstream points at a different remote than the PR head, or in fork workflows where the head lives under a different owner. In each case the dashboard wrongly falls back to "no PR yet." Resolve in the order below and stop at the first call that yields JSON:
 
 ```bash
-command -v gh >/dev/null && gh pr view --json url,title,body,author,labels,additions,deletions 2>/dev/null
+# 1) Explicit breadcrumb: `wtpr` writes the PR number into branch config when it
+#    creates a worktree from a PR. It is the only unambiguous signal, so trust it first.
+PR_NUM=$(git config "branch.$CURRENT.prNumber" 2>/dev/null)
+
+if [ -n "$PR_NUM" ]; then
+    gh pr view "$PR_NUM" --json url,number,state,title,body,author,labels,additions,deletions 2>/dev/null
+else
+    # 2) gh's own branch resolution — works only for an open, same-repo PR.
+    gh pr view --json url,number,state,title,body,author,labels,additions,deletions 2>/dev/null || true
+fi
 ```
 
-Capture the `url` field — you'll need it for the Executive Summary's "Open on GitHub" link. If `gh pr view` returns nothing (no PR yet for this branch), construct a compare URL from `git remote get-url origin` + `$DEFAULT_BRANCH` + current branch instead, so the dashboard still gives the reader a one-click path back to GitHub.
+If both come back empty, search by head ref across **all** states — this is what catches the merged and closed PRs that no-argument `gh pr view` misses:
+
+```bash
+gh pr list --head "$CURRENT" --state all --json number,url,state,title,headRefOid 2>/dev/null
+```
+
+If several PRs share the branch name, pick the one whose `headRefOid` equals `git rev-parse HEAD`; if none match (rare), take the first (gh lists most-recent first). Capture the `url` field for the Executive Summary's "Open on GitHub" link, and surface the PR's `state` in the dashboard metadata — reviewing an already-merged PR changes which feedback is still actionable. Only if *every* lookup above returns nothing (genuinely no PR for this branch) construct a compare URL from `git remote get-url origin` + `$DEFAULT_BRANCH` + current branch instead, so the dashboard still gives the reader a one-click path back to GitHub.
 
 Treat the body as the author's stated intent — useful context, but not ground truth. The diff is ground truth; the body is a claim about the diff. Note in the dashboard's Assumptions section if the two appear to diverge.
 
@@ -106,7 +123,7 @@ Do not rewrite the boilerplate. If the template is missing a primitive you need,
 
 The tabs in the template already match the section order below. Fill them in that order, since each section assumes the reader has read the previous one:
 
-1. **Executive Summary** — TL;DR of what the PR achieves, why it matters, and the single biggest thing a reviewer should scrutinize. Three to six sentences, no fluff. Include a small metadata row near the title with **a clickable link to the PR on GitHub** (use the URL from `gh pr view --json url`, or fall back to `gh pr view --web` info — if there is no associated PR, link to the branch compare URL instead, e.g. `https://github.com/<owner>/<repo>/compare/<base>...<head>`). The reviewer almost always wants to jump back to the PR to leave a comment; not providing that link forces them to context-switch and hunt for it.
+1. **Executive Summary** — TL;DR of what the PR achieves, why it matters, and the single biggest thing a reviewer should scrutinize. Three to six sentences, no fluff. Include a small metadata row near the title with **a clickable link to the PR on GitHub** (use the `url` resolved by the lookup ladder in Step 3 — explicit `prNumber` breadcrumb, then no-arg `gh pr view`, then `gh pr list --head <branch> --state all`; if every lookup truly returns nothing, fall back to the branch compare URL, e.g. `https://github.com/<owner>/<repo>/compare/<base>...<head>`). When the PR resolved to a merged or closed state, say so in this row — it tells the reviewer whether their feedback is still actionable. The reviewer almost always wants to jump back to the PR to leave a comment; not providing that link forces them to context-switch and hunt for it.
 
 2. **Glossary / Concept Primer** — Define the key modules, types, acronyms, and domain terms appearing in this diff, written for someone seeing this codebase for the first time. Without shared vocabulary the rest of the dashboard is opaque, so put this near the top.
 

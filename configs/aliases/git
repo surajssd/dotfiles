@@ -215,6 +215,11 @@ wtpr() {
         cd "$worktree_dir" || return 1
         # Best-effort upstream tracking; for fork PRs the ref may not exist.
         git branch --set-upstream-to="${remote}/${branch}" "$branch" 2>/dev/null || true
+        # Record the PR number against the branch so tooling (e.g. the
+        # pr-review-dashboard skill) can resolve this worktree back to its PR
+        # even after it is merged/closed, when `gh pr view` with no argument
+        # would otherwise find nothing.
+        git config "branch.${branch}.prNumber" "$pr_number" 2>/dev/null || true
         echo "✅ Worktree created at ${worktree_dir} on branch ${branch}"
         echo "ℹ️  Now in: $(pwd)"
     else
