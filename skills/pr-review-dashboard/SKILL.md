@@ -65,28 +65,40 @@ If no commits exist between `$BASE` and HEAD, report `❌ No commits found betwe
 
 The diff tells you *what* changed; the PR description tells you *why* the author thought it should change. That gap is exactly what you need to distinguish "what the diff does" from "what the author intended" in Step 4.
 
-Resolving the branch back to its PR is the step most likely to **silently fail**, because `gh pr view` with **no argument** only finds an *open* PR whose head matches the branch's tracked remote. It returns nothing when the PR is already merged or closed, when the branch was checked out into a worktree (e.g. via the `wtpr` helper) whose upstream points at a different remote than the PR head, or in fork workflows where the head lives under a different owner. In each case the dashboard wrongly falls back to "no PR yet." Resolve in the order below and stop at the first call that yields JSON:
+Resolving the branch back to its PR is the step most likely to **silently fail**, because `gh pr view` with **no argument** only finds an *open* PR whose head matches the branch's tracked remote. It returns nothing when the PR is already merged or closed, or when the branch was checked out into a worktree (e.g. via the `wtpr` helper) whose upstream points at a different remote than the PR head. Fork PRs — where the head lives under a different owner — are the hardest case: nothing that searches by branch name finds them, so only the explicit breadcrumb in step 1 recovers a fork PR. In each failing case the dashboard wrongly falls back to "no PR yet." Walk the ladder below, **falling through to the next step whenever the current one yields nothing** — where "nothing" means a failed/errored `gh` call, an empty string, an empty array `[]`, or (for step 1) a breadcrumb that fails the sanity-check described after the snippet:
 
 ```bash
-# 1) Explicit breadcrumb: `wtpr` writes the PR number into branch config when it
-#    creates a worktree from a PR. It is the only unambiguous signal, so trust it first.
-PR_NUM=$(git config "branch.$CURRENT.prNumber" 2>/dev/null)
+# `$CURRENT` is the branch name from Step 2. One field set for every lookup, so
+# whichever call resolves the PR returns the same author-intent data (body, author,
+# labels) plus the headRefOid used to sanity-check the breadcrumb.
+FIELDS=url,number,state,title,body,author,labels,additions,deletions,headRefOid
+PR_JSON=""
 
+# 1) Explicit breadcrumb: `wtpr` records the PR number in branch config when it
+#    creates a worktree from a PR — the only signal that survives merge/close and
+#    works for fork PRs, so try it first (subject to the sanity-check below).
+PR_NUM=$(git config "branch.$CURRENT.prNumber" 2>/dev/null)
 if [ -n "$PR_NUM" ]; then
-    gh pr view "$PR_NUM" --json url,number,state,title,body,author,labels,additions,deletions 2>/dev/null
-else
-    # 2) gh's own branch resolution — works only for an open, same-repo PR.
-    gh pr view --json url,number,state,title,body,author,labels,additions,deletions 2>/dev/null || true
+    PR_JSON=$(gh pr view "$PR_NUM" --json "$FIELDS" 2>/dev/null)
+fi
+
+# 2) gh's own branch resolution — works only for an open, same-repo PR.
+if [ -z "$PR_JSON" ]; then
+    PR_JSON=$(gh pr view --json "$FIELDS" 2>/dev/null)
+fi
+
+# 3) Head-ref search across ALL states — catches the merged/closed *same-repo* PRs
+#    that no-arg `gh pr view` misses. `--head` matches only same-repo head refs
+#    (it does not accept `owner:branch`), so it does NOT surface fork PRs. Returns
+#    a JSON array, possibly with several PRs that reused this branch name.
+if [ -z "$PR_JSON" ]; then
+    PR_JSON=$(gh pr list --head "$CURRENT" --state all --json "$FIELDS" 2>/dev/null)
 fi
 ```
 
-If both come back empty, search by head ref across **all** states — this is what catches the merged and closed PRs that no-argument `gh pr view` misses:
+**Sanity-check the breadcrumb before trusting it.** The `prNumber` breadcrumb lives in the repo-wide `.git/config`, keyed by branch name, and is never cleaned up (`git worktree remove` leaves it behind). A reused branch name (`patch-1`, `main`, a recycled fork head) can therefore point at the *wrong* PR. Before accepting step 1's result, confirm the resolved PR belongs to this branch: its `headRefName` should equal `$CURRENT`, and its `headRefOid` should be your `git rev-parse HEAD` **or a descendant of it** — the author may have pushed new commits after `wtpr` fetched the head once, so an exact match is not required and a strict `headRefOid == HEAD` test would wrongly reject an *active* PR. If the resolved PR clearly belongs to different work, discard it and fall through to step 2. (This stays prose, not code: the newer commit often is not in your local object DB, so an offline ancestry check can't always run — judge from the `headRefName`/`headRefOid` the call returns.)
 
-```bash
-gh pr list --head "$CURRENT" --state all --json number,url,state,title,headRefOid 2>/dev/null
-```
-
-If several PRs share the branch name, pick the one whose `headRefOid` equals `git rev-parse HEAD`; if none match (rare), take the first (gh lists most-recent first). Capture the `url` field for the Executive Summary's "Open on GitHub" link, and surface the PR's `state` in the dashboard metadata — reviewing an already-merged PR changes which feedback is still actionable. Only if *every* lookup above returns nothing (genuinely no PR for this branch) construct a compare URL from `git remote get-url origin` + `$DEFAULT_BRANCH` + current branch instead, so the dashboard still gives the reader a one-click path back to GitHub.
+If step 3 returns an array with several PRs that share the branch name, pick the one whose `headRefOid` matches your HEAD (applying the same descendant tolerance); if none match (rare), take the first — `gh` lists most-recent first. Capture the `url` field for the Executive Summary's "Open on GitHub" link, and surface the PR's `state` in the dashboard metadata — reviewing an already-merged PR changes which feedback is still actionable. Only if *every* step above yields nothing (an empty result, or an empty `[]` from step 3 — genuinely no PR for this branch) construct a compare URL from `git remote get-url origin` + `$DEFAULT_BRANCH` + current branch instead, so the dashboard still gives the reader a one-click path back to GitHub.
 
 Treat the body as the author's stated intent — useful context, but not ground truth. The diff is ground truth; the body is a claim about the diff. Note in the dashboard's Assumptions section if the two appear to diverge.
 
