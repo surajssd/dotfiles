@@ -18,7 +18,10 @@ update_brew() {
     brew update
 
     echo "⏳ Running brew upgrade..."
-    brew upgrade
+    # Recent Homebrew makes "Ask mode" the default, so 'brew upgrade' prompts
+    # "Do you want to proceed? [y/n]" and blocks this non-interactive script.
+    # --yes (a.k.a. --no-ask) restores the old non-interactive behavior.
+    brew upgrade --yes
 
     echo "✅ Brew update and upgrade complete."
 }
