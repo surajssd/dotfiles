@@ -57,7 +57,6 @@ mac_packages=(
 
 # Cask packages to install only on macOS (one per line, sorted alphabetically).
 mac_cask_packages=(
-    aldente
     discord
     font-fira-code-nerd-font
     git-credential-manager
