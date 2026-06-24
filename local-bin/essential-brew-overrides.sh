@@ -90,7 +90,7 @@ install_if_nonempty() {
         shift
     fi
     if [[ $# -gt 0 ]]; then
-        brew install "${flags[@]}" "$@"
+        brew install ${flags[@]+"${flags[@]}"} "$@"
     fi
 }
 
