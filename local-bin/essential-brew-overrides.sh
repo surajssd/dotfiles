@@ -6,9 +6,7 @@ OS="$(uname -s)"
 
 # Packages to install on all platforms (one per line, sorted alphabetically).
 common_packages=(
-    azure-cli
     bat
-    copilot-cli
     eza
     fzf
     gh
