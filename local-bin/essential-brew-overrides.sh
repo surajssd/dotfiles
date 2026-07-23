@@ -37,6 +37,7 @@ common_cask_packages=(
 
 # Packages to install only on macOS (one per line, sorted alphabetically).
 mac_packages=(
+    bash
     container
     coreutils
     docker
