@@ -56,7 +56,7 @@ make clone-private
 - **Configs**: Symlinked from `configs/` to home directory with OS-specific handling:
   - macOS: Uses `zshrc`, `gpg-agent-mac.conf`, `gpg.conf`, k9s skin to `~/Library/Application Support/k9s/skins/`
   - Linux: Uses `bashrc`, `gpg-agent-linux.conf`, k9s skin to `~/.config/k9s/skins/`
-  - Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`, `global-claude-config.md`
+  - Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`
 - **Skills**: Symlinked from `skills/` and `dotfilesprivate/skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI)
 
 ## Shell Script Conventions
@@ -83,11 +83,9 @@ All installers create symlinks (not copies) so that `git pull` immediately updat
 
 - macOS (Darwin): `zshrc` → `~/.zshrc`, `gpg-agent-mac.conf` → `~/.gnupg/gpg-agent.conf`, `gpg.conf` → `~/.gnupg/gpg.conf`
 - Linux: `bashrc` → `~/.bashrc`, `gpg-agent-linux.conf` → `~/.gnupg/gpg-agent.conf`
-- Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`, and `global-claude-config.md` → `~/.claude/CLAUDE.md`
+- Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`
 
-### Global Claude Config
-
-`configs/global-claude-config.md` is symlinked to `~/.claude/CLAUDE.md` during config installation. This provides system-wide Claude instructions that apply across all projects (e.g., use `rg` instead of `grep`, run `shellfmt.sh` after writing scripts).
+`installers/install-configs.sh` then invokes `dotfilesprivate/install-configs.sh` to symlink the private configs (see the private repo's `CLAUDE.md`).
 
 ### PATH Configuration
 

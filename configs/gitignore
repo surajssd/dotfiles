@@ -22,3 +22,5 @@ Session.vim
 
 # Ignore all Claude folders like
 .claude
+
+**/.claude/.cc-writes/
