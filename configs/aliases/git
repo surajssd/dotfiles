@@ -157,7 +157,9 @@ wta() {
     echo "Branch: $(git branch --show-current)"
 }
 
-# Create a worktree from an open PR (interactive fzf picker) and cd into it
+# Create a worktree from an open PR (interactive fzf picker, or a PR number
+# passed directly — e.g. `wtpr 12036` — for older PRs that have scrolled past
+# the picker's --limit) and cd into it
 wtpr() {
     if ! command -v gh >/dev/null 2>&1; then
         echo "❌ GitHub CLI (gh) is required for wtpr" >&2
@@ -172,20 +174,34 @@ wtpr() {
         return 1
     fi
 
-    # Pick an open PR. `column` aligns the number|branch|author: title fields so
-    # fzf's {1} placeholder maps to the PR number for the preview.
-    local pr
-    pr=$(gh pr list --state open --json number,title,headRefName,author \
-        --template '{{range .}}{{.number}}|{{.headRefName}}|{{.author.login}}: {{.title}}{{"\n"}}{{end}}' |
-        column -t -s '|' |
-        fzf --height=50% --reverse --header="Select PR to checkout as worktree" \
-            --preview 'gh pr view {1} --comments=false' \
-            --preview-window=right:40%)
-    [[ -z "$pr" ]] && return 0
-
     local pr_number branch
-    pr_number=$(echo "$pr" | awk '{print $1}')
-    branch=$(echo "$pr" | awk '{print $2}')
+
+    if [[ -n "$1" ]]; then
+        # PR number given explicitly: skip the picker entirely, since `gh pr
+        # list` is capped by --limit and won't surface older open PRs.
+        pr_number="$1"
+        branch=$(gh pr view "$pr_number" --json headRefName --jq '.headRefName') || {
+            echo "❌ Could not find PR #${pr_number}" >&2
+            return 1
+        }
+    else
+        # Pick an open PR. `column` aligns the number|branch|author: title fields
+        # so fzf's {1} placeholder maps to the PR number for the preview.
+        # --limit raised well past gh's default of 30 so older open PRs still
+        # show up; pass a PR number directly (`wtpr <number>`) to bypass this
+        # picker altogether.
+        local pr
+        pr=$(gh pr list --state open --limit 500 --json number,title,headRefName,author \
+            --template '{{range .}}{{.number}}|{{.headRefName}}|{{.author.login}}: {{.title}}{{"\n"}}{{end}}' |
+            column -t -s '|' |
+            fzf --height=50% --reverse --header="Select PR to checkout as worktree" \
+                --preview 'gh pr view {1} --comments=false' \
+                --preview-window=right:40%)
+        [[ -z "$pr" ]] && return 0
+
+        pr_number=$(echo "$pr" | awk '{print $1}')
+        branch=$(echo "$pr" | awk '{print $2}')
+    fi
 
     # Match wta's naming: ../<repo-dir>-<branch> with slashes sanitized.
     local current_dir_name safe_branch worktree_dir
