@@ -7,10 +7,10 @@
 #       --prompt-file <f> [--diff-file <f>] [--base <ref>] \
 #       --output-file <f> [--timeout <secs>]
 #
-# --effort sets per-tool reasoning effort (copilot/agency --effort, codex
-# model_reasoning_effort, opencode --variant). Valid values differ per tool; the
-# orchestrator supplies one the chosen tool accepts. claude/agy have no such flag,
-# so an --effort given for them is ignored with a note. Empty = tool default.
+# --effort sets per-tool reasoning effort (codex model_reasoning_effort, opencode
+# --variant). Valid values differ per tool; the orchestrator supplies one the chosen
+# tool accepts. claude/agy have no such flag, so an --effort given for them is
+# ignored with a note. Empty = tool default.
 #
 # --prompt-file holds the full self-contained review prompt (instructions + plan context),
 # already assembled by build_prompt.sh. This skill has no diff, so --diff-file is passed
@@ -19,24 +19,19 @@
 # prompt (identity + prompt-file [+ diff, when one is given]) is delivered to EVERY tool the
 # same way: on stdin, via a file redirect (`tool < prompt`). stdin has no argv size limit, so
 # a large plan plus many embedded files is fine, and a file redirect (not a pipe) means a tool
-# that exits without draining stdin does NOT make us take SIGPIPE. claude, codex, opencode,
-# copilot, and agency were verified to read the full prompt from stdin; agy (Google
-# Antigravity CLI) is wired by analogy to its gemini-cli lineage but not yet live-verified —
-# see the note in references/reviewer-cli-matrix.md.
-#
-# copilot and agency additionally get `--context long_context` so a large plan + embedded files
-# fit their window without swapping the user's configured model. If a model still overflows (no
-# long tier, or the prompt exceeds even the long window), the status dispatch detects the
-# overflow and tells the user to re-run with `--model <bigger>`.
+# that exits without draining stdin does NOT make us take SIGPIPE. claude, codex, and opencode
+# were verified to read the full prompt from stdin; agy (Google Antigravity CLI) is wired by
+# analogy to its gemini-cli lineage but not yet live-verified — see the note in
+# references/reviewer-cli-matrix.md.
 #
 # Writes the review to --output-file and a one-line status to <output-file>.status.
 # Always exits 0 (a failed reviewer is recorded, not fatal) so a background fan-out
 # of these never aborts the whole panel.
 #
 # Per-tool invocation is documented in references/reviewer-cli-matrix.md — keep both
-# in sync. Read-only is enforced where the CLI supports it; copilot/opencode/agency
-# lack a hard read-only switch, so the prompt forbids edits and the orchestrator
-# diffs `git status` after the panel runs.
+# in sync. Read-only is enforced where the CLI supports it; opencode lacks a hard
+# read-only switch, so the prompt forbids edits and the orchestrator diffs
+# `git status` after the panel runs.
 
 set -uo pipefail # NOTE: no -e; we handle reviewer failures explicitly.
 
@@ -112,14 +107,14 @@ ERR_FILE="${OUTPUT_FILE}.stderr"
 mkdir -p "$(dirname "${OUTPUT_FILE}")"
 
 # Prepend the reviewer's assigned panel label so its review self-identifies by that
-# label rather than the underlying engine (matters most for `agency copilot`, which
-# otherwise reports as "GitHub Copilot CLI"). The collator keys on the label.
+# label rather than the underlying engine — matters when the same tool is run twice
+# with different models/efforts under distinct labels. The collator keys on the label.
 IDENTITY="You are the panel member labelled \"${LABEL}\"${MODEL:+ (model: ${MODEL})}${EFFORT:+ (effort: ${EFFORT})}. Begin your review's \"# Review by …\" heading with exactly \"${LABEL}\" so your output is attributed correctly when collated."
 
 # safe_fence FILE — longest fence that the file's content cannot close. CommonMark
 # lets a closing fence carry ≤3 leading spaces and trailing spaces, so we must treat
 # `   ~~~~  ` as a tilde run too, not only pure-tilde lines — otherwise indented
-# untrusted content could break out of the block (it reaches --allow-all-tools tools).
+# untrusted content could break out of the block (it reaches fully tool-enabled reviewers).
 safe_fence() {
     local file="$1" longest len
     longest="$(awk 'match($0, /^ {0,3}(~+) *$/, a) { if (length(a[1]) > m) m = length(a[1]) } END { print m + 0 }' "${file}" 2>/dev/null)"
@@ -281,22 +276,6 @@ opencode)
     # opencode calls reasoning effort a model "variant" (provider-specific levels).
     [ -n "${EFFORT}" ] && CMD+=(--variant "${EFFORT}")
     ;;
-copilot)
-    # Prompt on stdin (verified copilot reads it). `--context long_context` expands the
-    # window so a large plan + embedded files fit without swapping the configured model; an
-    # overflow on a model with no long tier is detected below and reported with a --model suggestion.
-    CMD=(copilot -p "" --allow-all-tools --no-color --context long_context)
-    [ -n "${MODEL}" ] && CMD+=(--model "${MODEL}")
-    [ -n "${EFFORT}" ] && CMD+=(--effort "${EFFORT}")
-    ;;
-agency)
-    # `agency copilot` forwards everything after `--` to the underlying Copilot CLI,
-    # including the prompt on stdin and `--context long_context` (verified forwarded).
-    CMD=(agency copilot -- -p "" --allow-all-tools --no-color --context long_context)
-    [ -n "${MODEL}" ] && CMD+=(--model "${MODEL}")
-    # Forwarded after `--` to Copilot, same as the standalone copilot branch.
-    [ -n "${EFFORT}" ] && CMD+=(--effort "${EFFORT}")
-    ;;
 *)
     err "❌ Unknown tool: ${TOOL}"
     # Write a stub .md too, so a typo'd custom panel entry still appears in collation
@@ -316,8 +295,8 @@ START="$(date +%s)"
 
 # Run the reviewer. run_guarded owns the redirects (to RAW_FILE / ERR_FILE) so the
 # captured output is flushed and fully visible once it returns. Some panel CLIs
-# (copilot, agency) interleave tool-call traces with their final answer on stdout, so
-# we extract the review from between the sentinels the prompt asked for.
+# interleave tool-call traces with their final answer on stdout, so we extract the
+# review from between the sentinels the prompt asked for.
 if run_guarded "${CMD[@]}"; then
     RC=0
 else
@@ -370,9 +349,9 @@ write_stub() {
 }
 
 # Did the reviewer fail because the prompt overflowed the model's context window?
-# This is the issue #2 case: copilot/agency on a model whose window (even the long_context
-# tier) can't hold a large plan plus its embedded referenced files. We surface an actionable
-# message instead of a cryptic exit code so the user knows to re-run with a larger --model.
+# A large plan plus its embedded referenced files can exceed a model's context window
+# outright. We surface an actionable message instead of a cryptic exit code so the
+# user knows to re-run with a larger --model.
 #
 # Intrinsic gate FIRST: a sentinel-clean review is NEVER reclassified as overflow.
 # Beyond that, the two greps are deliberately asymmetric to avoid false-positives on a

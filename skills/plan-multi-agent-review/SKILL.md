@@ -1,6 +1,6 @@
 ---
 name: plan-multi-agent-review
-description: Orchestrate a panel of local AI coding CLIs (claude, codex, agy, opencode, copilot, agency copilot) to independently review a PLAN FILE against the code repository it targets, then collate their findings into one consensus-first markdown report. Use this whenever the user wants a "multi-agent", "panel", "multi-model", or "second opinion" review of a plan / plan file / design doc / implementation plan, asks to "review this plan with several agents / models", or wants plan reviews "collated" or "cross-checked" across tools. The two inputs are a plan file (explicit path, required) and the repo; the sole output is a review of the plan. Nothing is posted anywhere — output is local files in a temp dir. Do NOT use to review a Pull Request or a git diff (use pr-multi-agent-review), a pasted snippet, or when the user wants a single reviewer.
+description: Orchestrate a panel of local AI coding CLIs (claude, codex, agy, opencode) to independently review a PLAN FILE against the code repository it targets, then collate their findings into one consensus-first markdown report. Use this whenever the user wants a "multi-agent", "panel", "multi-model", or "second opinion" review of a plan / plan file / design doc / implementation plan, asks to "review this plan with several agents / models", or wants plan reviews "collated" or "cross-checked" across tools. The two inputs are a plan file (explicit path, required) and the repo; the sole output is a review of the plan. Nothing is posted anywhere — output is local files in a temp dir. Do NOT use to review a Pull Request or a git diff (use pr-multi-agent-review), a pasted snippet, or when the user wants a single reviewer.
 allowed-tools: Bash, Read, Write
 ---
 
@@ -24,12 +24,11 @@ as Linux.
 **Trust boundary (read this).** Two distinct exposures, because the panel feeds the *plan* and
 repo files into the reviewer CLIs and lets them explore a live working tree:
 
-- **Prompt-injection → tool execution.** Four tools (`copilot`, `opencode`, `agency`, `agy`) run
-  without a hard read-only sandbox — the first three with `--allow-all-tools`, `agy` with its
-  auto-approving `--sandbox`. Because this skill points every reviewer at a
-  **live repo as its working directory** so it can verify the plan, a malicious file in that repo
-  (or a crafted instruction inside the plan) could attempt to drive those tools. Run this on repos
-  and plans you trust, or isolate those tools (throwaway worktree, network off).
+- **Prompt-injection → tool execution.** Two tools (`opencode`, `agy`) run without a hard
+  read-only sandbox — `agy` with its auto-approving `--sandbox`. Because this skill points every
+  reviewer at a **live repo as its working directory** so it can verify the plan, a malicious file
+  in that repo (or a crafted instruction inside the plan) could attempt to drive those tools. Run
+  this on repos and plans you trust, or isolate those tools (throwaway worktree, network off).
 - **Data egress.** Every reviewer streams the plan and the repo content it reads to its model
   provider (Anthropic, OpenAI, GitHub, Google, …). This skill embeds the plan-referenced files
   **and** invites live exploration, so **more repo content can leave the machine than a single diff
@@ -131,9 +130,9 @@ the report. Detect what's available:
 ```
 
 It prints one line per candidate: `available <label> <tool>` or `missing <tool>`. The candidate
-roster is `claude`, `codex`, `agy` (Google Antigravity CLI), `opencode`, `copilot`, and `agency`
-(agency copilot). Build your panel from the `available` lines and tell the user which tools were
-skipped and why ("`agy` not in PATH — skipping").
+roster is `claude`, `codex`, `agy` (Google Antigravity CLI), and `opencode`. Build your panel from
+the `available` lines and tell the user which tools were skipped and why ("`agy` not in PATH —
+skipping").
 
 ### Models and reasoning effort: pre-selected by default
 
@@ -142,23 +141,21 @@ level it's configured with. This respects the user's existing setup and is what 
 they say otherwise.
 
 Override only when the user explicitly names models or a reasoning effort. The interesting case is
-running **the same tool more than once with different models** — e.g. "run agency copilot with a
-Claude model and again with a GPT model." Model-capable tools accept `--model`/`-m`; the panel just
-gets two entries for that tool, each with a distinct label so their reviews don't collide. Each
-panel entry is a `label | tool | model | effort` tuple (model and effort default to empty):
+running **the same tool more than once with different models** — e.g. "run codex with gpt-5 and
+again with gpt-5-codex." Model-capable tools accept `--model`/`-m`; the panel just gets two entries
+for that tool, each with a distinct label so their reviews don't collide. Each panel entry is a
+`label | tool | model | effort` tuple (model and effort default to empty):
 
 | User asks for | Panel entries (label \| tool \| model \| effort) |
 |---|---|
 | default (no models named) | `claude\|claude\|\|`, `codex\|codex\|\|`, … one per available tool |
-| "agency copilot with sonnet and with gpt-5" | `agency-sonnet\|agency\|claude-sonnet-4.5\|`, `agency-gpt5\|agency\|gpt-5\|` |
-| "codex on gpt-5-codex" | `codex\|codex\|gpt-5-codex\|` |
-| "Copilot with extra-high reasoning" | `copilot\|copilot\|\|xhigh` |
+| "codex with gpt-5 and with gpt-5-codex" | `codex-gpt5\|codex\|gpt-5\|`, `codex-gpt5-codex\|codex\|gpt-5-codex\|` |
+| "opencode with high reasoning" | `opencode\|opencode\|\|high` |
 
 **Reasoning effort** is per-tool and the valid values differ — pick one the chosen tool accepts:
 
 | Tool | Effort mechanism | Valid values |
 |---|---|---|
-| `copilot`, `agency` | `--effort` | `none, low, medium, high, xhigh, max` ("extra high" = `xhigh`) |
 | `codex` | `model_reasoning_effort` config | `minimal, low, medium, high` |
 | `opencode` | `--variant` | provider-specific, e.g. `minimal, low, high, max` |
 | `claude`, `agy` | *(none)* | an effort request is ignored with a note, the reviewer still runs |
@@ -217,10 +214,9 @@ cleaned review to `<label>.md`, the unfiltered capture to `<label>.md.raw`, and 
 ### Read-only and the untrusted-input boundary
 
 Read-only is enforced where the tool supports it (codex `--sandbox read-only`, claude
-`--permission-mode plan`). **`copilot`, `opencode`, `agency`, and `agy` have
-no hard read-only switch** — `copilot`/`opencode`/`agency` run with `--allow-all-tools`, and `agy`
-runs with `--sandbox` (terminal-restricted but auto-approving) — so only the prompt asks them not to
-write. With reviewers now pointed at a live repo as cwd, that is a real exposure: a crafted "ignore
+`--permission-mode plan`). **`opencode` and `agy` have no hard read-only switch** — `agy` runs with
+`--sandbox` (terminal-restricted but auto-approving) — so only the prompt asks them not to write.
+With reviewers now pointed at a live repo as cwd, that is a real exposure: a crafted "ignore
 previous instructions…" payload in a repo file or in the plan could drive a fully tool-enabled
 agent. The post-run `git status` check (Step 7) catches tracked-file writes only — not reads,
 network calls, or untracked files.
@@ -230,7 +226,7 @@ Mitigate, don't pretend it's airtight:
 - **Only run this skill on repos and plans you trust** unless you've isolated the no-sandbox tools.
   Say so plainly when either is from an unknown source.
 - For untrusted input, prefer reviewing inside a throwaway git worktree and/or with networking
-  disabled for the `copilot`/`opencode`/`agency` runs.
+  disabled for the `opencode`/`agy` runs.
 
 As each task completes, glance at its `.status` and the head of its review file. `ok` = a clean
 sentinel-wrapped review. `ok-empty` = the tool ran but emitted no sentinels (it likely refused or
