@@ -1,6 +1,6 @@
 ---
 name: plan-multi-agent-review
-description: Orchestrate a panel of local AI coding CLIs (claude, codex, agy, opencode) to independently review a PLAN FILE against the code repository it targets, then collate their findings into one consensus-first markdown report. Use this whenever the user wants a "multi-agent", "panel", "multi-model", or "second opinion" review of a plan / plan file / design doc / implementation plan, asks to "review this plan with several agents / models", or wants plan reviews "collated" or "cross-checked" across tools. The two inputs are a plan file (explicit path, required) and the repo; the sole output is a review of the plan. Nothing is posted anywhere — output is local files in a temp dir. Do NOT use to review a Pull Request or a git diff (use pr-multi-agent-review), a pasted snippet, or when the user wants a single reviewer.
+description: Orchestrate a panel of local AI coding CLIs (claude, codex, agy, opencode, cursor) to independently review a PLAN FILE against the code repository it targets, then collate their findings into one consensus-first markdown report. Use this whenever the user wants a "multi-agent", "panel", "multi-model", or "second opinion" review of a plan / plan file / design doc / implementation plan, asks to "review this plan with several agents / models", or wants plan reviews "collated" or "cross-checked" across tools. The two inputs are a plan file (explicit path, required) and the repo; the sole output is a review of the plan. Nothing is posted anywhere — output is local files in a temp dir. Do NOT use to review a Pull Request or a git diff (use pr-multi-agent-review), a pasted snippet, or when the user wants a single reviewer.
 allowed-tools: Bash, Read, Write
 ---
 
@@ -130,9 +130,9 @@ the report. Detect what's available:
 ```
 
 It prints one line per candidate: `available <label> <tool>` or `missing <tool>`. The candidate
-roster is `claude`, `codex`, `agy` (Google Antigravity CLI), and `opencode`. Build your panel from
-the `available` lines and tell the user which tools were skipped and why ("`agy` not in PATH —
-skipping").
+roster is `claude`, `codex`, `agy` (Google Antigravity CLI), `opencode`, and `cursor` (Cursor CLI,
+binary `cursor-agent`). Build your panel from the `available` lines and tell the user which tools
+were skipped and why ("`agy` not in PATH — skipping").
 
 ### Models and reasoning effort: pre-selected by default
 
@@ -140,7 +140,12 @@ By default, pass **no model flag and no effort flag** — each tool uses whateve
 level it's configured with. This respects the user's existing setup and is what they want unless
 they say otherwise.
 
-Override only when the user explicitly names models or a reasoning effort. The interesting case is
+**Exception: `cursor` always defaults to `--model cursor-grok-4.5-high`**, even when the user named
+no models — this is the one deliberate override of "no model flag by default" above. Use a
+different `cursor-grok-4.5-<low|medium|high>[-fast]` id only if the user explicitly asks for a
+different Cursor reasoning level or the fast variant.
+
+Override the other tools only when the user explicitly names models or a reasoning effort. The interesting case is
 running **the same tool more than once with different models** — e.g. "run codex with gpt-5 and
 again with gpt-5-codex." Model-capable tools accept `--model`/`-m`; the panel just gets two entries
 for that tool, each with a distinct label so their reviews don't collide. Each panel entry is a
@@ -148,9 +153,10 @@ for that tool, each with a distinct label so their reviews don't collide. Each p
 
 | User asks for | Panel entries (label \| tool \| model \| effort) |
 |---|---|
-| default (no models named) | `claude\|claude\|\|`, `codex\|codex\|\|`, … one per available tool |
+| default (no models named) | `claude\|claude\|\|`, `codex\|codex\|\|`, `cursor\|cursor\|cursor-grok-4.5-high\|`, … one per available tool |
 | "codex with gpt-5 and with gpt-5-codex" | `codex-gpt5\|codex\|gpt-5\|`, `codex-gpt5-codex\|codex\|gpt-5-codex\|` |
 | "opencode with high reasoning" | `opencode\|opencode\|\|high` |
+| "cursor with medium reasoning" | `cursor\|cursor\|cursor-grok-4.5-medium\|` |
 
 **Reasoning effort** is per-tool and the valid values differ — pick one the chosen tool accepts:
 
@@ -158,7 +164,7 @@ for that tool, each with a distinct label so their reviews don't collide. Each p
 |---|---|---|
 | `codex` | `model_reasoning_effort` config | `minimal, low, medium, high` |
 | `opencode` | `--variant` | provider-specific, e.g. `minimal, low, high, max` |
-| `claude`, `agy` | *(none)* | an effort request is ignored with a note, the reviewer still runs |
+| `claude`, `agy`, `cursor` | *(none)* | an effort request is ignored with a note, the reviewer still runs (`cursor` picks a different `--model` id instead) |
 
 The label is yours to choose — make it readable and unique (it becomes the review filename and the
 section header). See `references/reviewer-cli-matrix.md` for exactly how each tool is invoked and
@@ -214,7 +220,7 @@ cleaned review to `<label>.md`, the unfiltered capture to `<label>.md.raw`, and 
 ### Read-only and the untrusted-input boundary
 
 Read-only is enforced where the tool supports it (codex `--sandbox read-only`, claude
-`--permission-mode plan`). **`opencode` and `agy` have no hard read-only switch** — `agy` runs with
+`--permission-mode plan`, cursor `--plan`). **`opencode` and `agy` have no hard read-only switch** — `agy` runs with
 `--sandbox` (terminal-restricted but auto-approving) — so only the prompt asks them not to write.
 With reviewers now pointed at a live repo as cwd, that is a real exposure: a crafted "ignore
 previous instructions…" payload in a repo file or in the plan could drive a fully tool-enabled

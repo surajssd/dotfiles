@@ -1,6 +1,6 @@
 ---
 name: pr-multi-agent-review
-description: Orchestrate a panel of local AI coding CLIs (claude, codex, agy, opencode) to independently review the Pull Request currently checked out, then collate their findings into one consensus-first markdown report plus a visual HTML dashboard. Use this whenever the user wants a "multi-agent", "panel", "multi-model", or "second opinion" review of the current branch/PR, asks to "review this PR with several agents / models", wants reviews "collated" or "cross-checked" across tools, or wants the review to also cover tests, a manual testing plan, documentation updates, and unresolved GitHub review threads. Nothing is posted to GitHub — the output is local files. Do NOT use for reviewing a pasted snippet, a remote PR that is not checked out, or when the user wants a single reviewer (use pr-review-dashboard for a solo visual review).
+description: Orchestrate a panel of local AI coding CLIs (claude, codex, agy, opencode, cursor) to independently review the Pull Request currently checked out, then collate their findings into one consensus-first markdown report plus a visual HTML dashboard. Use this whenever the user wants a "multi-agent", "panel", "multi-model", or "second opinion" review of the current branch/PR, asks to "review this PR with several agents / models", wants reviews "collated" or "cross-checked" across tools, or wants the review to also cover tests, a manual testing plan, documentation updates, and unresolved GitHub review threads. Nothing is posted to GitHub — the output is local files. Do NOT use for reviewing a pasted snippet, a remote PR that is not checked out, or when the user wants a single reviewer (use pr-review-dashboard for a solo visual review).
 allowed-tools: Bash, Read, Write, Skill
 ---
 
@@ -100,22 +100,25 @@ Only run tools that are actually installed — invoking a missing binary wastes 
 "$SKILL_DIR/scripts/detect_reviewers.sh"
 ```
 
-It prints one line per candidate: `available <label> <tool>` or `missing <tool>`. The candidate roster is `claude`, `codex`, `agy` (Google Antigravity CLI), and `opencode`. Build your panel from the `available` lines and tell the user which tools were skipped and why ("`agy` not in PATH — skipping").
+It prints one line per candidate: `available <label> <tool>` or `missing <tool>`. The candidate roster is `claude`, `codex`, `agy` (Google Antigravity CLI), `opencode`, and `cursor` (Cursor CLI, binary `cursor-agent`). Build your panel from the `available` lines and tell the user which tools were skipped and why ("`agy` not in PATH — skipping").
 
 ### Models and reasoning effort: pre-selected by default
 
 By default, pass **no model flag and no effort flag** — each tool uses whatever model and reasoning level it's configured with. This respects the user's existing setup and is what they want unless they say otherwise.
 
-Override only when the user explicitly names models or a reasoning effort. The interesting case is running **the same tool more than once with different models** — e.g. "run codex with gpt-5 and again with gpt-5-codex." Model-capable tools accept `--model`/`-m`; the panel just gets two entries for that tool, each with a distinct label so their reviews don't collide. Each panel entry is a `label | tool | model | effort` tuple (model and effort default to empty):
+**Exception: `cursor` always defaults to `--model cursor-grok-4.5-high`**, even when the user named no models — this is the one deliberate override of "no model flag by default" above. Use a different `cursor-grok-4.5-<low|medium|high>[-fast]` id only if the user explicitly asks for a different Cursor reasoning level or the fast variant.
+
+Override the other tools only when the user explicitly names models or a reasoning effort. The interesting case is running **the same tool more than once with different models** — e.g. "run codex with gpt-5 and again with gpt-5-codex." Model-capable tools accept `--model`/`-m`; the panel just gets two entries for that tool, each with a distinct label so their reviews don't collide. Each panel entry is a `label | tool | model | effort` tuple (model and effort default to empty):
 
 | User asks for | Panel entries (label \| tool \| model \| effort) |
 |---|---|
-| default (no models named) | `claude\|claude\|\|`, `codex\|codex\|\|`, … one per available tool |
+| default (no models named) | `claude\|claude\|\|`, `codex\|codex\|\|`, `cursor\|cursor\|cursor-grok-4.5-high\|`, … one per available tool |
 | "codex with gpt-5 and with gpt-5-codex" | `codex-gpt5\|codex\|gpt-5\|`, `codex-gpt5-codex\|codex\|gpt-5-codex\|` |
 | "codex on gpt-5-codex" | `codex\|codex\|gpt-5-codex\|` |
 | "opencode with high reasoning" | `opencode\|opencode\|\|high` |
+| "cursor with medium reasoning" | `cursor\|cursor\|cursor-grok-4.5-medium\|` |
 
-**Reasoning effort** is per-tool and the valid values differ — pick one the chosen tool accepts: `codex` uses the `model_reasoning_effort` config (`minimal, low, medium, high`); `opencode` uses `--variant` (provider-specific, e.g. `minimal, low, high, max`). `claude` and `agy` have no reasoning-effort flag, so an effort request for them is ignored with a note and the reviewer still runs.
+**Reasoning effort** is per-tool and the valid values differ — pick one the chosen tool accepts: `codex` uses the `model_reasoning_effort` config (`minimal, low, medium, high`); `opencode` uses `--variant` (provider-specific, e.g. `minimal, low, high, max`). `claude`, `agy`, and `cursor` have no reasoning-effort flag, so an effort request for them is ignored with a note and the reviewer still runs (`cursor` picks a different `--model` id instead).
 
 The label is yours to choose — make it readable and unique (it becomes the review filename and the section header). See `references/reviewer-cli-matrix.md` for exactly how each tool is invoked and which support `--model` / `--effort`.
 
@@ -133,7 +136,7 @@ Why embed the context in the prompt rather than point reviewers at the files? Th
 
 `run_reviewer.sh` takes the diff via `--diff-file` and embeds it into each reviewer's prompt, then delivers the whole thing the same way for every tool — that uniformity is the reason large PRs don't break:
 
-- **Every reviewer** (`claude`, `codex`, `agy`, `opencode`) gets the diff-less prompt **plus the full diff** concatenated onto **stdin**, via a file redirect, which has no size limit. (`claude`, `codex`, and `opencode` were verified to read the full prompt from stdin — a 450 KiB tail-token probe round-tripped intact — so the older "argv-only, omit the diff on overflow" path is gone. `agy` is wired the same way by analogy to its gemini-cli lineage but is not yet live-verified — smoke-test it.)
+- **Every reviewer except `cursor`** (`claude`, `codex`, `agy`, `opencode`) gets the diff-less prompt **plus the full diff** concatenated onto **stdin**, via a file redirect, which has no size limit. (`claude`, `codex`, and `opencode` were verified to read the full prompt from stdin — a 450 KiB tail-token probe round-tripped intact — so the older "argv-only, omit the diff on overflow" path is gone. `agy` is wired the same way by analogy to its gemini-cli lineage but is not yet live-verified — smoke-test it.) `cursor` (`cursor-agent`) has no documented stdin support at all, so it receives the same assembled prompt as a single **argv** string instead — this reopens the argv-size risk the stdin design avoids for the rest of the panel; see the caveat in `references/reviewer-cli-matrix.md` and smoke-test it on a large diff.
 - If a diff is large enough to overflow a model's context window outright, `run_reviewer.sh` detects it and writes an `errored` status telling you to re-run that label with `--model <larger-context model>` — it never silently swaps your model.
 
 Read `references/review-prompt.md` yourself once so you know what you're asking the panel to produce — it directs each reviewer to cover correctness, security, performance, error handling, concurrency, API/compat, **test quality**, **human + agentic documentation**, to end with a **manual testing plan**, all cited to `file:line`, and to wrap the whole review between `===PR-REVIEW-BEGIN===`/`===PR-REVIEW-END===` sentinels.
@@ -153,7 +156,7 @@ Launch each as a **background Bash task** (`run_in_background: true`) so they ru
 
 ### Read-only and the untrusted-input boundary
 
-Read-only is enforced where the tool supports it (codex `--sandbox read-only`, claude `--permission-mode plan`). **`opencode` and `agy` have no hard read-only switch** — `agy` runs with `--sandbox` (terminal-restricted but auto-approving), so only the prompt asks them not to write. That is a real exposure: the prompt embeds *untrusted* PR content (body, commit messages, third-party review-thread comments, the diff), and a crafted "ignore previous instructions…" payload could drive a fully tool-enabled agent. The post-run `git status` check catches tracked-file writes only — not reads, network calls, or untracked files.
+Read-only is enforced where the tool supports it (codex `--sandbox read-only`, claude `--permission-mode plan`, cursor `--plan`). **`opencode` and `agy` have no hard read-only switch** — `agy` runs with `--sandbox` (terminal-restricted but auto-approving), so only the prompt asks them not to write. That is a real exposure: the prompt embeds *untrusted* PR content (body, commit messages, third-party review-thread comments, the diff), and a crafted "ignore previous instructions…" payload could drive a fully tool-enabled agent. The post-run `git status` check catches tracked-file writes only — not reads, network calls, or untracked files.
 
 Mitigate, don't pretend it's airtight:
 

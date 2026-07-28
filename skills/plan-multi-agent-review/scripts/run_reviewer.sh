@@ -22,7 +22,9 @@
 # that exits without draining stdin does NOT make us take SIGPIPE. claude, codex, and opencode
 # were verified to read the full prompt from stdin; agy (Google Antigravity CLI) is wired by
 # analogy to its gemini-cli lineage but not yet live-verified — see the note in
-# references/reviewer-cli-matrix.md.
+# references/reviewer-cli-matrix.md. cursor (cursor-agent) is the one exception BY DESIGN, not
+# by omission: its CLI takes the prompt as an argv string with no documented stdin support, so
+# its branch below reads ${PROMPT_BUILT} into the argv instead of relying on this redirect.
 #
 # Writes the review to --output-file and a one-line status to <output-file>.status.
 # Always exits 0 (a failed reviewer is recorded, not fatal) so a background fan-out
@@ -276,6 +278,20 @@ opencode)
     # opencode calls reasoning effort a model "variant" (provider-specific levels).
     [ -n "${EFFORT}" ] && CMD+=(--variant "${EFFORT}")
     ;;
+cursor)
+    # Cursor CLI (binary: cursor-agent, also aliased as `agent`). `--plan` is a genuine
+    # hard read-only mode (no edits) combined with `-p` for headless output, same tier
+    # as claude/codex. `--trust` avoids a hang on the interactive workspace-trust prompt.
+    #
+    # UNLIKE every other tool here, cursor-agent takes its prompt as an argv string, not
+    # stdin (no documented stdin support in `agent --help`). So instead of relying on the
+    # stdin redirect run_guarded gives every command, read the assembled prompt into the
+    # argv itself. This can hit the OS argv-size limit on very large diffs/plans — a
+    # different, less graceful failure than this script's context-overflow detection.
+    CMD=(cursor-agent -p "$(cat "${PROMPT_BUILT}")" --plan --trust --output-format text)
+    [ -n "${MODEL}" ] && CMD+=(--model "${MODEL}")
+    [ -n "${EFFORT}" ] && err "ℹ️ [${LABEL}] cursor has no reasoning-effort flag; pick a different --model (e.g. cursor-grok-4.5-medium) instead; ignoring --effort ${EFFORT}"
+    ;;
 *)
     err "❌ Unknown tool: ${TOOL}"
     # Write a stub .md too, so a typo'd custom panel entry still appears in collation
@@ -290,7 +306,11 @@ opencode)
     ;;
 esac
 
-echo "⏳ [${LABEL}] running ${TOOL}${MODEL:+ (model: ${MODEL})}${EFFORT:+ (effort: ${EFFORT})} via stdin ..." >&2
+# cursor is the one tool whose prompt arrives via argv, not the stdin redirect every
+# other command gets from run_guarded — say so accurately in the progress line.
+DELIVERY="via stdin"
+[ "${TOOL}" = "cursor" ] && DELIVERY="via argv"
+echo "⏳ [${LABEL}] running ${TOOL}${MODEL:+ (model: ${MODEL})}${EFFORT:+ (effort: ${EFFORT})} ${DELIVERY} ..." >&2
 START="$(date +%s)"
 
 # Run the reviewer. run_guarded owns the redirects (to RAW_FILE / ERR_FILE) so the
