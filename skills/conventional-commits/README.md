@@ -2,6 +2,8 @@
 
 A Claude Code skill that formats commit messages according to the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification.
 
+Each drafted message is linted with `commitlint` (run via [`bun`](https://bun.sh)) using the same rules as CI, and the skill fixes any reported violations before presenting the message. The first run performs a one-time `bun install` into `~/.cache/conventional-commits-skill`; later runs are offline. See `scripts/validate-commit-msg.sh`.
+
 ## Usage (in Claude)
 
 ```

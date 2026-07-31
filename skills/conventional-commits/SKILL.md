@@ -195,6 +195,50 @@ to a flaky `exit 1`. The `printf '%s\n'` form parses as a clean
 pipeline, matches the sandbox exclusion reliably, and preserves blank
 lines (pass `''` for them).
 
+## Validating the message (required)
+
+After composing a commit message — and **before** presenting, copying, or
+committing it — lint it with the bundled `commitlint` validator. It enforces the
+same Conventional Commits rules as CI (`commitlint@19.8.0` +
+`@commitlint/config-conventional`), so a message that passes here won't be
+rejected downstream.
+
+1. Resolve the skill directory portably (BSD `readlink` has no `-f`):
+
+   ```bash
+   SKILL_LINK=~/.claude/skills/conventional-commits/SKILL.md
+   SKILL_TARGET="$(readlink "$SKILL_LINK" 2>/dev/null || echo "$SKILL_LINK")"
+   SKILL_DIR="$(cd "$(dirname "$SKILL_TARGET")" && pwd -P)"
+   ```
+
+2. Write the drafted message to a temp file and lint it (use the single-line
+   `printf '%s\n' … ` form from the clipboard section above — pass `''` for
+   blank lines):
+
+   ```bash
+   MSG="$(mktemp)"
+   printf '%s\n' 'feat(scope): summary' '' 'Body explaining why.' > "$MSG"
+   "$SKILL_DIR/scripts/validate-commit-msg.sh" "$MSG"; echo "exit=$?"
+   ```
+
+3. **Act on the result — this is the feedback loop:**
+   - **Exit `0`** → the message passes commitlint; proceed to present / copy /
+     commit it.
+   - **Non-zero** → commitlint prints a verbose report naming each failed rule
+     (e.g. `type-empty`, `subject-empty`, `subject-full-stop`,
+     `header-max-length`). Read that report, revise the message to fix **exactly
+     those** rules, rewrite `$MSG`, and re-run the validator. Repeat up to **3**
+     times. If it still fails, present the message alongside the outstanding
+     commitlint report and let the user decide.
+
+The validator's `--verbose` output on stdout/stderr **is** the feedback channel:
+each line tells you which rule failed and why, so map those directly onto edits.
+
+> The **first** run performs a one-time `bun install` into
+> `${XDG_CACHE_HOME:-~/.cache}/conventional-commits-skill` (needs network);
+> every run after that is offline and fast. Requires `bun` on `PATH`
+> (<https://bun.sh>).
+
 ## Common Mistakes to Avoid
 
 ❌ `Added new feature` (past tense, capitalized)
