@@ -1,217 +1,196 @@
 ---
 name: pr-review-dashboard
-description: Use this skill when the user wants to review, understand, or explain a Pull Request that is currently checked out in the local git repository. Triggers include phrases like "review this PR", "explain this PR", "what does this PR do", "review the current branch", or any request to analyze uncommitted-to-main work on a feature branch. Produces an interactive single-file HTML dashboard with architecture diagrams, annotated diffs, and risk assessment. Do NOT use for reviewing arbitrary code snippets pasted in chat, for PRs on remote repositories not checked out locally, or for general code review of files unrelated to a branch diff.
+description: Review, explain, or assess the Pull Request represented by the currently checked-out feature branch in a local git repository. Use for requests such as "review this PR", "explain this PR", "what does this PR do", or "review the current branch". Produce an evidence-backed, interactive single-file HTML dashboard with an explicit review recommendation, prioritized findings, architecture views, annotated diffs, verification results, and unknowns. Do not use for pasted snippets, a remote PR that is not checked out, or unrelated working-tree code.
 ---
 
 # PR Review Dashboard
 
-Act as a Staff-level code reviewer. Help the user understand an unfamiliar Pull Request that is currently checked out. Produce a single-file, interactive HTML dashboard that visually explains the PR, its context, its risks, and your own uncertainty.
+Act as a staff-level code reviewer. Produce a decision aid that helps an unfamiliar reviewer understand the change, verify its safety, and know what to do next.
 
-**Visualization is the point.** The reason this dashboard exists rather than a markdown summary is that diagrams compress structural information in a way prose cannot. A good dashboard for a non-trivial PR contains *multiple* diagrams — typically 3–6 — each answering a different question (what touches what, what moved, what the new flow looks like, what the schema diff is). One token architecture diagram and a wall of text is the failure mode to avoid. Section 3 below lists the menu of diagram types — scan it for every PR.
+Put correctness, evidence, and actionable findings ahead of visual quantity. Use diagrams to compress relationships that prose cannot; do not use them as decoration. Do not modify the reviewed code, submit a GitHub review, or post comments unless the user explicitly asks.
 
----
+Read [references/review-method.md](references/review-method.md) completely before evaluating the change. For any non-trivial PR, also read [references/diagram-selection.md](references/diagram-selection.md) completely before choosing visualizations.
 
-## Step 1: Determine the default branch
+## 1. Establish the review boundary
 
-Fetch first so remote refs are current:
+Run from the repository root and capture the local state before reviewing:
+
+```bash
+ROOT=$(git rev-parse --show-toplevel) || exit 1
+cd "$ROOT"
+CURRENT=$(git symbolic-ref --quiet --short HEAD || true)
+HEAD_SHA=$(git rev-parse HEAD)
+git status --short
+```
+
+Stop if `CURRENT` is empty: a detached `HEAD` does not identify a feature branch reliably. Record any working-tree changes. Review only committed `$BASE...HEAD` changes unless the user explicitly includes local changes; never silently attribute unrelated uncommitted work to the PR.
+
+Discover and read applicable repository guidance before judging the code. Check root and changed-path scopes for `AGENTS.md`, `CONTRIBUTING*`, review guides, architecture docs, test instructions, and language-specific conventions. Prefer `rg --files` for discovery.
+
+Fetch remote refs on a best-effort basis:
 
 ```bash
 git fetch origin --quiet
 ```
 
-Try to detect the default branch, most-authoritative source first:
+If fetching fails, continue only when a usable local base ref exists. Disclose that remote freshness was not verified.
+
+## 2. Resolve the PR and its actual base before diffing
+
+Resolve author intent and the target branch before gathering the diff. A PR may target `develop`, a release branch, or another non-default branch; the repository default is only a fallback.
+
+Use the following lookup ladder. Treat an error, empty string, `null`, or `[]` as no result and continue. The explicit `wtpr` breadcrumb is the only reliable recovery path for some fork PRs and merged/closed worktree PRs.
 
 ```bash
-DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
-[ -z "$DEFAULT_BRANCH" ] && git show-ref --verify --quiet refs/heads/main && DEFAULT_BRANCH=main
-[ -z "$DEFAULT_BRANCH" ] && git show-ref --verify --quiet refs/heads/master && DEFAULT_BRANCH=master
-echo "DEFAULT_BRANCH=$DEFAULT_BRANCH"
-```
-
-If `DEFAULT_BRANCH` is empty, report `❌ Could not determine the default branch (tried origin HEAD, main, master)` and stop.
-
-Prefer `origin/$DEFAULT_BRANCH` as the base for diffs — local branches can be stale.
-
-## Step 2: Sanity-check the working state
-
-A PR review only makes sense from a feature branch — if the user is on the default branch or in detached-HEAD state, there is nothing to diff against.
-
-```bash
-CURRENT=$(git rev-parse --abbrev-ref HEAD)
-echo "CURRENT=$CURRENT"
-```
-
-If `CURRENT` equals `$DEFAULT_BRANCH` or equals `HEAD`, report `❌ You appear to be on $DEFAULT_BRANCH (or detached HEAD), not a feature branch.` to the user and stop. Do not proceed to Step 3.
-
-## Step 3: Gather PR information
-
-Use **three-dot** syntax (`$BASE...HEAD`) for `git diff` — this compares HEAD against the merge base with the default branch, which is what GitHub shows in a PR. Use **two-dot** syntax (`$BASE..HEAD`) for `git log` — this lists commits reachable from HEAD but not the base.
-
-```bash
-BASE="origin/$DEFAULT_BRANCH"
-
-# Overview — always run these
-git diff $BASE...HEAD --stat
-git diff $BASE...HEAD --name-status
-git log  $BASE..HEAD  --format="%h %s%n%b"
-
-# Size check before pulling the full diff
-git diff $BASE...HEAD --shortstat
-```
-
-If no commits exist between `$BASE` and HEAD, report `❌ No commits found between $BASE and HEAD. Make sure you are on a feature branch with commits ahead of $DEFAULT_BRANCH.` and stop.
-
-### Pull author intent if a GitHub PR exists
-
-The diff tells you *what* changed; the PR description tells you *why* the author thought it should change. That gap is exactly what you need to distinguish "what the diff does" from "what the author intended" in Step 4.
-
-Resolving the branch back to its PR is the step most likely to **silently fail**, because `gh pr view` with **no argument** only finds an *open* PR whose head matches the branch's tracked remote. It returns nothing when the PR is already merged or closed, or when the branch was checked out into a worktree (e.g. via the `wtpr` helper) whose upstream points at a different remote than the PR head. Fork PRs — where the head lives under a different owner — are the hardest case: nothing that searches by branch name finds them, so only the explicit breadcrumb in step 1 recovers a fork PR. In each failing case the dashboard wrongly falls back to "no PR yet." Walk the ladder below, **falling through to the next step whenever the current one yields nothing** — where "nothing" means a failed/errored `gh` call, an empty string, an empty array `[]`, or (for step 1) a breadcrumb that fails the sanity-check described after the snippet:
-
-```bash
-# `$CURRENT` is the branch name from Step 2. One field set for every lookup, so
-# whichever call resolves the PR returns the same author-intent data (body, author,
-# labels) plus the headRefOid used to sanity-check the breadcrumb.
-FIELDS=url,number,state,title,body,author,labels,additions,deletions,headRefOid
+FIELDS=url,number,state,title,body,author,labels,additions,deletions,changedFiles,baseRefName,headRefName,headRefOid,headRepositoryOwner,isCrossRepository,isDraft,reviewDecision,mergeable,statusCheckRollup
 PR_JSON=""
 
-# 1) Explicit breadcrumb: `wtpr` records the PR number in branch config when it
-#    creates a worktree from a PR — the only signal that survives merge/close and
-#    works for fork PRs, so try it first (subject to the sanity-check below).
-PR_NUM=$(git config "branch.$CURRENT.prNumber" 2>/dev/null)
+has_pr_result() {
+  [ -n "$1" ] && [ "$1" != "null" ] && [ "$1" != "[]" ]
+}
+
+PR_NUM=$(git config "branch.$CURRENT.prNumber" 2>/dev/null || true)
 if [ -n "$PR_NUM" ]; then
-    PR_JSON=$(gh pr view "$PR_NUM" --json "$FIELDS" 2>/dev/null)
+  PR_JSON=$(gh pr view "$PR_NUM" --json "$FIELDS" 2>/dev/null || true)
 fi
 
-# 2) gh's own branch resolution — works only for an open, same-repo PR.
-if [ -z "$PR_JSON" ]; then
-    PR_JSON=$(gh pr view --json "$FIELDS" 2>/dev/null)
+if ! has_pr_result "$PR_JSON"; then
+  PR_JSON=$(gh pr view --json "$FIELDS" 2>/dev/null || true)
 fi
 
-# 3) Head-ref search across ALL states — catches the merged/closed *same-repo* PRs
-#    that no-arg `gh pr view` misses. `--head` matches only same-repo head refs
-#    (it does not accept `owner:branch`), so it does NOT surface fork PRs. Returns
-#    a JSON array, possibly with several PRs that reused this branch name.
-if [ -z "$PR_JSON" ]; then
-    PR_JSON=$(gh pr list --head "$CURRENT" --state all --json "$FIELDS" 2>/dev/null)
+if ! has_pr_result "$PR_JSON"; then
+  PR_JSON=$(gh pr list --head "$CURRENT" --state all --json "$FIELDS" 2>/dev/null || true)
 fi
 ```
 
-**Sanity-check the breadcrumb before trusting it.** The `prNumber` breadcrumb lives in the repo-wide `.git/config`, keyed by branch name, and is never cleaned up (`git worktree remove` leaves it behind). A reused branch name (`patch-1`, `main`, a recycled fork head) can therefore point at the *wrong* PR. Before accepting step 1's result, confirm the resolved PR belongs to this branch: its `headRefName` should equal `$CURRENT`, and its `headRefOid` should be your `git rev-parse HEAD` **or a descendant of it** — the author may have pushed new commits after `wtpr` fetched the head once, so an exact match is not required and a strict `headRefOid == HEAD` test would wrongly reject an *active* PR. If the resolved PR clearly belongs to different work, discard it and fall through to step 2. (This stays prose, not code: the newer commit often is not in your local object DB, so an offline ancestry check can't always run — judge from the `headRefName`/`headRefOid` the call returns.)
+Sanity-check every candidate before trusting it:
 
-If step 3 returns an array with several PRs that share the branch name, pick the one whose `headRefOid` matches your HEAD (applying the same descendant tolerance); if none match (rare), take the first — `gh` lists most-recent first. Capture the `url` field for the Executive Summary's "Open on GitHub" link, and surface the PR's `state` in the dashboard metadata — reviewing an already-merged PR changes which feedback is still actionable. Only if *every* step above yields nothing (an empty result, or an empty `[]` from step 3 — genuinely no PR for this branch) construct a compare URL from `git remote get-url origin` + `$DEFAULT_BRANCH` + current branch instead, so the dashboard still gives the reader a one-click path back to GitHub.
+- Require `headRefName` to match `CURRENT` unless the local branch name was intentionally rewritten.
+- Prefer `headRefOid == HEAD_SHA`. Accept a newer remote head only when ancestry and PR context show it is the same work; otherwise disclose the mismatch or reject the candidate.
+- Treat a repo-wide `branch.<name>.prNumber` as stale when the branch name was reused or the candidate describes different work.
+- When a branch-name search returns several PRs, choose the matching head SHA, then the matching lineage, then the most recent only as a disclosed fallback.
 
-Treat the body as the author's stated intent — useful context, but not ground truth. The diff is ground truth; the body is a claim about the diff. Note in the dashboard's Assumptions section if the two appear to diverge.
+If a PR resolves, use its `baseRefName` as `BASE_BRANCH`. Capture its URL, state, draft status, author, body, checks, review decision, and mergeability. If no PR resolves, determine the default branch:
 
-### Decide diff loading strategy by size
+```bash
+BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+[ -z "$BASE_BRANCH" ] && git show-ref --verify --quiet refs/heads/main && BASE_BRANCH=main
+[ -z "$BASE_BRANCH" ] && git show-ref --verify --quiet refs/heads/master && BASE_BRANCH=master
+```
 
-- **Small PR** (≤10 files changed AND ≤500 lines changed): load the full diff with `git log $BASE..HEAD -p --reverse`.
-- **Medium PR** (≤30 files AND ≤3000 lines): load the full diff but render only the 3–5 most consequential hunks in the dashboard.
-- **Large PR** (>30 files OR >3000 lines): **do not** load the full `-p` output. Work from the stat, name-status, and commit messages. Read individual files or hunks on demand with `git show`, `git diff $BASE...HEAD -- <path>`, or by reading the file at HEAD.
+Stop if `BASE_BRANCH` is empty. Prefer `origin/$BASE_BRANCH`; fall back to the local branch only when necessary and disclose that choice.
 
-## Step 4: Grounding rules (read before writing the dashboard)
+```bash
+BASE="origin/$BASE_BRANCH"
+git rev-parse --verify "$BASE^{commit}" >/dev/null 2>&1 || BASE="$BASE_BRANCH"
+git rev-parse --verify "$BASE^{commit}" >/dev/null 2>&1 || exit 1
+MERGE_BASE=$(git merge-base "$BASE" HEAD)
+COMMIT_COUNT=$(git rev-list --count "$BASE"..HEAD)
+```
 
-- For every behavioral claim, cite the exact file path and line numbers (e.g. `src/foo.go:142–158`).
-- Distinguish three things and never blur them:
-  (a) what the diff literally does,
-  (b) what you infer about author intent,
-  (c) what you're guessing because you lack context.
-- Never invent function names, types, imports, or call sites. If a symbol is referenced but not visible, say "referenced but not in diff — would need to read X to confirm" — or actually read X.
-- Skip pure formatting, import reordering, and lockfile churn unless they signal something real (new dependency, breaking version bump).
-- Focus on what a reviewer would actually push back on, not what's merely noteworthy.
+Stop when `COMMIT_COUNT` is zero. If `CURRENT` equals `BASE_BRANCH`, stop unless a resolved PR and commit comparison prove this is intentional.
 
-## Step 5: Build the dashboard
+Treat the PR body as the author's stated intent, never as ground truth. Record mismatches between the body, issue, commits, diff, tests, and documentation.
 
-**Start from the bundled template, not from scratch.** Copy `scripts/dashboard_template.html` (sibling to this SKILL.md) to a fresh file via `cp "$(dirname THIS_SKILL)/scripts/dashboard_template.html" "$(mktemp --suffix=.html)"`, then fill in the `<!-- FILL: ... -->` blocks. The template already includes:
+## 3. Gather the complete change surface
 
-- Light/dark theme toggle with `localStorage` persistence
-- Tab system with lazy mermaid rendering (no more blank-tab-on-first-paint bug)
-- Theme re-init on toggle (mermaid diagrams swap palettes correctly)
-- Before/After/Diff toggle pattern (`.view-toggle` + `.view-panel`)
-- Box-and-arrow primitives for HTML/CSS diagrams (`.diagram`, `.node`, `.arrow`, etc.)
-- Diff hunk styling, severity-coded risk table, glossary layout
-- Mermaid loaded lazily — delete the `<script src=...mermaid...>` line if you don't use any mermaid diagrams
+Use three-dot syntax for the PR diff and two-dot syntax for branch-only commits:
 
-Do not rewrite the boilerplate. If the template is missing a primitive you need, add it once to the template's `<style>` block rather than inlining it for one run — the template should accumulate improvements.
+```bash
+git diff "$BASE"...HEAD --stat
+git diff "$BASE"...HEAD --shortstat
+git diff "$BASE"...HEAD --name-status --find-renames --find-copies
+git diff "$BASE"...HEAD --numstat --find-renames
+git diff "$BASE"...HEAD --summary
+git diff "$BASE"...HEAD --check
+git log "$BASE"..HEAD --format='%h %s%n%b'
+```
 
-The tabs in the template already match the section order below. Fill them in that order, since each section assumes the reader has read the previous one:
+Distinguish final branch behavior from commit history. Use `git diff "$BASE"...HEAD` as the review ground truth; use individual commits only to recover rationale or spot risky intermediate/reverted work.
 
-1. **Executive Summary** — TL;DR of what the PR achieves, why it matters, and the single biggest thing a reviewer should scrutinize. Three to six sentences, no fluff. Include a small metadata row near the title with **a clickable link to the PR on GitHub** (use the `url` resolved by the lookup ladder in Step 3 — explicit `prNumber` breadcrumb, then no-arg `gh pr view`, then `gh pr list --head <branch> --state all`; if every lookup truly returns nothing, fall back to the branch compare URL, e.g. `https://github.com/<owner>/<repo>/compare/<base>...<head>`). When the PR resolved to a merged or closed state, say so in this row — it tells the reviewer whether their feedback is still actionable. The reviewer almost always wants to jump back to the PR to leave a comment; not providing that link forces them to context-switch and hunt for it.
+Load code in proportion to size:
 
-2. **Glossary / Concept Primer** — Define the key modules, types, acronyms, and domain terms appearing in this diff, written for someone seeing this codebase for the first time. Without shared vocabulary the rest of the dashboard is opaque, so put this near the top.
+- **Small** — at most 10 files and 500 changed lines: read the full final diff and every changed production/test file.
+- **Medium** — at most 30 files and 3,000 changed lines: read the full final diff, then focus dashboard excerpts on the consequential paths.
+- **Large** — over either threshold: start with stats and file groups, then inspect every changed production path and sample generated/vendor churn. Load targeted diffs and surrounding files rather than one enormous patch.
 
-3. **Architecture & Visualizations (the centerpiece)** — This is the highest-leverage tab for a reviewer trying to load an unfamiliar PR into their head, and one box-and-arrow diagram is rarely enough. Treat this tab as a *gallery* of diagrams, not a single map. A good rule of thumb: a substantive PR deserves **3–6 distinct visualizations**, each answering a different question. Lean toward *more* diagrams of *narrower* scope rather than one giant diagram that tries to show everything.
+For all sizes, inspect relevant unchanged callers, callees, interfaces, schemas, configuration, and tests with `rg`, `git show "$MERGE_BASE:<path>"`, `git diff "$BASE"...HEAD -- <path>`, and the file at `HEAD`. Do not infer a symbol's behavior from its name.
 
-   **Default to HTML/CSS, not mermaid.** The bundled `scripts/dashboard_template.html` provides box-and-arrow primitives (`.diagram`, `.diagram-row`, `.node`, `.node.new`, `.arrow`, `.arrow.dashed`, `.view-toggle`, `.view-panel`) that render module maps, data-flow diagrams, migration flowcharts, before/after toggles, and comparison tables as plain `<div>`s. Reach for these first. HTML/CSS box diagrams have three big wins over mermaid:
-   - No parser to anger — no syntax-error bombs.
-   - You control layout pixel-by-pixel, so labels never collide and edges never cross weirdly.
-   - They look like the rest of the page and respect the theme automatically.
+When a GitHub PR is available, inspect existing check results, reviews, and unresolved review threads on a best-effort basis. Use them to avoid duplicate work and identify disputed assumptions, but verify claims independently. Do not post anything.
 
-   Reserve **mermaid for the three diagram types where its auto-layout genuinely pays for itself**: `sequenceDiagram` (time-ordered interactions), `stateDiagram-v2` (lifecycle / phase machines), and `classDiagram` (type hierarchies). Hand-coding those in HTML is painful and ugly; mermaid's layout is worth the parser fragility. For everything else — module maps, data flow, migration flowcharts, before/after comparisons — use the HTML/CSS primitives.
+## 4. Perform an evidence-led review
 
-   **Pick diagrams based on what the PR actually is.** Don't render every type below for every PR — pick the ones that earn their place. But do scan this list deliberately for each PR and ask "would this diagram help a reviewer here?":
+Follow the mandatory review method. In particular:
 
-   - **Module / dependency map** *(HTML/CSS)* — flowchart showing which packages/files/components touch which, with new or modified nodes visually distinguished (dashed border, accent color). The "what touches what" view.
-   - **Before / After / Diff toggle** *(HTML/CSS)* — for refactors, API changes, or schema migrations, render the same map in three states behind a toggle. The template's `.view-toggle` + `.view-panel` does this with no JS to write.
-   - **Sequence diagram** *(mermaid)* — for changes to a request flow, reconcile loop, RPC chain, or any time-ordered interaction. `sequenceDiagram`.
-   - **State machine / phase diagram** *(mermaid)* — when the PR changes a state machine, lifecycle, or status enum. `stateDiagram-v2`.
-   - **Data-flow / pipeline diagram** *(HTML/CSS)* — for ETL, event handling, scrape pipelines, or any "data goes in here, ends up there" change.
-   - **Schema diff side-by-side** *(HTML `<pre>` in a `.row`)* — for CRD / proto / SQL / JSON-schema / type changes. Old on the left, new on the right, changed lines wrapped in `<span class="l-add">` / `<span class="l-del">`.
-   - **Migration / startup flowchart** *(HTML/CSS)* — for one-time data migrations, backfills, or controller-startup migration steps. Decision tree with retry/error branches; reviewers always want to know "what happens when this fails midway."
-   - **Capabilities / behavior comparison table** *(HTML table)* — 4–8 dimensions (API surface, signature, caching, error behavior, legacy handling, etc.) in two columns labelled Before and After. Often the single most useful artifact for a reviewer.
-   - **Risk / change-surface heatmap** *(HTML table)* — for large PRs, a grid of files vs. risk-axes colored by severity, so the reviewer can target their attention.
-   - **Commit-shape breakdown** *(HTML table or simple bar)* — when the branch has many commits, group by conventional-commit prefix (`feat`, `fix`, `refactor`, etc.) so the reviewer can tell at a glance whether this is a feature PR with stray refactors or a refactor PR with a feature bolted on. Use `git log --format=%s $BASE..HEAD` and group.
-   - **Call hierarchy / class diagram** *(mermaid)* — when the PR introduces or restructures types/interfaces. `classDiagram`.
+1. Reconstruct intent, actual behavior, invariants, non-goals, and rollout/rollback.
+2. Trace affected behavior across boundaries and through success and failure paths.
+3. Evaluate every relevant engineering axis, not only the axes that produced findings.
+4. Map important behaviors and risks to tests; judge assertions and scenarios, not test-line count.
+5. Run proportionate targeted tests, linters, type checks, builds, or static analysis already supported by the repository. Do not install dependencies or invoke external/production systems without authorization.
+6. Admit a finding only after proving the PR introduces it, identifying a reachable trigger and impact, checking contrary evidence, and proposing a concrete correction or verification.
 
-   **Interactive controls earn their keep.** A toggle that switches a single diagram between Before / After / Diff is worth more than rendering three separate diagrams stacked vertically — it forces the reader's eye to land on the same node and notice what changed. The template's `.view-toggle` pattern handles this.
+For every finding, record:
 
-   **One-liner per diagram.** Every diagram needs a sentence above it (use `<p class="caption">`) explaining what question it answers (e.g. "*This shows the request path through the reconciler; the dashed boxes are new in this PR.*"). A diagram without a framing question is decoration.
+- stable ID, priority, and confidence;
+- concise defect statement;
+- exact file and line evidence;
+- trigger/scenario and user or system impact;
+- actionable recommendation;
+- test or observation that would verify the correction.
 
-   **If the PR is genuinely small** (single function, small bugfix) — one clear diagram, or none, is correct. Say so explicitly rather than padding with low-value visualizations.
+Use exact `path:line` or `path:start-end` locations from the reviewed SHA. Never write approximate locations such as `~260`. Link to a commit-pinned GitHub blob when possible. Use the merge-base SHA for deleted code. Mark external contracts, author claims, and inferences explicitly.
 
-   **Mermaid syntax safety** *(only relevant if you actually use mermaid)* — Mermaid 10's parser is fragile; a single bad token replaces the whole diagram with a cartoon bomb. The bundled template's CSS and JS already handle the rendering-on-hidden-tab and theme-swap races, but you still have to write valid mermaid source:
-   - Wrap node labels in double quotes when they contain anything beyond `[A-Za-z0-9_ ]` — colons, slashes, parentheses, dots, `<br/>`, `&`, quotes.
-   - For edge labels with punctuation, prefer `A -- "label with : or /" --> B` over `A -->|label| B`. Pipe labels starting with `:` or containing `/` are a known failure mode.
-   - Keep node IDs to `[A-Za-z0-9_]` only.
-   - In `classDef`, no space after the colon in style values: `stroke-dasharray:5 5`, not `stroke-dasharray: 5 5`.
-   - Mentally re-parse each diagram before emitting it. A broken mermaid block is a worse signal than no diagram.
+If no actionable findings remain, say **No actionable findings**. Do not manufacture a blocker to make the dashboard look thorough. Keep residual risks and unverified assumptions separate.
 
-4. **Annotated Diff Viewer** — Render hunks styled like a real diff (red for removed, green for added, neutral for context). Each hunk gets an inline annotation or hover-tooltip explaining *why* the change was made in plain English — not just restating what the code does. How many hunks:
-   - **Small PRs**: render all hunks.
-   - **Medium/Large PRs**: render the 3–5 most consequential hunks, and include an explicit note listing what was omitted (file paths + one-line summary each) so the reader knows the scope of the sample.
+## 5. Build the dashboard from the template
 
-5. **Risk Assessment** — Consider at least the axes below. Add others if the PR's domain calls for them (e.g. migration safety, i18n, accessibility, data privacy, supply-chain risk for dependency bumps). Mark any axis you considered but found not relevant as "Not applicable" rather than silently dropping it — the reader should be able to tell the difference between "checked and clean" and "didn't think about it."
-   - Concurrency / race conditions
-   - Error handling and failure modes
-   - API contract / backward compatibility
-   - Performance on hot paths
-   - Security (input handling, auth, secrets, injection surfaces)
-   - Observability (logging, metrics, tracing gaps)
-   - Test coverage of the new behavior
+Copy the bundled template to a fresh directory, then replace every `FILL:` block:
 
-   Render findings in a table, color-coded by severity:
-   - Red — High/Critical, a reviewer would block on this
-   - Yellow — Medium, worth raising
-   - Blue — Info, noteworthy but not blocking
+```bash
+SKILL_DIR=/absolute/path/to/pr-review-dashboard
+OUT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/pr-review-dashboard.XXXXXX")
+DASHBOARD="$OUT_DIR/pr-review-dashboard.html"
+cp "$SKILL_DIR/scripts/dashboard_template.html" "$DASHBOARD"
+```
 
-6. **Assumptions & Unknowns** — What you assumed, what you couldn't verify, and what you'd need from the user or the PR author to be more confident. All uncertainty goes here — do not smuggle it into other sections, because hedging mixed into the Risk or Diff sections makes it impossible for the reader to tell confident findings from speculative ones.
+Do not leave the template's instructional comments in the delivered file. HTML-escape all repository-controlled or GitHub-controlled text, including titles, branch names, authors, PR bodies, comments, code, paths, and labels. Never paste untrusted text as markup or script. Do not interpolate raw untrusted text into Mermaid syntax; use short sanitized identifiers and labels, then put the exact escaped text in the surrounding caption or evidence.
 
-## Step 6: Technical constraints for the HTML
+Fill the tabs in this order:
 
-These are mostly already satisfied by the bundled template — listed here so you know what you're allowed to change and what you shouldn't.
+1. **Summary** — Explain author intent versus actual behavior, the change contract and preserved invariants, scope, local recommendation (`Request changes`, `Comment`, or `Approve`), confidence, top finding, verification status, PR/commit metadata, and whether feedback is still actionable for merged/closed work.
+2. **Findings & Risks** — Put actionable findings first, ordered by priority. Include evidence, impact, recommendation, and verification for each. Then show the full risk-coverage matrix with `High`, `Medium`, `Low`, `Not applicable`, or `Unknown`; do not conflate an assessed-clean axis with one not checked.
+3. **Architecture** — Add only diagrams selected by reviewer question. Read the diagram-selection reference and cite evidence in every caption. Prefer before/after views when change is the point. Include failure, rollback, state, deployment, data, or trust boundaries when they materially affect safety.
+4. **Annotated Diff** — Show all hunks for a small PR or the 3–5 most consequential hunks for a larger PR. Preserve exact hunk headers and line numbers. Tie each excerpt to a finding, invariant, or important design choice, and list every omitted file group with a one-line reason.
+5. **Verification** — Record exact local commands and observed results, CI/check state, a behavior-to-test matrix, manual/e2e scenarios, and anything not run. Keep local results distinct from remote CI.
+6. **Glossary** — Define only the domain terms, modules, acronyms, and contracts needed to understand the review.
+7. **Assumptions & Unknowns** — List unverified external contracts, missing context, base/ref freshness, unread areas, unresolved review threads, and precise questions for the author.
 
-- ONE valid HTML file. All HTML, CSS, and vanilla JavaScript inline. (Template enforces this.)
-- Theme switching, tab switching, mermaid lazy-render, and the view-toggle pattern are all in the template's `<script>` block — do not duplicate or rewrite them.
-- All colors come from CSS custom properties (`--bg`, `--fg`, `--panel`, `--accent`, etc.) defined under `:root, [data-theme="dark"]` and `[data-theme="light"]`. If you need a new color, add it as a variable in both blocks — don't hardcode hex values inline.
-- Mermaid.js is loaded from a pinned CDN URL in the template. If you don't use any mermaid diagrams, delete the `<script src="https://cdn.jsdelivr.net/npm/mermaid@10/...">` line so the file is fully self-contained.
-- No external images, no canvas, no frameworks, no other CDN dependencies.
-- The output has to survive being emailed, dropped into a Slack thread, or opened weeks later on a different machine.
+## 6. Choose visualizations deliberately
 
-## Step 7: Deliver
+Do not target a diagram count. A small local fix may need none; a cross-service migration may need several. Prefer the smallest view that changes a review decision or materially reduces cognitive load.
 
-Write the HTML file to disk and present it. Then in chat, give a short three-line summary:
+Use the template's HTML/CSS primitives for component maps, activity flows, before/after comparisons, schema views, and heatmaps. Use Mermaid only when its layout materially helps a sequence, state, class, or deployment diagram. Keep Mermaid node IDs alphanumeric, quote labels containing punctuation, avoid fragile pipe edge labels, and preserve readable source text as a fallback.
 
-- One sentence: what the PR does.
-- One sentence: the most important risk you found.
-- One sentence: your top open question.
+Every diagram must answer a question in its heading, explain changed/inferred/external elements, and cite its code evidence. Remove redundant diagrams. Never visualize a relationship that was not verified.
 
-Point the user to the dashboard for the rest.
+## 7. Validate the artifact
+
+Run the bundled validator:
+
+```bash
+python3 "$SKILL_DIR/scripts/validate_dashboard.py" "$DASHBOARD"
+```
+
+Fix every error. Inspect the dashboard in an available browser and exercise tabs, keyboard navigation, view toggles, theme switching, Mermaid rendering, narrow layout, and print output. If no browser is available, disclose that visual/interactive inspection was not performed rather than claiming it passed.
+
+Keep one HTML file with inline CSS and JavaScript. The exact-pinned Mermaid script is the sole permitted external dependency; remove it when no Mermaid block exists. For offline-only portability, use HTML/CSS or inline SVG instead. Use CSS variables for colors, preserve the template's accessibility behavior, and do not duplicate its JavaScript.
+
+## 8. Deliver
+
+Present the HTML path and summarize:
+
+- what the PR changes;
+- the local review recommendation and highest-priority finding count;
+- what verification ran and the most important remaining unknown.
+
+Point the user to the dashboard for evidence and details.

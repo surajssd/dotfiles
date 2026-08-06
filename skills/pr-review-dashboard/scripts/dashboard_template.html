@@ -1,28 +1,18 @@
 <!doctype html>
 <!--
   PR Review Dashboard template.
-  Fill in the sections marked  <!-- FILL: ... -->  with content.
-  All boilerplate (theme toggle, tab switching, mermaid init, CSS variables,
-  box/arrow primitives) is already wired up and tested.
-
-  HOW TO USE
-  ----------
-  1. Replace <!-- FILL: title --> with the PR title.
-  2. Replace <!-- FILL: metadata --> with one row of metadata
-     (branch, author, PR link, file count, etc.).
-  3. Fill each tab panel's <!-- FILL: ... --> with the relevant content.
-  4. Add diagrams using either the HTML/CSS box primitives (preferred) or
-     a <div class="mermaid">...</div> block (only for sequence/state/class
-     diagrams where mermaid's auto-layout pays for itself).
-  5. To add an interactive Before/After/Diff toggle, see the
-     `.view-toggle` + `.view-panel` pattern below.
+  Replace every marker beginning with FILL: and remove instructional comments
+  before delivery. Escape all repository-controlled and GitHub-controlled text.
+  Keep the existing accessibility, theme, tab, view-toggle, and Mermaid wiring.
 -->
 <html lang="en" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<title><!-- FILL: title --> — PR Review</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+<title><!-- FILL: PR title --> — PR Review</title>
 <style>
-  /* ---- THEME TOKENS ---- */
   :root, [data-theme="dark"] {
     --bg: #0d1117;
     --bg-2: #161b22;
@@ -33,21 +23,28 @@
     --border: #30363d;
     --accent: #58a6ff;
     --accent-2: #1f6feb;
-    --added: #2ea043;
-    --added-bg: rgba(46, 160, 67, 0.15);
-    --removed: #f85149;
-    --removed-bg: rgba(248, 81, 73, 0.15);
-    --warn: #d29922;
-    --warn-bg: rgba(210, 153, 34, 0.15);
-    --info: #58a6ff;
-    --info-bg: rgba(88, 166, 255, 0.15);
-    --crit: #f85149;
-    --crit-bg: rgba(248, 81, 73, 0.18);
-    --ok: #2ea043;
+    --on-accent: #ffffff;
+    --blocker: #ff7b72;
+    --blocker-bg: rgba(248, 81, 73, 0.18);
+    --major: #e3b341;
+    --major-bg: rgba(210, 153, 34, 0.16);
+    --minor: #58a6ff;
+    --minor-bg: rgba(88, 166, 255, 0.15);
+    --note: #a371f7;
+    --note-bg: rgba(163, 113, 247, 0.14);
+    --ok: #3fb950;
     --ok-bg: rgba(46, 160, 67, 0.15);
+    --unknown: #8b949e;
+    --unknown-bg: rgba(139, 148, 158, 0.12);
+    --added: #3fb950;
+    --added-bg: rgba(46, 160, 67, 0.15);
+    --removed: #ff7b72;
+    --removed-bg: rgba(248, 81, 73, 0.15);
     --code-bg: #1f2733;
-    --shadow: 0 1px 3px rgba(0,0,0,0.4);
+    --focus: #f0f6fc;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
+
   [data-theme="light"] {
     --bg: #ffffff;
     --bg-2: #f6f8fa;
@@ -58,464 +55,805 @@
     --border: #d0d7de;
     --accent: #0969da;
     --accent-2: #0550ae;
+    --on-accent: #ffffff;
+    --blocker: #cf222e;
+    --blocker-bg: rgba(207, 34, 46, 0.12);
+    --major: #9a6700;
+    --major-bg: rgba(154, 103, 0, 0.11);
+    --minor: #0969da;
+    --minor-bg: rgba(9, 105, 218, 0.10);
+    --note: #8250df;
+    --note-bg: rgba(130, 80, 223, 0.10);
+    --ok: #1a7f37;
+    --ok-bg: rgba(26, 127, 55, 0.10);
+    --unknown: #656d76;
+    --unknown-bg: rgba(101, 109, 118, 0.10);
     --added: #1a7f37;
     --added-bg: rgba(26, 127, 55, 0.10);
     --removed: #cf222e;
     --removed-bg: rgba(207, 34, 46, 0.10);
-    --warn: #9a6700;
-    --warn-bg: rgba(154, 103, 0, 0.10);
-    --info: #0969da;
-    --info-bg: rgba(9, 105, 218, 0.10);
-    --crit: #cf222e;
-    --crit-bg: rgba(207, 34, 46, 0.12);
-    --ok: #1a7f37;
-    --ok-bg: rgba(26, 127, 55, 0.10);
     --code-bg: #f6f8fa;
-    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+    --focus: #24292f;
+    --shadow: 0 1px 3px rgba(31, 35, 40, 0.08);
   }
 
   * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg);
-                font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI",
-                Helvetica, Arial, sans-serif; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica,
+      Arial, sans-serif;
+  }
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
-  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-         font-size: 12.5px; background: var(--code-bg); padding: 1px 5px;
-         border-radius: 4px; border: 1px solid var(--border); }
-  pre  { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-         font-size: 12.5px; background: var(--code-bg); padding: 12px;
-         border-radius: 6px; border: 1px solid var(--border);
-         overflow-x: auto; margin: 0; }
-  h1, h2, h3 { margin: 0 0 12px; color: var(--fg); }
-  h1 { font-size: 20px; font-weight: 600; }
-  h2 { font-size: 17px; font-weight: 600; }
-  h3 { font-size: 14px; font-weight: 600; color: var(--accent); }
+  button, a { -webkit-tap-highlight-color: transparent; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  code, pre {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+  }
+  code {
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+  pre {
+    margin: 0;
+    padding: 12px;
+    overflow-x: auto;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    tab-size: 4;
+  }
+  h1, h2, h3 { margin: 0 0 12px; color: var(--fg); line-height: 1.3; }
+  h1 { font-size: 20px; font-weight: 650; }
+  h2 { font-size: 17px; font-weight: 650; }
+  h3 { font-size: 14px; font-weight: 650; color: var(--accent); }
+  p:first-child { margin-top: 0; }
+  p:last-child { margin-bottom: 0; }
 
-  /* ---- LAYOUT ---- */
-  header { border-bottom: 1px solid var(--border); background: var(--bg-2);
-           padding: 14px 28px; display: flex; align-items: center; gap: 18px;
-           flex-wrap: wrap; }
+  .skip-link {
+    position: fixed;
+    z-index: 100;
+    top: 8px;
+    left: 8px;
+    transform: translateY(-160%);
+    padding: 8px 12px;
+    color: var(--fg);
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+  }
+  .skip-link:focus { transform: translateY(0); }
+
+  header {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 14px 28px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--border);
+  }
   header .title-block { flex: 1 1 auto; min-width: 0; }
-  header h1 { margin: 0; }
-  header .meta { color: var(--fg-muted); font-size: 12.5px; margin-top: 4px; }
-  header .meta > * + * { margin-left: 14px; }
-  .theme-toggle { background: var(--panel-2); border: 1px solid var(--border);
-                  color: var(--fg); padding: 6px 12px; border-radius: 6px;
-                  cursor: pointer; font: inherit; }
+  header h1 { margin: 0; overflow-wrap: anywhere; }
+  header .meta {
+    display: flex;
+    gap: 6px 14px;
+    flex-wrap: wrap;
+    margin-top: 5px;
+    color: var(--fg-muted);
+    font-size: 12.5px;
+  }
+  .theme-toggle {
+    padding: 7px 12px;
+    color: var(--fg);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+  }
   .theme-toggle:hover { border-color: var(--accent); }
 
-  nav.tabs { border-bottom: 1px solid var(--border); background: var(--bg);
-             padding: 0 28px; display: flex; gap: 4px; overflow-x: auto; }
-  nav.tabs button { background: transparent; border: 0; color: var(--fg-muted);
-                    padding: 12px 16px; cursor: pointer; font: inherit;
-                    border-bottom: 2px solid transparent; white-space: nowrap; }
+  nav.tabs {
+    position: sticky;
+    z-index: 20;
+    top: 0;
+    display: flex;
+    gap: 4px;
+    padding: 0 28px;
+    overflow-x: auto;
+    background: var(--bg);
+    background: color-mix(in srgb, var(--bg) 94%, transparent);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+  }
+  nav.tabs button {
+    padding: 12px 14px;
+    color: var(--fg-muted);
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font: inherit;
+    white-space: nowrap;
+  }
   nav.tabs button:hover { color: var(--fg); }
   nav.tabs button.active { color: var(--fg); border-bottom-color: var(--accent); }
 
-  main { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
-  .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
-
-  .card { background: var(--panel); border: 1px solid var(--border);
-          border-radius: 8px; padding: 20px; margin-bottom: 18px;
-          box-shadow: var(--shadow); }
-  .card > h2:first-child { margin-top: 0; }
-  .card .caption { color: var(--fg-muted); font-size: 13px; margin: 0 0 14px; }
-
+  main { max-width: 1400px; margin: 0 auto; padding: 24px 28px 48px; }
+  .tab-panel[hidden] { display: none; }
+  .card {
+    margin-bottom: 18px;
+    padding: 20px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+  }
+  .card .caption { margin: 0 0 14px; color: var(--fg-muted); font-size: 13px; }
   .row { display: flex; gap: 16px; flex-wrap: wrap; }
   .row > * { flex: 1 1 320px; min-width: 0; }
 
-  /* ---- DIAGRAM PRIMITIVES (HTML/CSS, no JS, no mermaid) ---- */
-  .diagram { display: flex; flex-direction: column; gap: 18px;
-             padding: 18px; background: var(--panel-2);
-             border: 1px solid var(--border); border-radius: 6px; }
-  .diagram-row { display: flex; gap: 28px; align-items: center;
-                 flex-wrap: wrap; justify-content: center; }
-  .diagram-col { display: flex; flex-direction: column; gap: 14px;
-                 align-items: stretch; }
-  .node { padding: 10px 14px; border-radius: 6px; background: var(--panel);
-          border: 1px solid var(--border); text-align: center;
-          font-size: 12.5px; min-width: 120px; color: var(--fg); }
-  .node.new { border-style: dashed; border-color: var(--accent);
-              background: var(--info-bg); }
-  .node.changed { border-color: var(--warn); background: var(--warn-bg); }
-  .node.removed { border-color: var(--removed); background: var(--removed-bg);
-                  text-decoration: line-through; opacity: 0.7; }
-  .node.cluster { background: rgba(255,255,255,0.02); padding: 14px;
-                  border-style: dashed; }
-  .node.cluster .cluster-label { font-size: 11px; color: var(--fg-muted);
-                                 text-transform: uppercase; letter-spacing: 0.5px;
-                                 margin-bottom: 8px; }
-  /* Connector: a thin horizontal line with an arrow. */
-  .arrow {
-    flex: 0 0 56px; height: 2px; background: var(--fg-muted); position: relative;
+  .review-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
   }
+  .metric {
+    min-width: 0;
+    padding: 13px 14px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+  }
+  .metric .label {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--fg-muted);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.45px;
+    text-transform: uppercase;
+  }
+  .metric .value { display: block; font-size: 15px; font-weight: 650; }
+  .metric .detail { display: block; margin-top: 3px; color: var(--fg-muted); font-size: 12px; }
+
+  .badge, .pill {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+    padding: 2px 8px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--fg-muted);
+    font-size: 11.5px;
+    font-weight: 650;
+    white-space: nowrap;
+  }
+  .badge-blocker { color: var(--blocker); background: var(--blocker-bg); border-color: var(--blocker); }
+  .badge-major { color: var(--major); background: var(--major-bg); border-color: var(--major); }
+  .badge-minor { color: var(--minor); background: var(--minor-bg); border-color: var(--minor); }
+  .badge-note { color: var(--note); background: var(--note-bg); border-color: var(--note); }
+  .badge-ok { color: var(--ok); background: var(--ok-bg); border-color: var(--ok); }
+  .badge-unknown { color: var(--unknown); background: var(--unknown-bg); border-color: var(--unknown); }
+
+  .callout {
+    padding: 13px 15px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 6px;
+  }
+  .callout + .callout { margin-top: 12px; }
+  .callout.blocker { border-left-color: var(--blocker); background: var(--blocker-bg); }
+  .callout.major { border-left-color: var(--major); background: var(--major-bg); }
+  .callout.ok { border-left-color: var(--ok); background: var(--ok-bg); }
+
+  .finding {
+    margin-bottom: 16px;
+    padding: 17px 18px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left-width: 5px;
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+    scroll-margin-top: 64px;
+  }
+  .finding-blocker { border-left-color: var(--blocker); }
+  .finding-major { border-left-color: var(--major); }
+  .finding-minor { border-left-color: var(--minor); }
+  .finding-note { border-left-color: var(--note); }
+  .finding-header {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .finding-header h2 { flex: 1 1 500px; margin: 0; }
+  .finding-meta { display: flex; gap: 7px; flex-wrap: wrap; }
+  .finding-grid {
+    display: grid;
+    grid-template-columns: minmax(120px, 0.25fr) minmax(0, 1fr);
+    gap: 8px 14px;
+    margin: 0;
+  }
+  .finding-grid dt { color: var(--fg-muted); font-weight: 650; }
+  .finding-grid dd { margin: 0; min-width: 0; }
+  .no-findings {
+    padding: 24px;
+    text-align: center;
+    background: var(--ok-bg);
+    border: 1px solid var(--ok);
+    border-radius: 8px;
+  }
+
+  .table-wrap { width: 100%; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td {
+    padding: 9px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    color: var(--fg-muted);
+    font-size: 11.5px;
+    font-weight: 650;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+  }
+  tr:last-child td { border-bottom: 0; }
+  tr.risk-high { background: var(--blocker-bg); }
+  tr.risk-medium { background: var(--major-bg); }
+  tr.risk-low { background: var(--minor-bg); }
+  tr.risk-na { background: var(--unknown-bg); }
+  tr.risk-unknown { background: var(--note-bg); }
+
+  .diagram {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 18px;
+    overflow-x: auto;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .diagram-row {
+    display: flex;
+    gap: 28px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    min-width: min-content;
+  }
+  .diagram-col { display: flex; flex-direction: column; gap: 14px; align-items: stretch; }
+  .node {
+    min-width: 120px;
+    padding: 10px 14px;
+    color: var(--fg);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12.5px;
+    text-align: center;
+  }
+  .node.new { border-style: dashed; border-color: var(--accent); background: var(--minor-bg); }
+  .node.changed { border-color: var(--major); background: var(--major-bg); }
+  .node.removed { border-color: var(--removed); background: var(--removed-bg); opacity: 0.78; text-decoration: line-through; }
+  .node.external { border-style: dotted; color: var(--fg-muted); }
+  .node.inferred { border-style: dashed; border-color: var(--note); background: var(--note-bg); }
+  .node.cluster { padding: 14px; background: transparent; border-style: dashed; }
+  .node.cluster .cluster-label {
+    margin-bottom: 8px;
+    color: var(--fg-muted);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .boundary {
+    padding: 14px;
+    border: 2px dashed var(--note);
+    border-radius: 8px;
+  }
+  .boundary-label { margin-bottom: 8px; color: var(--note); font-size: 11px; font-weight: 650; }
+  .arrow { position: relative; flex: 0 0 56px; height: 2px; background: var(--fg-muted); }
   .arrow::after {
-    content: ""; position: absolute; right: -2px; top: -4px;
-    border-left: 8px solid var(--fg-muted);
+    position: absolute;
+    top: -4px;
+    right: -2px;
+    content: "";
     border-top: 5px solid transparent;
     border-bottom: 5px solid transparent;
+    border-left: 8px solid var(--fg-muted);
   }
-  .arrow.dashed { background: none; border-top: 2px dashed var(--accent); height: 0; }
+  .arrow.dashed { height: 0; background: none; border-top: 2px dashed var(--accent); }
   .arrow.dashed::after { border-left-color: var(--accent); }
-  .arrow .label { position: absolute; top: -22px; left: 50%;
-                  transform: translateX(-50%); font-size: 11px;
-                  color: var(--fg-muted); white-space: nowrap;
-                  background: var(--panel-2); padding: 0 6px; }
-  .legend { display: flex; gap: 18px; font-size: 12px; color: var(--fg-muted);
-            margin-top: 8px; flex-wrap: wrap; }
-  .legend .swatch { display: inline-block; width: 14px; height: 14px;
-                    border-radius: 3px; vertical-align: middle;
-                    margin-right: 6px; border: 1px solid var(--border); }
+  .arrow .label {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    padding: 0 6px;
+    color: var(--fg-muted);
+    background: var(--panel-2);
+    font-size: 11px;
+    white-space: nowrap;
+    transform: translateX(-50%);
+  }
+  .legend { display: flex; gap: 10px 18px; flex-wrap: wrap; margin-top: 9px; color: var(--fg-muted); font-size: 12px; }
+  .swatch { display: inline-block; width: 14px; height: 14px; margin-right: 6px; border: 1px solid var(--border); border-radius: 3px; vertical-align: middle; }
+  .swatch-new { background: var(--minor-bg); border-style: dashed; border-color: var(--accent); }
+  .swatch-changed { background: var(--major-bg); border-color: var(--major); }
+  .swatch-external { background: var(--panel); border-style: dotted; }
+  .swatch-inferred { background: var(--note-bg); border-style: dashed; border-color: var(--note); }
 
-  /* ---- BEFORE / AFTER / DIFF TOGGLE ---- */
-  .view-toggle { display: inline-flex; gap: 0; border: 1px solid var(--border);
-                 border-radius: 6px; overflow: hidden; margin-bottom: 14px; }
-  .view-toggle button { background: var(--panel); border: 0; color: var(--fg-muted);
-                        padding: 6px 14px; cursor: pointer; font: inherit;
-                        border-right: 1px solid var(--border); }
+  .view-toggle {
+    display: inline-flex;
+    gap: 0;
+    max-width: 100%;
+    margin-bottom: 14px;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .view-toggle button {
+    padding: 6px 14px;
+    color: var(--fg-muted);
+    background: var(--panel);
+    border: 0;
+    border-right: 1px solid var(--border);
+    cursor: pointer;
+    font: inherit;
+    white-space: nowrap;
+  }
   .view-toggle button:last-child { border-right: 0; }
-  .view-toggle button.active { background: var(--accent); color: white; }
-  .view-panel { display: none; }
-  .view-panel.active { display: block; }
+  .view-toggle button.active { color: var(--on-accent); background: var(--accent-2); }
+  .view-panel[hidden] { display: none; }
 
-  /* ---- TABLES ---- */
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { padding: 8px 12px; text-align: left; vertical-align: top;
-           border-bottom: 1px solid var(--border); }
-  th { color: var(--fg-muted); font-weight: 600; font-size: 12px;
-       text-transform: uppercase; letter-spacing: 0.4px; }
-  tr:last-child td { border-bottom: 0; }
-  td.sev-crit  { color: var(--crit); font-weight: 600; }
-  td.sev-warn  { color: var(--warn); font-weight: 600; }
-  td.sev-info  { color: var(--info); font-weight: 600; }
-  td.sev-ok    { color: var(--ok);   font-weight: 600; }
-  tr.sev-crit  { background: var(--crit-bg); }
-  tr.sev-warn  { background: var(--warn-bg); }
-  tr.sev-info  { background: var(--info-bg); }
-  tr.sev-ok    { background: var(--ok-bg); }
-
-  /* ---- DIFF VIEWER ---- */
-  .diff { border: 1px solid var(--border); border-radius: 6px;
-          margin-bottom: 18px; overflow: hidden; }
-  .diff-header { background: var(--panel-2); padding: 8px 12px;
-                 border-bottom: 1px solid var(--border); display: flex;
-                 justify-content: space-between; font-size: 12.5px; }
-  .diff-header .path { font-family: ui-monospace, monospace; color: var(--fg); }
+  .diff {
+    margin-bottom: 18px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .diff-header {
+    display: flex;
+    gap: 8px 16px;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    padding: 8px 12px;
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+    font-size: 12.5px;
+  }
+  .diff-header .path { color: var(--fg); font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
   .diff pre { border: 0; border-radius: 0; }
-  .l-add { display: block; background: var(--added-bg); color: var(--added); }
-  .l-del { display: block; background: var(--removed-bg); color: var(--removed); }
-  .l-ctx { display: block; color: var(--fg-muted); }
-  .annotation { padding: 10px 14px; background: var(--info-bg);
-                border-top: 1px solid var(--border); font-size: 12.5px; }
+  .l-add, .l-del, .l-ctx { display: block; min-height: 1.55em; }
+  .l-add { color: var(--added); background: var(--added-bg); }
+  .l-del { color: var(--removed); background: var(--removed-bg); }
+  .l-ctx { color: var(--fg-muted); }
+  .annotation { padding: 11px 14px; background: var(--minor-bg); border-top: 1px solid var(--border); font-size: 12.5px; }
   .annotation strong { color: var(--accent); }
 
-  /* ---- MERMAID (only used for sequence/state/class diagrams) ---- */
-  .mermaid { background: var(--panel-2); padding: 16px; border-radius: 6px;
-             border: 1px solid var(--border); text-align: center; }
+  .mermaid {
+    min-height: 80px;
+    padding: 16px;
+    overflow-x: auto;
+    color: var(--fg);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    text-align: center;
+    white-space: pre-wrap;
+  }
+  .mermaid-error { text-align: left; font-family: ui-monospace, monospace; }
+  .mermaid-error::before {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--major);
+    content: "Diagram could not render; Mermaid source follows.";
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-weight: 650;
+  }
 
-  /* ---- UTILITY ---- */
+  .source-ref { font-family: ui-monospace, monospace; font-size: 12px; overflow-wrap: anywhere; }
   .muted { color: var(--fg-muted); }
-  .pill  { display: inline-block; padding: 2px 8px; border-radius: 10px;
-           background: var(--panel-2); color: var(--fg-muted); font-size: 11.5px;
-           border: 1px solid var(--border); }
+  .empty { color: var(--fg-muted); font-style: italic; }
+  details { margin-top: 12px; }
+  summary { color: var(--accent); cursor: pointer; font-weight: 650; }
+  .noscript { margin: 16px 28px 0; }
+
+  @media (max-width: 720px) {
+    header, nav.tabs { padding-left: 16px; padding-right: 16px; }
+    main { padding: 18px 16px 36px; }
+    .card { padding: 16px; }
+    .finding-grid { grid-template-columns: 1fr; gap: 2px; }
+    .finding-grid dd { margin-bottom: 8px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+
+  @media print {
+    :root, [data-theme="dark"], [data-theme="light"] {
+      --bg: #ffffff;
+      --bg-2: #ffffff;
+      --panel: #ffffff;
+      --panel-2: #f6f8fa;
+      --fg: #111111;
+      --fg-muted: #444444;
+      --border: #b6b6b6;
+      --shadow: none;
+    }
+    nav.tabs, .theme-toggle, .view-toggle, .skip-link { display: none !important; }
+    header { padding: 0 0 14px; }
+    main { max-width: none; padding: 18px 0 0; }
+    .tab-panel[hidden], .view-panel[hidden] { display: block !important; }
+    .card, .finding, .diff { break-inside: avoid; box-shadow: none; }
+    a { color: inherit; text-decoration: underline; }
+  }
 </style>
+<noscript><style>.tab-panel[hidden], .view-panel[hidden] { display: block !important; } .view-toggle { display: none !important; }</style></noscript>
+<script>
+(function() {
+  // Resolve the theme before first paint so light-preference systems do not flash dark.
+  var theme = null;
+  try { theme = localStorage.getItem('pr-dash-theme'); } catch (_) { /* Storage may be disabled. */ }
+  if (theme !== 'dark' && theme !== 'light') {
+    theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
+  document.documentElement.setAttribute('data-theme', theme);
+})();
+</script>
 </head>
 <body>
 
+<a class="skip-link" href="#review-content">Skip to review content</a>
+
 <header>
   <div class="title-block">
-    <h1><!-- FILL: title --></h1>
+    <h1><!-- FILL: PR title --></h1>
     <div class="meta">
-      <!-- FILL: metadata
-        Recommended fields, separated by &middot;:
-          - <a href="GH_PR_URL">PR #N on GitHub</a>  (REQUIRED if PR exists,
-            otherwise a compare URL: github.com/OWNER/REPO/compare/BASE...HEAD)
-          - branch <code>feature-branch</code> &rarr; <code>main</code>
-          - @author
-          - N files, +XXX / -YYY
-          - N commits
-      -->
+      <!-- FILL: PR or compare link, state, branch and base, author, commit SHA, files and lines, commits, working-tree/fetch note. Add rel="noopener noreferrer" to external target="_blank" links. -->
     </div>
   </div>
-  <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
-    <span id="theme-icon">☀️</span> <span id="theme-label">Light</span>
+  <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to light theme" aria-pressed="false">
+    <span id="theme-icon" aria-hidden="true">☀️</span> <span id="theme-label">Light</span>
   </button>
 </header>
 
-<nav class="tabs" id="tabs">
-  <button class="active" data-tab="summary">Summary</button>
-  <button data-tab="glossary">Glossary</button>
-  <button data-tab="architecture">Architecture</button>
-  <button data-tab="diff">Annotated Diff</button>
-  <button data-tab="risk">Risk Assessment</button>
-  <button data-tab="unknowns">Assumptions &amp; Unknowns</button>
+<nav class="tabs" id="tabs" role="tablist" aria-label="Pull request review sections">
+  <button class="active" id="tab-button-summary" type="button" role="tab" data-tab="summary" aria-controls="tab-summary" aria-selected="true" tabindex="0">Summary</button>
+  <button id="tab-button-findings" type="button" role="tab" data-tab="findings" aria-controls="tab-findings" aria-selected="false" tabindex="-1">Findings &amp; Risks</button>
+  <button id="tab-button-architecture" type="button" role="tab" data-tab="architecture" aria-controls="tab-architecture" aria-selected="false" tabindex="-1">Architecture</button>
+  <button id="tab-button-diff" type="button" role="tab" data-tab="diff" aria-controls="tab-diff" aria-selected="false" tabindex="-1">Annotated Diff</button>
+  <button id="tab-button-verification" type="button" role="tab" data-tab="verification" aria-controls="tab-verification" aria-selected="false" tabindex="-1">Verification</button>
+  <button id="tab-button-glossary" type="button" role="tab" data-tab="glossary" aria-controls="tab-glossary" aria-selected="false" tabindex="-1">Glossary</button>
+  <button id="tab-button-unknowns" type="button" role="tab" data-tab="unknowns" aria-controls="tab-unknowns" aria-selected="false" tabindex="-1">Unknowns</button>
 </nav>
 
-<main>
+<noscript><div class="callout major noscript">JavaScript is unavailable, so all sections are expanded and interactive toggles show every view.</div></noscript>
 
-  <!-- ============================= SUMMARY ============================= -->
-  <section class="tab-panel active" id="tab-summary">
+<main id="review-content">
+  <section class="tab-panel" id="tab-summary" role="tabpanel" aria-labelledby="tab-button-summary" tabindex="0">
     <div class="card">
       <h2>Executive Summary</h2>
-      <!-- FILL: 3-6 sentence summary. End with the single biggest thing a
-           reviewer should scrutinize. -->
+      <!-- FILL: 3 to 6 evidence-backed sentences separating author intent from actual behavior. End with the most important review focus. -->
+    </div>
+
+    <div class="card">
+      <h2>Review Snapshot</h2>
+      <div class="review-grid">
+        <div class="metric">
+          <span class="label">Recommendation</span>
+          <span class="value"><!-- FILL: Request changes, Comment, or Approve --></span>
+          <span class="detail"><!-- FILL: short reason --></span>
+        </div>
+        <div class="metric">
+          <span class="label">Confidence</span>
+          <span class="value"><!-- FILL: High, Medium, or Low --></span>
+          <span class="detail"><!-- FILL: principal evidence gap, or why confidence is high --></span>
+        </div>
+        <div class="metric">
+          <span class="label">Actionable findings</span>
+          <span class="value"><!-- FILL: counts by priority --></span>
+          <span class="detail"><!-- FILL: highest-priority finding ID or no actionable findings --></span>
+        </div>
+        <div class="metric">
+          <span class="label">Verification</span>
+          <span class="value"><!-- FILL: Passed, Partial, Failed, or Not run --></span>
+          <span class="detail"><!-- FILL: local and CI summary --></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Change Contract</h2>
+      <p class="caption">The behavior promised by the PR and the invariants this review checked.</p>
+      <div class="table-wrap">
+        <table>
+          <tbody>
+            <tr><th scope="row">Author-stated intent</th><td><!-- FILL: intent and source --></td></tr>
+            <tr><th scope="row">Actual behavior</th><td><!-- FILL: observable change with evidence --></td></tr>
+            <tr><th scope="row">Must remain true</th><td><!-- FILL: compatibility and safety invariants --></td></tr>
+            <tr><th scope="row">Rollout and rollback</th><td><!-- FILL: operational path or Not applicable --></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Scope &amp; Review Coverage</h2>
+      <p class="caption">Changed-file groups, what was inspected, and what was intentionally sampled or omitted.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Area</th><th scope="col">Changed</th><th scope="col">Reviewed</th><th scope="col">Coverage note</th></tr></thead>
+          <tbody>
+            <!-- FILL: group production, tests, configuration, docs, generated/vendor, dependencies, and other relevant files. Distinguish fully reviewed from sampled or unread. -->
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
 
-  <!-- ============================ GLOSSARY ============================ -->
-  <section class="tab-panel" id="tab-glossary">
+  <section class="tab-panel" id="tab-findings" role="tabpanel" aria-labelledby="tab-button-findings" tabindex="0" hidden>
+    <!-- FILL: actionable findings ordered Blocker, Major, Minor. Use one article.finding per finding with a stable id such as finding-F01. Include badges for priority and confidence, then a finding-grid with Evidence, Trigger and impact, Recommendation, and Verification. If none remain, insert one .no-findings element containing "No actionable findings" and residual-risk guidance. -->
+
     <div class="card">
-      <h2>Glossary &amp; Concept Primer</h2>
-      <p class="caption">Vocabulary an unfamiliar reviewer needs before the
-        rest of the dashboard makes sense.</p>
-      <!-- FILL: <dl> of terms, or a table. Define every acronym, type, and
-           internal-module name that appears in the diff. -->
+      <h2>Risk Coverage</h2>
+      <p class="caption">A checked-clean axis is Low; an irrelevant axis is Not applicable; an unverified axis is Unknown.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Axis</th><th scope="col">Level</th><th scope="col">Evidence and residual risk</th></tr></thead>
+          <tbody>
+            <!-- FILL: one row per relevant review-method axis. Use risk-high, risk-medium, risk-low, risk-na, or risk-unknown on each tr. -->
+          </tbody>
+        </table>
+      </div>
     </div>
   </section>
 
-  <!-- ========================== ARCHITECTURE ========================== -->
-  <section class="tab-panel" id="tab-architecture">
-
-    <!-- FILL: this is the centerpiece tab. Aim for 3-6 distinct diagrams
-         for a substantive PR. Each diagram lives in its own .card with:
-           - <h2> stating the question it answers
-           - <p class="caption"> one-liner framing
-           - the diagram itself (HTML/CSS boxes OR mermaid)
-
-         DEFAULT to HTML/CSS box diagrams using the primitives below. Use
-         mermaid ONLY for sequenceDiagram, stateDiagram-v2, or classDiagram
-         where its auto-layout earns its keep.
-
-         Example HTML/CSS module map skeleton (delete and replace):
-    -->
-
-    <div class="card">
-      <h2>Module map: what touches what</h2>
-      <p class="caption">Dashed boxes are new or modified by this PR.</p>
-      <div class="view-toggle" data-group="modmap">
-        <button class="active" data-view="after">After</button>
-        <button data-view="before">Before</button>
-        <button data-view="diff">Diff</button>
-      </div>
-
-      <div class="view-panel active" data-group="modmap" data-view="after">
-        <div class="diagram">
-          <div class="diagram-row">
-            <div class="node">User CR</div>
-            <div class="arrow"><span class="label">applies</span></div>
-            <div class="node new">Webhook (new)</div>
-            <div class="arrow dashed"><span class="label">validates</span></div>
-            <div class="node">Controller</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="view-panel" data-group="modmap" data-view="before">
-        <div class="diagram">
-          <div class="diagram-row">
-            <div class="node">User CR</div>
-            <div class="arrow"></div>
-            <div class="node">Controller</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="view-panel" data-group="modmap" data-view="diff">
-        <div class="diagram">
-          <p class="muted">Diff view: highlight only the boxes/edges
-             that changed.</p>
-        </div>
-      </div>
-
-      <div class="legend">
-        <span><span class="swatch" style="background:var(--info-bg);
-              border-style:dashed;border-color:var(--accent);"></span>
-              new or modified</span>
-        <span><span class="swatch" style="background:var(--panel);"></span>
-              pre-existing</span>
-      </div>
-    </div>
-
-    <!-- Mermaid example (use only for sequence / state / class). Delete if
-         no such diagram is warranted. -->
-    <!--
-    <div class="card">
-      <h2>Reconcile sequence</h2>
-      <p class="caption">Time-ordered interaction between controller and API
-        server during a single reconcile.</p>
-      <div class="mermaid">
-sequenceDiagram
-    participant C as Controller
-    participant API as kube-apiserver
-    participant CR as CustomResource
-    C->>API: GET CR
-    API-->>C: CR object
-    C->>C: reconcile()
-    C->>API: PATCH status
-    API-->>C: ok
-      </div>
-    </div>
-    -->
-
-    <!-- More diagram cards go here: data-flow, migration flowchart,
-         schema side-by-side, capabilities comparison table, commit-shape
-         breakdown, etc. -->
-
+  <section class="tab-panel" id="tab-architecture" role="tabpanel" aria-labelledby="tab-button-architecture" tabindex="0" hidden>
+    <!-- FILL: zero or more evidence-backed diagram cards. State explicitly when no diagram is warranted. Each card needs a question in h2, a caption with source locations, a legend, and the smallest useful HTML/CSS, inline SVG, or Mermaid view. Use view-toggle plus matching view-panel elements for before/after/diff. -->
   </section>
 
-  <!-- ============================ DIFF =================================== -->
-  <section class="tab-panel" id="tab-diff">
+  <section class="tab-panel" id="tab-diff" role="tabpanel" aria-labelledby="tab-button-diff" tabindex="0" hidden>
     <div class="card">
       <h2>Annotated Diff</h2>
-      <p class="caption"><!-- FILL: "all hunks" or "5 of 23 hunks shown;
-        omitted hunks listed at the end." --></p>
-
-      <!-- Repeat this block per hunk: -->
-      <div class="diff">
-        <div class="diff-header">
-          <span class="path"><!-- FILL: path/to/file.go --></span>
-          <span><!-- FILL: lines 142-158 --></span>
-        </div>
-<pre><!-- FILL: hunk content, wrapping lines as:
-<span class="l-add">+ added line</span>
-<span class="l-del">- removed line</span>
-<span class="l-ctx">  context line</span>
---></pre>
-        <div class="annotation"><strong>Why:</strong>
-          <!-- FILL: 1-3 sentences explaining the intent, not the mechanics. -->
-        </div>
-      </div>
-
-      <!-- For medium/large PRs, list omitted hunks at the end -->
+      <p class="caption"><!-- FILL: coverage count and every omitted file group with a one-line reason --></p>
+      <!-- FILL: consequential hunks. Preserve exact @@ headers and locations. Wrap added, removed, and context lines in l-add, l-del, and l-ctx. In each annotation, link the hunk to a finding, invariant, or design decision and explain why it matters. -->
     </div>
   </section>
 
-  <!-- ============================ RISK =================================== -->
-  <section class="tab-panel" id="tab-risk">
+  <section class="tab-panel" id="tab-verification" role="tabpanel" aria-labelledby="tab-button-verification" tabindex="0" hidden>
     <div class="card">
-      <h2>Risk Assessment</h2>
-      <p class="caption">Severity: <span class="pill" style="color:var(--crit)">CRIT</span>
-        <span class="pill" style="color:var(--warn)">WARN</span>
-        <span class="pill" style="color:var(--info)">INFO</span>
-        <span class="pill" style="color:var(--ok)">OK</span></p>
-      <table>
-        <thead><tr><th>Axis</th><th>Severity</th><th>Finding</th></tr></thead>
-        <tbody>
-          <!-- FILL: one row per axis. Use sev-crit / sev-warn / sev-info /
-               sev-ok on the <tr>. Mark axes that don't apply as INFO with
-               "Not applicable" rather than dropping them. -->
-          <tr class="sev-info">
-            <td>Concurrency</td>
-            <td class="sev-info">INFO</td>
-            <td>Not applicable — single-threaded reconcile.</td>
-          </tr>
-        </tbody>
-      </table>
+      <h2>Observed Checks</h2>
+      <p class="caption">Local commands and remote CI are reported separately; only observed results count as passed.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Source</th><th scope="col">Command or check</th><th scope="col">Result</th><th scope="col">Evidence or limitation</th></tr></thead>
+          <tbody>
+            <!-- FILL: exact commands with exit status, plus each relevant CI/check state. Include rows for checks not run and why. -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Behavior-to-Test Matrix</h2>
+      <p class="caption">Tests are mapped to behavior and risk, not counted by lines.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">Behavior or risk</th><th scope="col">Test or scenario</th><th scope="col">Level</th><th scope="col">Observed status</th><th scope="col">Remaining gap</th></tr></thead>
+          <tbody>
+            <!-- FILL: normal, boundary, failure, compatibility or migration, and rollback cases as applicable. -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Manual and End-to-End Plan</h2>
+      <!-- FILL: ordered scenarios with setup, action, expected observation, rollback, and cleanup; or explain why no manual/e2e validation is warranted. -->
+    </div>
+
+    <div class="card">
+      <h2>Existing Review Context</h2>
+      <!-- FILL: GitHub review decision, unresolved threads, disputed assumptions, and whether each remains relevant. Say unavailable when PR metadata could not be queried. -->
     </div>
   </section>
 
-  <!-- ========================= UNKNOWNS ============================== -->
-  <section class="tab-panel" id="tab-unknowns">
+  <section class="tab-panel" id="tab-glossary" role="tabpanel" aria-labelledby="tab-button-glossary" tabindex="0" hidden>
+    <div class="card">
+      <h2>Glossary &amp; Concept Primer</h2>
+      <p class="caption">Only the vocabulary an unfamiliar reviewer needs to understand this change.</p>
+      <!-- FILL: definition list or table of domain terms, internal modules, acronyms, and external contracts. -->
+    </div>
+  </section>
+
+  <section class="tab-panel" id="tab-unknowns" role="tabpanel" aria-labelledby="tab-button-unknowns" tabindex="0" hidden>
     <div class="card">
       <h2>Assumptions &amp; Unknowns</h2>
-      <p class="caption">Everything I'm guessing, couldn't verify, or would
-        need to ask the author about. All hedging lives here.</p>
-      <!-- FILL: bulleted list. Be honest about what you didn't read. -->
+      <p class="caption">Unverified contracts, unread areas, stale refs, missing runtime evidence, and precise questions for the author.</p>
+      <!-- FILL: honest, specific list. Keep speculation here and out of actionable findings. -->
     </div>
   </section>
-
 </main>
 
-<!-- Mermaid is loaded lazily — only fires if a .mermaid element exists.
-     If you don't use mermaid, this script tag can be deleted entirely. -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- Remove this exact-pinned dependency when the dashboard contains no .mermaid element. -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.6/dist/mermaid.min.js"></script>
 <script>
 (function() {
-  // ---- Tabs ----
-  const tabs = document.querySelectorAll('nav.tabs button');
-  const panels = document.querySelectorAll('.tab-panel');
-  let mermaidRunFor = new Set();  // tabs whose mermaid blocks have been rendered
+  'use strict';
 
-  function activate(tabName) {
-    tabs.forEach(b => b.classList.toggle('active', b.dataset.tab === tabName));
-    panels.forEach(p => p.classList.toggle('active', p.id === 'tab-' + tabName));
-    // Lazy-render any mermaid blocks in this tab the first time it's shown.
-    // This dodges the "hidden tab measures as zero size" bug.
-    if (window.mermaid && !mermaidRunFor.has(tabName)) {
-      const blocks = document.querySelectorAll('#tab-' + tabName + ' .mermaid');
-      if (blocks.length) {
-        mermaid.run({ nodes: blocks }).catch(e => console.warn('mermaid:', e));
-        mermaidRunFor.add(tabName);
-      }
-    }
-  }
-  tabs.forEach(b => b.addEventListener('click', () => activate(b.dataset.tab)));
-
-  // ---- Theme toggle ----
+  const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
+  const panels = Array.from(document.querySelectorAll('[role="tabpanel"]'));
   const root = document.documentElement;
-  const stored = localStorage.getItem('pr-dash-theme');
-  const initialTheme = stored || 'dark';
-  applyTheme(initialTheme);
+  const themeButton = document.getElementById('theme-toggle');
+  const renderedBlocks = new Set();
 
-  function applyTheme(t) {
-    root.setAttribute('data-theme', t);
-    localStorage.setItem('pr-dash-theme', t);
-    document.getElementById('theme-icon').textContent  = t === 'dark' ? '☀️' : '🌙';
-    document.getElementById('theme-label').textContent = t === 'dark' ? 'Light' : 'Dark';
+  document.querySelectorAll('.mermaid').forEach(function(block) {
+    block.dataset.source = block.textContent;
+  });
+
+  function writeStoredTheme(theme) {
+    try { localStorage.setItem('pr-dash-theme', theme); }
+    catch (_) { /* File URLs and privacy modes may disable storage. */ }
+  }
+
+  function mermaidConfig(theme) {
+    return {
+      startOnLoad: false,
+      securityLevel: 'strict',
+      htmlLabels: false,
+      theme: theme === 'dark' ? 'dark' : 'default'
+    };
+  }
+
+  function restoreMermaid(block) {
+    if (!block.dataset.source) return;
+    block.textContent = block.dataset.source;
+    block.removeAttribute('data-processed');
+    block.classList.remove('mermaid-error');
+  }
+
+  function renderMermaid(tabName) {
+    if (!window.mermaid) return;
+    const blocks = Array.from(document.querySelectorAll('#tab-' + tabName + ' .mermaid')).filter(function(block) {
+      return !block.closest('[hidden]') && !renderedBlocks.has(block);
+    });
+    if (!blocks.length) return;
+    blocks.forEach(function(block) { renderedBlocks.add(block); });
+    window.mermaid.run({ nodes: blocks }).catch(function(error) {
+      blocks.forEach(function(block) {
+        renderedBlocks.delete(block);
+        restoreMermaid(block);
+        block.classList.add('mermaid-error');
+      });
+      console.warn('Mermaid rendering failed:', error);
+    });
+  }
+
+  function applyTheme(theme, rerender) {
+    root.setAttribute('data-theme', theme);
+    writeStoredTheme(theme);
+    const next = theme === 'dark' ? 'light' : 'dark';
+    document.getElementById('theme-icon').textContent = theme === 'dark' ? '☀️' : '🌙';
+    document.getElementById('theme-label').textContent = theme === 'dark' ? 'Light' : 'Dark';
+    themeButton.setAttribute('aria-label', 'Switch to ' + next + ' theme');
+    themeButton.setAttribute('aria-pressed', String(theme === 'light'));
+
     if (window.mermaid) {
-      mermaid.initialize({ startOnLoad: false, theme: t === 'dark' ? 'dark' : 'default' });
-      // Re-run all already-rendered diagrams so they pick up the new palette.
-      mermaidRunFor.clear();
-      const active = document.querySelector('nav.tabs button.active');
-      if (active) {
-        // Force re-render of the visible tab's mermaid blocks.
-        const blocks = document.querySelectorAll(
-          '#tab-' + active.dataset.tab + ' .mermaid');
-        blocks.forEach(el => {
-          // mermaid stamps a processed flag and replaces innerHTML; restore source.
-          if (el.dataset.src) el.textContent = el.dataset.src;
-          el.removeAttribute('data-processed');
-        });
-        if (blocks.length) mermaid.run({ nodes: blocks }).catch(()=>{});
-        mermaidRunFor.add(active.dataset.tab);
+      window.mermaid.initialize(mermaidConfig(theme));
+      if (rerender) {
+        document.querySelectorAll('.mermaid').forEach(restoreMermaid);
+        renderedBlocks.clear();
+        const active = tabs.find(function(tab) { return tab.classList.contains('active'); });
+        if (active) renderMermaid(active.dataset.tab);
       }
     }
   }
-  document.getElementById('theme-toggle').addEventListener('click', () => {
-    applyTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+
+  function activateTab(tabName, options) {
+    const settings = Object.assign({ focus: false, updateHash: true }, options || {});
+    const selected = tabs.find(function(tab) { return tab.dataset.tab === tabName; }) || tabs[0];
+
+    tabs.forEach(function(tab) {
+      const active = tab === selected;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', String(active));
+      tab.tabIndex = active ? 0 : -1;
+    });
+    panels.forEach(function(panel) {
+      panel.hidden = panel.id !== 'tab-' + selected.dataset.tab;
+    });
+
+    if (settings.updateHash) {
+      try { history.replaceState(null, '', '#' + selected.dataset.tab); }
+      catch (_) { /* Some file URL contexts restrict history updates. */ }
+    }
+    if (settings.focus) selected.focus();
+    renderMermaid(selected.dataset.tab);
+  }
+
+  tabs.forEach(function(tab, index) {
+    tab.addEventListener('click', function() { activateTab(tab.dataset.tab); });
+    tab.addEventListener('keydown', function(event) {
+      let nextIndex = null;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') nextIndex = (index + 1) % tabs.length;
+      if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') nextIndex = (index - 1 + tabs.length) % tabs.length;
+      if (event.key === 'Home') nextIndex = 0;
+      if (event.key === 'End') nextIndex = tabs.length - 1;
+      if (nextIndex !== null) {
+        event.preventDefault();
+        activateTab(tabs[nextIndex].dataset.tab, { focus: true });
+      }
+    });
   });
 
-  // Stash mermaid source on each block so theme re-init can restore it.
-  document.querySelectorAll('.mermaid').forEach(el => {
-    el.dataset.src = el.textContent;
+  // The head script already resolved stored theme or OS preference before first paint.
+  const initialTheme = root.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  applyTheme(initialTheme, false);
+  themeButton.addEventListener('click', function() {
+    applyTheme(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark', true);
   });
 
-  // ---- Mermaid initial setup (do not use startOnLoad) ----
-  if (window.mermaid) {
-    mermaid.initialize({ startOnLoad: false,
-                         theme: initialTheme === 'dark' ? 'dark' : 'default' });
-    // Render the initial tab's mermaid blocks (if any).
-    const blocks = document.querySelectorAll('#tab-summary .mermaid');
-    if (blocks.length) {
-      mermaid.run({ nodes: blocks }).catch(e => console.warn('mermaid:', e));
-      mermaidRunFor.add('summary');
+  document.querySelectorAll('.view-toggle').forEach(function(group) {
+    const name = group.dataset.group;
+    const buttons = Array.from(group.querySelectorAll('button[data-view]'));
+
+    function activateView(button) {
+      buttons.forEach(function(candidate) {
+        const active = candidate === button;
+        candidate.classList.toggle('active', active);
+        candidate.setAttribute('aria-pressed', String(active));
+      });
+      document.querySelectorAll('.view-panel[data-group="' + name + '"]').forEach(function(panel) {
+        panel.hidden = panel.dataset.view !== button.dataset.view;
+      });
+      const activeTab = tabs.find(function(tab) { return tab.classList.contains('active'); });
+      if (activeTab) renderMermaid(activeTab.dataset.tab);
+    }
+
+    buttons.forEach(function(button) {
+      button.addEventListener('click', function() { activateView(button); });
+    });
+    const initial = buttons.find(function(button) { return button.classList.contains('active'); }) || buttons[0];
+    if (initial) activateView(initial);
+  });
+
+  function activateFromHash(hash) {
+    if (tabs.some(function(tab) { return tab.dataset.tab === hash; })) {
+      activateTab(hash, { updateHash: false });
+      return;
+    }
+    const target = hash ? document.getElementById(hash) : null;
+    const panel = target && target.closest('[role="tabpanel"]');
+    if (panel) {
+      activateTab(panel.id.replace(/^tab-/, ''), { updateHash: false });
+      target.scrollIntoView();
+    } else if (target) {
+      // Anchors outside every panel (e.g. the skip-link target) keep the current tab.
+      const active = tabs.find(function(tab) { return tab.classList.contains('active'); });
+      activateTab(active ? active.dataset.tab : 'summary', { updateHash: false });
+    } else {
+      activateTab('summary', { updateHash: false });
     }
   }
 
-  // ---- View toggle (Before / After / Diff) ----
-  document.querySelectorAll('.view-toggle').forEach(group => {
-    const name = group.dataset.group;
-    group.querySelectorAll('button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        group.querySelectorAll('button')
-             .forEach(b => b.classList.toggle('active', b === btn));
-        document.querySelectorAll('.view-panel[data-group="' + name + '"]')
-                .forEach(p => p.classList.toggle('active',
-                                                 p.dataset.view === btn.dataset.view));
-      });
-    });
+  activateFromHash(location.hash.slice(1));
+  window.addEventListener('hashchange', function() {
+    activateFromHash(location.hash.slice(1));
   });
 })();
 </script>
