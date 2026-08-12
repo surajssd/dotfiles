@@ -52,3 +52,8 @@ All installers create **symlinks** (not copies), so changes in this repo are imm
 - **Scripts:** Symlinked from `local-bin/` to `~/.local/bin/`
 - **Configs:** Symlinked to home directory with OS-specific handling (macOS uses zshrc, Linux uses bashrc)
 - **Skills:** Symlinked from `skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (the vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI)
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
