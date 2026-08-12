@@ -2,14 +2,14 @@
 
 set -euo pipefail
 
-# Hand focus back to the terminal git was invoked from. TERM_PROGRAM is unset or
-# names something we can't activate (VS Code's own terminal, an SSH session) often
-# enough that anything unrecognised is left alone.
+# Hand focus back to whatever app git was invoked from. macOS sets
+# __CFBundleIdentifier to the bundle ID of the launching GUI app, so this works
+# for any terminal (iTerm, Terminal, Ghostty, WezTerm, Kitty, Alacritty, ...) and
+# is a no-op when unset (SSH sessions, login shells, non-bundle parents).
 restore_terminal_focus() {
-    case "${TERM_PROGRAM:-}" in
-    iTerm.app) open -b com.googlecode.iterm2 ;;
-    Apple_Terminal) open -b com.apple.Terminal ;;
-    esac
+    if [[ -n "${__CFBundleIdentifier:-}" ]]; then
+        open -b "${__CFBundleIdentifier}"
+    fi
 }
 
 if command -v code >/dev/null 2>&1; then
