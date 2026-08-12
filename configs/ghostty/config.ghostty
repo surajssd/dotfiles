@@ -7,10 +7,58 @@ keybind = cmd+shift+w=unbind
 keybind = cmd+d=unbind
 keybind = cmd+shift+d=unbind
 
-keybind = cmd+shift+left_bracket=unbind
-keybind = cmd+shift+right_bracket=unbind
+# Forward exact Kitty keyboard events to preserve the bracket key, Shift,
+# and Command modifiers for Herdr tab navigation.
+keybind = cmd+shift+left_bracket=text:\x1b[91:123;10u
+keybind = cmd+shift+right_bracket=text:\x1b[93:125;10u
 
 keybind = cmd+alt+left=unbind
 keybind = cmd+alt+down=unbind
 keybind = cmd+alt+up=unbind
 keybind = cmd+alt+right=unbind
+
+# Navigate Herdr's vertical workspace list.
+keybind = cmd+shift+up=unbind
+keybind = cmd+shift+down=unbind
+
+# Forward Cmd+1..9 as exact Kitty keyboard events so Herdr selects its tabs
+# instead of Ghostty selecting native tabs.
+keybind = cmd+1=text:\x1b[49;9u
+keybind = cmd+2=text:\x1b[50;9u
+keybind = cmd+3=text:\x1b[51;9u
+keybind = cmd+4=text:\x1b[52;9u
+keybind = cmd+5=text:\x1b[53;9u
+keybind = cmd+6=text:\x1b[54;9u
+keybind = cmd+7=text:\x1b[55;9u
+keybind = cmd+8=text:\x1b[56;9u
+keybind = cmd+9=text:\x1b[57;9u
+keybind = cmd+Digit1=text:\x1b[49;9u
+keybind = cmd+Digit2=text:\x1b[50;9u
+keybind = cmd+Digit3=text:\x1b[51;9u
+keybind = cmd+Digit4=text:\x1b[52;9u
+keybind = cmd+Digit5=text:\x1b[53;9u
+keybind = cmd+Digit6=text:\x1b[54;9u
+keybind = cmd+Digit7=text:\x1b[55;9u
+keybind = cmd+Digit8=text:\x1b[56;9u
+keybind = cmd+Digit9=text:\x1b[57;9u
+
+# Use Cmd+Control+1..9 for numbered Herdr workspaces, leaving macOS's
+# Cmd+Shift+number shortcuts untouched.
+keybind = cmd+ctrl+1=text:\x1b[49;13u
+keybind = cmd+ctrl+2=text:\x1b[50;13u
+keybind = cmd+ctrl+3=text:\x1b[51;13u
+keybind = cmd+ctrl+4=text:\x1b[52;13u
+keybind = cmd+ctrl+5=text:\x1b[53;13u
+keybind = cmd+ctrl+6=text:\x1b[54;13u
+keybind = cmd+ctrl+7=text:\x1b[55;13u
+keybind = cmd+ctrl+8=text:\x1b[56;13u
+keybind = cmd+ctrl+9=text:\x1b[57;13u
+keybind = cmd+ctrl+Digit1=text:\x1b[49;13u
+keybind = cmd+ctrl+Digit2=text:\x1b[50;13u
+keybind = cmd+ctrl+Digit3=text:\x1b[51;13u
+keybind = cmd+ctrl+Digit4=text:\x1b[52;13u
+keybind = cmd+ctrl+Digit5=text:\x1b[53;13u
+keybind = cmd+ctrl+Digit6=text:\x1b[54;13u
+keybind = cmd+ctrl+Digit7=text:\x1b[55;13u
+keybind = cmd+ctrl+Digit8=text:\x1b[56;13u
+keybind = cmd+ctrl+Digit9=text:\x1b[57;13u

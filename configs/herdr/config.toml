@@ -4,12 +4,16 @@ close_tab = ["prefix+shift+x", "cmd+w"]
 
 new_workspace   = ["prefix+shift+n", "cmd+n"]
 close_workspace = ["prefix+shift+d", "cmd+shift+w"]
+previous_workspace = "cmd+shift+up"
+next_workspace     = "cmd+shift+down"
+switch_workspace  = "cmd+ctrl+1..9"
 
 split_vertical   = ["prefix+v", "cmd+d"]
 split_horizontal = ["prefix+minus", "cmd+shift+d"]
 
 previous_tab = ["prefix+p", "cmd+shift+["]
 next_tab     = ["prefix+n", "cmd+shift+]"]
+switch_tab  = ["prefix+1..9", "cmd+1..9"]
 
 focus_pane_left  = ["prefix+h", "cmd+alt+left"]
 focus_pane_down  = ["prefix+j", "cmd+alt+down"]
