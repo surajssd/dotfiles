@@ -23,3 +23,7 @@ focus_pane_down  = ["prefix+j", "cmd+alt+down"]
 focus_pane_up    = ["prefix+k", "cmd+alt+up"]
 focus_pane_right = ["prefix+l", "cmd+alt+right"]
 zoom             = ["prefix+z", "cmd+shift+enter"]
+
+[ui.toast]
+delivery = "terminal"
+delay_seconds = 1
