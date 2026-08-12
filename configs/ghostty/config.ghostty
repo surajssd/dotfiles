@@ -1,0 +1,16 @@
+# Let Herdr receive these instead of Ghostty.
+keybind = cmd+t=unbind
+keybind = cmd+w=unbind
+keybind = cmd+n=unbind
+keybind = cmd+shift+w=unbind
+
+keybind = cmd+d=unbind
+keybind = cmd+shift+d=unbind
+
+keybind = cmd+shift+left_bracket=unbind
+keybind = cmd+shift+right_bracket=unbind
+
+keybind = cmd+alt+left=unbind
+keybind = cmd+alt+down=unbind
+keybind = cmd+alt+up=unbind
+keybind = cmd+alt+right=unbind

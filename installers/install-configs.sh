@@ -22,6 +22,10 @@ Darwin)
     ln -sf "${CONFIGS_DIR}"/gpg.conf ~/.gnupg/gpg.conf
 
     K9S_DIR="$HOME/Library/Application Support/k9s"
+
+    GHOSTTY_DIR="$HOME/Library/Application Support/com.mitchellh.ghostty"
+    mkdir -p "${GHOSTTY_DIR}"
+    ln -sf "${CONFIGS_DIR}"/ghostty/config.ghostty "${GHOSTTY_DIR}/config.ghostty"
     ;;
 *)
     ln -sf "${CONFIGS_DIR}"/bashrc ~/.bashrc
@@ -43,6 +47,7 @@ ln -sf "${CONFIGS_DIR}"/gitignore ~/.gitignore
 mkdir -p ~/.terraform.d/plugin-cache && ln -sf "${CONFIGS_DIR}"/terraformrc ~/.terraformrc
 ln -sf "${CONFIGS_DIR}"/tmux.conf ~/.tmux.conf
 mkdir -p ~/.config && ln -sf "${CONFIGS_DIR}"/starship.toml ~/.config/starship.toml
+mkdir -p ~/.config/herdr && ln -sf "${CONFIGS_DIR}"/herdr/config.toml ~/.config/herdr/config.toml
 
 # Install k9s skin
 mkdir -p "${K9S_DIR}/skins"
