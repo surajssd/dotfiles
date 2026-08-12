@@ -7,6 +7,9 @@ close_workspace = ["prefix+shift+d", "cmd+shift+w"]
 previous_workspace = "cmd+shift+up"
 next_workspace     = "cmd+shift+down"
 switch_workspace  = "cmd+ctrl+1..9"
+previous_agent     = "cmd+ctrl+up"
+next_agent         = "cmd+ctrl+down"
+focus_agent        = "cmd+ctrl+alt+1..9"
 
 split_vertical   = ["prefix+v", "cmd+d"]
 split_horizontal = ["prefix+minus", "cmd+shift+d"]

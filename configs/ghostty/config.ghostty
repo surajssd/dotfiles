@@ -22,6 +22,10 @@ keybind = cmd+alt+right=unbind
 keybind = cmd+shift+up=unbind
 keybind = cmd+shift+down=unbind
 
+# Navigate detected agents in Herdr's Agents sidebar.
+keybind = cmd+ctrl+up=unbind
+keybind = cmd+ctrl+down=unbind
+
 # Forward Cmd+1..9 as exact Kitty keyboard events so Herdr selects its tabs
 # instead of Ghostty selecting native tabs.
 keybind = cmd+1=text:\x1b[49;9u
@@ -63,3 +67,23 @@ keybind = cmd+ctrl+Digit6=text:\x1b[54;13u
 keybind = cmd+ctrl+Digit7=text:\x1b[55;13u
 keybind = cmd+ctrl+Digit8=text:\x1b[56;13u
 keybind = cmd+ctrl+Digit9=text:\x1b[57;13u
+
+# Jump directly to an agent by its visible 1..9 index.
+keybind = cmd+ctrl+alt+1=text:\x1b[49;15u
+keybind = cmd+ctrl+alt+2=text:\x1b[50;15u
+keybind = cmd+ctrl+alt+3=text:\x1b[51;15u
+keybind = cmd+ctrl+alt+4=text:\x1b[52;15u
+keybind = cmd+ctrl+alt+5=text:\x1b[53;15u
+keybind = cmd+ctrl+alt+6=text:\x1b[54;15u
+keybind = cmd+ctrl+alt+7=text:\x1b[55;15u
+keybind = cmd+ctrl+alt+8=text:\x1b[56;15u
+keybind = cmd+ctrl+alt+9=text:\x1b[57;15u
+keybind = cmd+ctrl+alt+Digit1=text:\x1b[49;15u
+keybind = cmd+ctrl+alt+Digit2=text:\x1b[50;15u
+keybind = cmd+ctrl+alt+Digit3=text:\x1b[51;15u
+keybind = cmd+ctrl+alt+Digit4=text:\x1b[52;15u
+keybind = cmd+ctrl+alt+Digit5=text:\x1b[53;15u
+keybind = cmd+ctrl+alt+Digit6=text:\x1b[54;15u
+keybind = cmd+ctrl+alt+Digit7=text:\x1b[55;15u
+keybind = cmd+ctrl+alt+Digit8=text:\x1b[56;15u
+keybind = cmd+ctrl+alt+Digit9=text:\x1b[57;15u
