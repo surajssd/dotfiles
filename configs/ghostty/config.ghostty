@@ -6,6 +6,7 @@ keybind = cmd+shift+w=unbind
 
 keybind = cmd+d=unbind
 keybind = cmd+shift+d=unbind
+keybind = cmd+shift+enter=unbind
 
 # Forward exact Kitty keyboard events to preserve the bracket key, Shift,
 # and Command modifiers for Herdr tab navigation.
