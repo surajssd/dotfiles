@@ -31,7 +31,7 @@ install-local-bin: ## Install scripts to ~/.local/bin
 install-skills: ## Install agent skills to ~/.claude/skills and ~/.agents/skills
 	./installers/install-skills.sh
 
-fetch-external-skills: ## Download external skills (mattpocock, bastos) into skills/ — also run by 'make update'
+fetch-external-skills: ## Download external skills (mattpocock, bastos, blader) into skills/ — also run by 'make update'
 	./installers/fetch-external-skills.sh
 
 install-azure-capacity-finder: ## Install azure-capacity-finder Go tool (skipped if not cloned)

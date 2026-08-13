@@ -3,7 +3,8 @@
 # Vendor selected external skills into this repo's flat skills/ directory.
 # Multi-source: each registry entry names its upstream repo + author + mode.
 #   fetch    - clone upstream, copy the skill dir flat into skills/<name>,
-#              and inject MIT + author attribution into its SKILL.md.
+#              excluding repo infrastructure (.git, .github, .claude-plugin),
+#              and merge license + author attribution into its SKILL.md.
 #   preserve - already vendored & locally customised; only verify + report,
 #              never overwrite (protects local edits).
 # Fetched skills are committed; re-run to update and record the printed
@@ -22,6 +23,7 @@ SKILLS=(
     "fetch|https://github.com/mattpocock/skills|github.com/mattpocock|skills/productivity/grilling|grilling"
     "fetch|https://github.com/mattpocock/skills|github.com/mattpocock|skills/engineering/domain-modeling|domain-modeling"
     "fetch|https://github.com/mattpocock/skills|github.com/mattpocock|skills/engineering/grill-with-docs|grill-with-docs"
+    "fetch|https://github.com/blader/humanizer|github.com/blader|.|humanizer"
     "preserve|https://github.com/bastos/skills|github.com/bastos|conventional-commits|conventional-commits"
 )
 
@@ -70,15 +72,52 @@ ensure_clone() {
     CLONE_DIRS+=("$dir")
 }
 
-# Insert license + author before the closing frontmatter '---', matching
-# skills/conventional-commits/SKILL.md. Fresh copy each run => no duplicates.
+# Merge license + author attribution into a SKILL.md frontmatter block.
+# Idempotent and merge-aware (safe for upstreams that already carry some of
+# these keys, e.g. blader/humanizer ships license: MIT and metadata.version).
+# - If license: is absent, add `license: MIT` (default) before the closing ---.
+# - If a metadata: block exists, inject `  author: <author>` as its first
+#   child unless an author: key is already present.
+# - If no metadata: block exists, create one with `  author: <author>`.
+# Fresh copy each run => no duplicates. Works on bash 3.2 (no mapfile).
 inject_attribution() {
-    local file="$1" author="$2"
-    awk -v author="$author" '
-        /^---[[:space:]]*$/ { delim++ }
-        delim == 2 && !done { print "license: MIT"; print "metadata:"; print "  author: " author; done = 1 }
-        { print }
-    ' "$file" >"${file}.new"
+    local file="$1" author="$2" license="${3:-MIT}"
+    local has_license=0 has_metadata=0 has_author=0 in_metadata=0 delim=0
+    local -a out=()
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^---[[:space:]]*$ ]]; then
+            ((++delim))
+            in_metadata=0
+        fi
+        if ((delim == 1)); then
+            [[ "$line" =~ ^license: ]] && has_license=1
+            if [[ "$line" =~ ^metadata: ]]; then
+                has_metadata=1
+                in_metadata=1
+            fi
+            if ((in_metadata)) && [[ "$line" =~ ^[[:space:]]+author: ]]; then
+                has_author=1
+            fi
+        fi
+        out+=("$line")
+    done <"$file"
+
+    : >"${file}.new"
+    delim=0
+    for line in "${out[@]}"; do
+        if [[ "$line" =~ ^---[[:space:]]*$ ]]; then
+            ((++delim))
+            if ((delim == 2)); then
+                ((has_license)) || printf 'license: %s\n' "$license" >>"${file}.new"
+                if ((has_metadata)); then
+                    ((has_author)) || printf '  author: %s\n' "$author" >>"${file}.new"
+                else
+                    printf 'metadata:\n  author: %s\n' "$author" >>"${file}.new"
+                fi
+            fi
+        fi
+        printf '%s\n' "$line" >>"${file}.new"
+    done
     mv "${file}.new" "$file"
 }
 
@@ -100,7 +139,13 @@ for entry in "${SKILLS[@]}"; do
         [[ -f "${src}/SKILL.md" ]] || die "no SKILL.md in ${subpath}"
         echo "⏳ Vendoring ${repo##*/}:${subpath} -> skills/${name} ..."
         rm -rf "$dest"
-        cp -R "$src" "$dest"
+        mkdir -p "$dest"
+        # Copy the upstream skill dir, excluding repo infrastructure that
+        # never belongs in a vendored skill (.git, .github, .claude-plugin).
+        # tar handles both subpath copies and repo-root copies (subpath=.) and
+        # is a no-op when the excluded dirs don't exist.
+        (cd "$src" && tar --exclude='./.git' --exclude='./.github' \
+            --exclude='./.claude-plugin' -cf - .) | tar -xf - -C "$dest"
         if compgen -G "${dest}/scripts/*.sh" >/dev/null 2>&1; then
             chmod +x "${dest}"/scripts/*.sh
         fi
