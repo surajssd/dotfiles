@@ -18,6 +18,7 @@ Both repositories mirror the same structure:
 - `configs/` - Shell configurations, git configs, and tool settings
 - `local-bin/` - Custom utility scripts
 - `skills/` - Agent skills in `SKILL.md` format (symlinked to `~/.claude/skills/` and `~/.agents/skills/`)
+- `rules/` - Agent rule `.md` files (symlinked to `~/.claude/rules/`)
 - `installers/` - Installation automation scripts (public repo only)
 
 ## Common Commands
@@ -25,7 +26,7 @@ Both repositories mirror the same structure:
 ### Installation
 
 ```bash
-# Install all configs, scripts, and skills
+# Install all configs, scripts, skills, and rules
 make install-all
 
 # Install only scripts to ~/.local/bin
@@ -37,13 +38,19 @@ make install-configs
 # Install only agent skills to ~/.claude/skills and ~/.agents/skills
 make install-skills
 
-# Download external skills (mattpocock, bastos) into skills/ — also run by 'make update'
+# Install only agent rules to ~/.claude/rules
+make install-rules
+
+# Download external skills (mattpocock, bastos, blader) into skills/ — also run by 'make update'
 make fetch-external-skills
+
+# Download external rules (abatilo) into rules/ — also run by 'make update'
+make fetch-external-rules
 
 # Pull latest from both public and private repos
 make pull-master
 
-# Update from upstream and reinstall (pull-master + fetch-external-skills + install-all)
+# Update from upstream and reinstall (pull-master + fetch-external-skills + fetch-external-rules + install-all)
 make update
 
 # Clone the private dotfiles repository
@@ -58,6 +65,7 @@ make clone-private
   - Linux: Uses `bashrc`, `gpg-agent-linux.conf`, k9s skin to `~/.config/k9s/skins/`
   - Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`
 - **Skills**: Symlinked from `skills/` and `dotfilesprivate/skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI)
+- **Rules**: Symlinked from `rules/` and `dotfilesprivate/rules/` to `~/.claude/rules/` (Claude Code's global rules path)
 
 ## Shell Script Conventions
 
@@ -75,7 +83,7 @@ All shell scripts must follow these standards:
 
 ### Symlink-Based Installation
 
-All installers create symlinks (not copies) so that `git pull` immediately updates active configs and scripts. Installers use absolute paths via `realpath` or `pwd` for reliable symlinking and handle both public and private repositories in sequence. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) lives in `installers/lib.sh`, sourced by `install-local-bin.sh` and `install-skills.sh`.
+All installers create symlinks (not copies) so that `git pull` immediately updates active configs and scripts. Installers use absolute paths via `realpath` or `pwd` for reliable symlinking and handle both public and private repositories in sequence. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
 
 ### OS-Specific Config Handling
 
@@ -136,10 +144,26 @@ Some skills are vendored (copied) from upstream repos rather than authored here.
 
 Fetched skills are committed to the repo. Run `make fetch-external-skills` to refresh them; the script prints the upstream commit SHA(s), which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs stay offline), but `make update` does run it — after `pull-master` and before `install-all` — so a full update also refreshes the vendored skills. `install-skills.sh` then symlinks the vendored directories like any other local skill.
 
+## Adding Agent Rules
+
+Each rule is a standalone `.md` file under `rules/` containing plain-markdown instructions read by Claude Code as global guidance. After adding or modifying rules, run `make install-rules` to symlink them to `~/.claude/rules/`.
+
+### Vendored external rules
+
+Some rules are vendored (copied) from upstream repos. `installers/fetch-external-rules.sh` drives this via the same pipe-delimited registry / two-mode (`fetch`/`preserve`) pattern as `fetch-external-skills.sh`, but operates per-file on `.md` rules:
+
+- **`fetch`**: clone the upstream repo, copy the rule `.md` into `rules/<name>` verbatim (no frontmatter or attribution is injected — rules are plain markdown). The `simple`, `comments`, `commit-notes`, `simplified-technical-english`, and `subtractive-engineering` rules are vendored this way from [`abatilo/vimrc`](https://github.com/abatilo/vimrc).
+- **`preserve`**: the rule is already vendored and locally customised; the script verifies it exists and reports its source but never overwrites it.
+
+Fetched rules are committed to the repo. Run `make fetch-external-rules` to refresh them; the script prints the upstream commit SHA, which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs stay offline), but `make update` does run it — after `fetch-external-skills` and before `install-all` — so a full update also refreshes the vendored rules. `install-rules.sh` then symlinks the vendored files like any other local rule.
+
+Attribution for vendored rules is recorded in a hand-maintained `rules/README.md` (not generated by the fetch script). When the registry changes, update that README alongside the fetch. `install-rules.sh` skips `README.md` (listed in its `RULES_SKIP` array) so it is never symlinked into `~/.claude/rules/`.
+
 ## Important Notes
 
 - The private repository (`dotfilesprivate/`) is a separate standalone git clone, not a submodule
 - Installation scripts assume both repos are present and will attempt to process both
 - Symlinks mean changes in this repo are immediately reflected in home directory
-- The `make update` command pulls latest from both repositories, refreshes the vendored external skills, and reinstalls
+- The `make update` command pulls latest from both repositories, refreshes the vendored external skills and rules, and reinstalls
 - The `install-local-bin.sh` installer skips files listed in its `LOCAL_BIN_SKIP` array (e.g. `util.sh`, a shared library, and `git-autopush-post-commit`, a git hook script — neither belongs in PATH). If you add another library or hook file to `local-bin/`, add its basename to `LOCAL_BIN_SKIP`
+- The `install-rules.sh` installer skips files listed in its `RULES_SKIP` array (e.g. `README.md`, the hand-maintained attribution file — not a rule). If you add another non-rule file to `rules/`, add its basename to `RULES_SKIP`

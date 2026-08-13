@@ -9,12 +9,15 @@
 #              never overwrite (protects local edits).
 # Fetched skills are committed; re-run to update and record the printed
 # upstream SHA in the commit message. install-skills.sh symlinks them as usual.
+# Clone-cache, die(), and inject_attribution() helpers come from lib.sh.
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(realpath "${SCRIPT_DIR}/..")"
 SKILLS_DIR="${REPO_DIR}/skills"
+# shellcheck source=/dev/null
+source "${SCRIPT_DIR}/lib.sh"
 
 # Registry: mode|repo_url|author|upstream_subpath|dest_name
 # - upstream_subpath is the path within the upstream repo (used by fetch).
@@ -27,99 +30,8 @@ SKILLS=(
     "preserve|https://github.com/bastos/skills|github.com/bastos|conventional-commits|conventional-commits"
 )
 
-die() {
-    echo "❌ $*" >&2
-    exit 1
-}
-
-# Cached clones, tracked as parallel indexed arrays (bash 3.2 has no
-# associative arrays). CLONE_URLS[i] was cloned into CLONE_DIRS[i].
-CLONE_URLS=()
-CLONE_DIRS=()
-TMP_DIRS=()
-cleanup() {
-    local d
-    for d in "${TMP_DIRS[@]:-}"; do
-        [[ -n "$d" ]] && rm -rf "$d"
-    done
-}
-trap cleanup EXIT
-
-# Echo the cached clone dir for a URL, or return non-zero if not cloned yet.
-# Parallel indexed arrays (not an associative array) keep this bash 3.2
-# compatible, since macOS still ships bash 3.2 as /bin/bash.
-clone_dir_for() {
-    local url="$1" i
-    ((${#CLONE_URLS[@]})) || return 1
-    for i in "${!CLONE_URLS[@]}"; do
-        if [[ "${CLONE_URLS[$i]}" == "$url" ]]; then
-            printf '%s\n' "${CLONE_DIRS[$i]}"
-            return 0
-        fi
-    done
-    return 1
-}
-
-# Clone a repo once (cached by URL).
-ensure_clone() {
-    local url="$1" dir
-    clone_dir_for "$url" >/dev/null && return 0
-    dir="$(mktemp -d)"
-    TMP_DIRS+=("$dir")
-    echo "⏳ Cloning ${url} ..."
-    git clone --depth 1 "$url" "$dir" >/dev/null 2>&1 || die "failed to clone ${url}"
-    CLONE_URLS+=("$url")
-    CLONE_DIRS+=("$dir")
-}
-
-# Merge license + author attribution into a SKILL.md frontmatter block.
-# Idempotent and merge-aware (safe for upstreams that already carry some of
-# these keys, e.g. blader/humanizer ships license: MIT and metadata.version).
-# - If license: is absent, add `license: MIT` (default) before the closing ---.
-# - If a metadata: block exists, inject `  author: <author>` as its first
-#   child unless an author: key is already present.
-# - If no metadata: block exists, create one with `  author: <author>`.
-# Fresh copy each run => no duplicates. Works on bash 3.2 (no mapfile).
-inject_attribution() {
-    local file="$1" author="$2" license="${3:-MIT}"
-    local has_license=0 has_metadata=0 has_author=0 in_metadata=0 delim=0
-    local -a out=()
-    while IFS= read -r line; do
-        if [[ "$line" =~ ^---[[:space:]]*$ ]]; then
-            ((++delim))
-            in_metadata=0
-        fi
-        if ((delim == 1)); then
-            [[ "$line" =~ ^license: ]] && has_license=1
-            if [[ "$line" =~ ^metadata: ]]; then
-                has_metadata=1
-                in_metadata=1
-            fi
-            if ((in_metadata)) && [[ "$line" =~ ^[[:space:]]+author: ]]; then
-                has_author=1
-            fi
-        fi
-        out+=("$line")
-    done <"$file"
-
-    : >"${file}.new"
-    delim=0
-    for line in "${out[@]}"; do
-        if [[ "$line" =~ ^---[[:space:]]*$ ]]; then
-            ((++delim))
-            if ((delim == 2)); then
-                ((has_license)) || printf 'license: %s\n' "$license" >>"${file}.new"
-                if ((has_metadata)); then
-                    ((has_author)) || printf '  author: %s\n' "$author" >>"${file}.new"
-                else
-                    printf 'metadata:\n  author: %s\n' "$author" >>"${file}.new"
-                fi
-            fi
-        fi
-        printf '%s\n' "$line" >>"${file}.new"
-    done
-    mv "${file}.new" "$file"
-}
+# Clean up cached clones on exit.
+trap clone_cache_cleanup EXIT
 
 command -v git >/dev/null 2>&1 || die "git is required"
 
