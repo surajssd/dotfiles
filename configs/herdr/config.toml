@@ -5,6 +5,7 @@ close_tab = "prefix+shift+x"
 
 new_workspace   = ["prefix+shift+n", "cmd+n"]
 new_worktree    = ["prefix+shift+g", "cmd+shift+n"]
+open_worktree   = ["prefix+shift+o", "cmd+o"]
 close_workspace = ["prefix+shift+d", "cmd+shift+w"]
 previous_workspace = "cmd+shift+up"
 next_workspace     = "cmd+shift+down"
