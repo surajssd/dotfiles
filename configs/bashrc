@@ -19,7 +19,9 @@ detect-container.sh &>/dev/null && export RUNNING_IN_CONTAINER=true
 
 #=================================================================
 # Homebrew related env vars
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+if [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
 
 #=================================================================
 # Byobu prompt

@@ -58,6 +58,18 @@ All installers create **symlinks** (not copies), so changes in this repo are imm
 - **Skills:** Symlinked from `skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (the vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI)
 - **Rules:** Symlinked from `rules/` to `~/.claude/rules/` (Claude Code's global rules path)
 
+## GitHub Codespaces
+
+GitHub Codespaces can install this repository as personal dotfiles. In your GitHub Codespaces settings, enable automatic dotfiles installation and select `surajssd/dotfiles`. Codespaces recognizes the root `install.sh` and runs the same `make install-all` setup used for local installation.
+
+The development container must provide `make` and the Go version declared in `clawbox/go.mod`. To rerun the setup in an existing codespace:
+
+```bash
+/workspaces/.codespaces/.persistedshare/dotfiles/install.sh
+```
+
+The installer uses private configs and tools only when their optional repositories are already present. It does not clone private repositories automatically.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

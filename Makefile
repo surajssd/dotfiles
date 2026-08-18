@@ -11,8 +11,8 @@
 define go-install
 @if [ -d "$(1)" ]; then \
 	echo "⏳ Installing $(1) ..."; \
-	cd "$(1)" && go install .; \
-	echo "✅ $(1) installed to ~/go/bin"; \
+	cd "$(1)" && go install . && \
+	echo "✅ $(1) installed successfully"; \
 else \
 	echo "ℹ️  $(1) not present, skipping"; \
 fi
