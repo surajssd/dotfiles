@@ -70,7 +70,29 @@ The development container must provide `make`. Go is not required. To rerun the 
 
 The installer uses private configs and scripts only when their optional repositories are already present. It does not clone private repositories automatically.
 
+## Claude Code with LiteLLM
+
+The declarative LiteLLM deployment lives in `configs/litellm/`. It exposes GitHub Copilot and W&B Inference through one local Anthropic-compatible gateway. The Compose service is intentionally stateless except for the persistent `litellm-copilot-data` volume that stores GitHub's OAuth credential.
+
+```bash
+litellm-proxy.sh start
+litellm-proxy.sh status
+litellm-proxy.sh models
+litellm-proxy.sh test-copilot
+litellm-proxy.sh test-wandb
+litellm-proxy.sh claude
+litellm-proxy.sh claude --dangerously-skip-permissions --allow-dangerously-skip-permissions
+```
+
+On the first `litellm-proxy.sh start`, follow the GitHub device-login URL and code printed by the script. The default Claude Code model is `claude-opus-4-8`; set `LITELLM_MODEL` to another model returned by `litellm-proxy.sh models`, such as `claude-sonnet-4-6` or `wandb/zai-org/GLM-5.2`. Every argument after the `claude` subcommand is passed directly to Claude Code.
+
+The proxy key is read from `LITELLM_MASTER_KEY` or the `litellm-proxy-key` Keychain entry. The upstream W&B key is read from `WANDB_API_KEY` or the `wandb-api-key` Keychain entry. To add or rotate either Keychain value:
+
+```bash
+security add-generic-password -U -a "$USER" -s litellm-proxy-key -w '<LiteLLM proxy key>'
+security add-generic-password -U -a "$USER" -s wandb-api-key -w '<W&B API key>'
+```
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
-

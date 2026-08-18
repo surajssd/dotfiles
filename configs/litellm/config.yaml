@@ -1,0 +1,38 @@
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  enable_anthropic_routes: true
+  store_model_in_db: true
+
+litellm_settings:
+  disable_copilot_system_to_assistant: true
+  drop_params: true
+
+model_list:
+- model_name: claude-opus-4-8
+  litellm_params:
+    model: github_copilot/claude-opus-4.8
+    additional_drop_params:
+      - thinking
+    extra_headers: &copilot_headers
+      Copilot-Vision-Request: "true"
+- model_name: claude-sonnet-4-6
+  litellm_params:
+    model: github_copilot/claude-sonnet-4.6
+    additional_drop_params:
+    - thinking
+    extra_headers: *copilot_headers
+- model_name: claude-haiku-4-5
+  litellm_params:
+    model: github_copilot/claude-haiku-4.5
+    additional_drop_params:
+    - thinking
+    extra_headers: *copilot_headers
+- model_name: gpt-5-5
+  litellm_params:
+    model: github_copilot/gpt-5.5
+    extra_headers: *copilot_headers
+- model_name: wandb/zai-org/GLM-5.2
+  litellm_params:
+    model: openai/zai-org/GLM-5.2
+    api_base: https://api.inference.wandb.ai/v1
+    api_key: os.environ/WANDB_API_KEY

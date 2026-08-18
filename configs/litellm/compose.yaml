@@ -1,0 +1,65 @@
+name: litellm
+
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm@sha256:90d8de0ea6fbb3cad145d1019d00a0149ae400b1e18e2011a60f1988f143f672
+    container_name: litellm
+    restart: unless-stopped
+    stop_grace_period: 30s
+    command:
+      - --config
+      - /app/config/config.yaml
+      - --port
+      - "4000"
+      - --num_workers
+      - "1"
+    expose:
+      - 4000
+    environment:
+      LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY}"
+      LITELLM_SALT_KEY: "${LITELLM_SALT_KEY}"
+      DATABASE_URL: "postgresql://litellm:litellm@db:5432/litellm"
+      STORE_MODEL_IN_DB: "True"
+      PYTHONPATH: /app/config
+      WANDB_API_KEY: "${WANDB_API_KEY}"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness', timeout=3)
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    volumes:
+      - ./config.yaml:/app/config/config.yaml:ro
+      - ./sitecustomize.py:/app/config/sitecustomize.py:ro
+      - litellm-copilot-data:/root/.config/litellm/github_copilot
+
+  db:
+    image: postgres:16
+    container_name: litellm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: litellm
+      POSTGRES_DB: litellm
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U litellm
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - litellm-db-data:/var/lib/postgresql/data
+
+volumes:
+  litellm-copilot-data:
+    external: true
+    name: litellm-copilot-data
+  litellm-db-data:

@@ -83,7 +83,7 @@ All shell scripts must follow these standards:
 
 ### Symlink-Based Installation
 
-All installers create symlinks (not copies) so that `git pull` immediately updates active configs and scripts. Installers use absolute paths via `realpath` or `pwd` for reliable symlinking and handle both public and private repositories in sequence. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
+Installers normally create symlinks so that `git pull` immediately updates active configs and scripts. The private config installer generates regular global instruction files for Codex and OpenCode by combining its shared base instructions with the Markdown files in `rules/`. Installers use absolute paths via `realpath` or `pwd` for reliable symlinking and handle both public and private repositories in sequence. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
 
 ### OS-Specific Config Handling
 
@@ -93,7 +93,7 @@ All installers create symlinks (not copies) so that `git pull` immediately updat
 - Linux: `bashrc` → `~/.bashrc`, `gpg-agent-linux.conf` → `~/.gnupg/gpg-agent.conf`
 - Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`
 
-`installers/install-configs.sh` then invokes `dotfilesprivate/install-configs.sh` to symlink the private configs (see the private repo's `CLAUDE.md`).
+`installers/install-configs.sh` then invokes `dotfilesprivate/install-configs.sh` to install the private configs and generate the global Codex and OpenCode instruction files (see the private repo's `CLAUDE.md`).
 
 ### PATH Configuration
 
