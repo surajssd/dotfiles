@@ -43,3 +43,7 @@ mouse_capture = true
 [ui.toast]
 delivery = "terminal"
 delay_seconds = 1
+
+[theme]
+name = "dracula"
+auto_switch = false
