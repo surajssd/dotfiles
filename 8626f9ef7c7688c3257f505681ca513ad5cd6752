@@ -1,0 +1,20 @@
+## Conversation
+User asked to commit the already `git add`-ed code and include the commit hash it was vendored from.
+
+## Actions
+Inspected staged diff: skills/grilling/SKILL.md and skills/grill-with-docs/SKILL.md. Both vendored from mattpocock/skills (fetch registry in installers/fetch-external-skills.sh). Resolved upstream HEAD via `git ls-remote` = 9c9f36ccd3995266cd675468af71639c8dde1ec5. Cloned upstream to /tmp and diffed: staged bodies match upstream exactly; only local additions are the injected `license: MIT` + `metadata.author` frontmatter (added by the fetch script). Validated message with the conventional-commits commitlint validator (exit 0). Committed with `git commit -s -S`.
+
+## Errors & Mistakes
+Initial `diff` used wrong tail line-offsets (guessed frontmatter length), producing misleading output. Re-ran full-file diff which confirmed bodies match upstream.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+The em-dash removals in grilling were NOT a local edit — upstream 9c9f36c already ships them. Verified by rg -c "—" == 0 in the cloned upstream.
+
+## Codebase Discoveries
+Vendored skill files differ from upstream only by the 3 injected frontmatter lines (license + metadata.author).
+
+## Open Questions
+None.
