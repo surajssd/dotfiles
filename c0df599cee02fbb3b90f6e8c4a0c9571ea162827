@@ -1,0 +1,20 @@
+## Conversation
+User asked to commit the newly added (staged) humanizer code the same way as the prior grilling commit, including the upstream commit hash it was vendored from.
+
+## Actions
+Staged set was skills/humanizer/* (AGENTS.md, README.md, SKILL.md, agents/openai.yaml, scripts/validate-package.py) plus new symlink skills/humanizer/skills/humanizer/SKILL.md. Vendored from blader/humanizer (subpath ".", registry in installers/fetch-external-skills.sh). Upstream HEAD = ebf637b (v2.11.1), but staged content is v2.11.0. Cloned upstream full history, found staged bodies match commit 43c9767 ("Rewrite Humanizer in Plain Language (v2.11.0)") exactly; only local delta is injected metadata.author: github.com/blader in the two SKILL.md files. Validated commit message with commitlint (exit 0). Committed with git commit -s -S. Auto-push hook pushed to origin.
+
+## Errors & Mistakes
+None. `git ls-remote` output was truncated by a large `cat` in the same call; re-ran cleanly.
+
+## Dead Ends
+Initially assumed staged content would match upstream HEAD (ebf637b/v2.11.1); it did not. Diff showed missing build-skill-zip.py + README "Claude Desktop upload" section, which are 2.11.1 additions. Traced to 43c9767 (v2.11.0) via `git log -S`.
+
+## Hints for Future Agents
+This vendored humanizer is v2.11.0 (43c9767), one release behind upstream HEAD v2.11.1 (ebf637b). A future `make fetch-external-skills` will bump it to 2.11.1 and add build-skill-zip.py. The nested skills/humanizer/SKILL.md is a symlink (mode 120000), part of the upstream plugin layout, not an accident.
+
+## Codebase Discoveries
+blader/humanizer bundles a copy of the skill at skills/humanizer/SKILL.md (a symlink) in addition to the root SKILL.md. Since humanizer is vendored with subpath ".", the whole repo tree is copied flat, so this nested symlink comes along.
+
+## Open Questions
+Whether to fast-forward the vendored copy to v2.11.1 — not requested; left at 2.11.0 to match what was staged.
