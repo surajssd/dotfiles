@@ -7,4 +7,4 @@ metadata:
   author: github.com/mattpocock
 ---
 
-Run a `/grilling` session, using the `/domain-modeling` skill.
+Call the Skill tool twice, for "grilling" and "domain-modeling".
