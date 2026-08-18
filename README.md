@@ -60,15 +60,15 @@ All installers create **symlinks** (not copies), so changes in this repo are imm
 
 ## GitHub Codespaces
 
-GitHub Codespaces can install this repository as personal dotfiles. In your GitHub Codespaces settings, enable automatic dotfiles installation and select `surajssd/dotfiles`. Codespaces recognizes the root `install.sh` and runs the same `make install-all` setup used for local installation.
+GitHub Codespaces can install this repository as personal dotfiles. In your GitHub Codespaces settings, enable automatic dotfiles installation and select `surajssd/dotfiles`. Codespaces recognizes the root `install.sh` and installs the config files and shell scripts.
 
-The development container must provide `make` and the Go version declared in `clawbox/go.mod`. To rerun the setup in an existing codespace:
+The development container must provide `make`. Go is not required. To rerun the setup in an existing codespace:
 
 ```bash
 /workspaces/.codespaces/.persistedshare/dotfiles/install.sh
 ```
 
-The installer uses private configs and tools only when their optional repositories are already present. It does not clone private repositories automatically.
+The installer uses private configs and scripts only when their optional repositories are already present. It does not clone private repositories automatically.
 
 ## License
 
