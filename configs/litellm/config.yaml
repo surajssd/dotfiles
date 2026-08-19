@@ -36,3 +36,8 @@ model_list:
     model: openai/zai-org/GLM-5.2
     api_base: https://api.inference.wandb.ai/v1
     api_key: os.environ/WANDB_API_KEY
+- model_name: wandb/deepseek-ai/DeepSeek-V4-Flash-0731
+  litellm_params:
+    model: openai/deepseek-ai/DeepSeek-V4-Flash-0731
+    api_base: https://api.inference.wandb.ai/v1
+    api_key: os.environ/WANDB_API_KEY
