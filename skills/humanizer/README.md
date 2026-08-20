@@ -2,71 +2,21 @@
 
 [![skills.sh installs](https://skills.sh/b/blader/humanizer)](https://skills.sh/blader/humanizer)
 
-Humanizer rewrites text that sounds AI-generated while keeping the writer's facts, meaning, and voice. The skill is plain Markdown and works in any agent that supports skills.
+Humanizer rewrites AI-sounding text so it reads like a person wrote it, without changing what it says. Because it is just Markdown, it works with any agent that supports skills.
 
-## Installation
+## How it works
 
-### Skills CLI
+Humanizer uses 35 patterns from Wikipedia's ["Signs of AI writing"](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing), maintained by WikiProject AI Cleanup. It makes a first pass without treating the original structure as fixed. Then it checks the draft against those patterns and the original claims before rewriting whatever still needs work.
 
-Install Humanizer for all projects:
+> "LLMs use statistical algorithms to guess what should come next. The result tends toward the most statistically likely result that applies to the widest variety of cases."
 
-```bash
-npx skills add blader/humanizer --global
-```
+It does not make things up. A name, number, date, quote, citation, or other factual detail must come from the source or the writer. For personal writing, Humanizer keeps the writer's style. Technical and reference prose stays neutral and plain. If you provide a writing sample, Humanizer follows that sample instead of its default style rules.
 
-Update an existing install:
-
-```bash
-npx skills update humanizer --global
-```
-
-Install it for every supported agent:
-
-```bash
-npx skills add blader/humanizer --global --agent '*'
-```
-
-Install it for one agent:
-
-```bash
-npx skills add blader/humanizer --global --agent <agent-name>
-```
-
-Omit `--global` to install it in the current project. Start a new agent session or reload skills after installation.
-
-### Claude Code plugin
-
-Claude Code users can also install Humanizer as a plugin:
-
-```
-/plugin marketplace add blader/humanizer
-/plugin install humanizer@humanizer
-```
-
-Run the installed skill with `/humanizer:humanizer`.
-
-The plugin links `skills/humanizer/SKILL.md` to the root `SKILL.md`. This lets Claude Desktop and older plugin loaders find the skill without creating a second prompt.
-
-### Manual
-
-You can also place `SKILL.md` in any agent's skill folder.
-
-For example:
-
-```bash
-git clone https://github.com/blader/humanizer.git /path/to/your/skills/humanizer
-```
-
-Or, if you already have this repo cloned:
-
-```bash
-mkdir -p /path/to/your/skills/humanizer
-cp SKILL.md /path/to/your/skills/humanizer/
-```
+When you paste text, Humanizer shows its work before giving you the final version. You see the first rewrite and a short critique of anything that still sounds artificial. Point it at a file and it changes only the prose, leaving code, data, frontmatter, and link targets alone.
 
 ## Usage
 
-Use a slash command or ask the agent directly:
+Call the skill directly:
 
 ```
 /humanizer
@@ -74,11 +24,13 @@ Use a slash command or ask the agent directly:
 [paste your text here]
 ```
 
+Or ask in plain language:
+
 ```
 Please humanize this text: [your text]
 ```
 
-You can also ask Humanizer to rewrite a file:
+To rewrite a file, give Humanizer its path:
 
 ```
 Humanize the prose in docs/launch-post.md
@@ -86,7 +38,7 @@ Humanize the prose in docs/launch-post.md
 
 ### Match your voice
 
-Provide a writing sample when you want Humanizer to match your style:
+If you want the rewrite to sound more like you, include a sample:
 
 ```
 /humanizer
@@ -98,21 +50,9 @@ Now humanize this text:
 [paste AI text to humanize]
 ```
 
-Humanizer matches the sample's rhythm, word choice, punctuation, and deliberate quirks.
+Humanizer follows the sample's rhythm, word choice, punctuation, and deliberate quirks.
 
-## How it works
-
-Humanizer uses patterns from Wikipedia's ["Signs of AI writing"](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing), maintained by WikiProject AI Cleanup.
-
-It drafts a rewrite, checks the draft for remaining AI patterns and changed claims, then writes the final version.
-
-It does not invent facts, names, dates, quotes, or citations. Any added detail must come from the source or the writer.
-
-### Wikipedia's main point
-
-> "LLMs use statistical algorithms to guess what should come next. The result tends toward the most statistically likely result that applies to the widest variety of cases."
-
-## 35 patterns with examples
+## The 35 patterns
 
 ### Content patterns
 
@@ -176,7 +116,7 @@ It does not invent facts, names, dates, quotes, or citations. Any added detail m
 
 ## Full example
 
-*The example includes details that a real writer would provide, such as the month and neighborhood. Humanizer must ask for missing details instead of inventing them.*
+*Details such as the month and neighborhood need to come from the writer. If they are missing, Humanizer should ask instead of making them up.*
 
 **Before (AI-sounding):**
 > I recently spent five unforgettable days in Lisbon, and let me tell you — this city completely stole my heart. From the moment I arrived, I knew I was somewhere truly special.
@@ -206,11 +146,16 @@ It does not invent facts, names, dates, quotes, or citations. Any added detail m
 
 ## Sources
 
-- [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) - Main source
-- [WikiProject AI Cleanup](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_AI_Cleanup) - Maintains the source page
+- [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing) is the source for the pattern list.
+- [WikiProject AI Cleanup](https://en.wikipedia.org/wiki/Wikipedia:WikiProject_AI_Cleanup) maintains the page.
 
 ## Version history
 
+<details>
+<summary>Show release notes</summary>
+
+- **2.11.2** - Removed the plugin symlink and separate Claude Desktop package. Current Claude Code loads the root `SKILL.md` directly, so GitHub's source ZIP now works in Claude Desktop. No change to the 35 patterns.
+- **2.11.1** - Added a Claude Desktop-ready release package with one regular `humanizer/SKILL.md` file. GitHub's source archive still keeps the plugin symlink (fixes #224). No change to the 35 patterns.
 - **2.11.0** - Rewrote all repo guidance, descriptions, checks, and skill instructions in Plain Language. Kept all 35 patterns and their behavior.
 - **2.10.2** - Added the standard `skills/humanizer/` plugin path for Claude Desktop and older loaders. The path links to the root skill, so there is still one prompt (fixes #202).
 - **2.10.1** - Added figurative uses of `gate`, `gated`, and `gating` to §7. Kept real technical uses, such as feature gating and CI quality gates.
@@ -234,6 +179,31 @@ It does not invent facts, names, dates, quotes, or citations. Any added detail m
 - **2.0.0** - Rewrote the skill from the Wikipedia source.
 - **1.0.0** - First release.
 
+</details>
+
 ## License
 
 MIT
+
+## Installation
+
+Install Humanizer with the Skills CLI:
+
+```bash
+npx skills add blader/humanizer --global
+```
+
+Leave off `--global` to install Humanizer only in the current project. Add `--agent <name>` or `--agent '*'` to choose which agents receive it, then reload their skills.
+
+Claude Code 2.1.142 or newer can install the plugin instead:
+
+```text
+/plugin marketplace add blader/humanizer
+/plugin install humanizer@humanizer
+```
+
+The plugin command is `/humanizer:humanizer`.
+
+In Claude Desktop, download this repository as a ZIP and upload it as a skill.
+
+For a manual install, copy `SKILL.md` into the agent's skill folder.

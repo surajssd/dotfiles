@@ -9,11 +9,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-SKILL = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+SKILL_PATH = ROOT / "SKILL.md"
+SKILL = SKILL_PATH.read_text(encoding="utf-8")
 README = (ROOT / "README.md").read_text(encoding="utf-8")
 AGENTS = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
 PLUGIN = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-PLUGIN_SKILL = ROOT / "skills" / "humanizer" / "SKILL.md"
 
 
 def require_match(match: re.Match[str] | None, message: str) -> re.Match[str]:
@@ -46,10 +46,11 @@ if len(package_versions) != 1:
         f"Use one package version in all files: {sorted(package_versions)}"
     )
 
-if not PLUGIN_SKILL.is_symlink():
-    raise SystemExit("Link skills/humanizer/SKILL.md to the root SKILL.md")
-if PLUGIN_SKILL.resolve() != (ROOT / "SKILL.md").resolve():
-    raise SystemExit("Make skills/humanizer/SKILL.md point to the root SKILL.md")
+skill_files = {path.relative_to(ROOT) for path in ROOT.rglob("SKILL.md")}
+if SKILL_PATH.is_symlink() or skill_files != {Path("SKILL.md")}:
+    raise SystemExit("Keep one regular SKILL.md at the repo root")
+if PLUGIN.get("skills") != ["./"]:
+    raise SystemExit("Point the Claude plugin skill loader at the repo root")
 
 plain_language_rules = (
     "## Writing style",
