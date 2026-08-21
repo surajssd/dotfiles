@@ -1,0 +1,22 @@
+## Conversation
+User invoked /conventional-commits to draft a message for the cached diff only, then asked to commit it.
+
+## Actions
+- git diff --cached showed one staged change: new symlink AGENTS.md -> CLAUDE.md.
+- Drafted docs: message, validated with the skill's commitlint validator (first attempt failed body-max-line-length, wrapped body to <=100 chars, passed).
+- Committed with git commit -s -S (signed).
+
+## Errors & Mistakes
+First validator run failed body-max-line-length [max 100]; fixed by wrapping the body onto two lines.
+
+## Dead Ends
+None
+
+## Hints for Future Agents
+A post-commit autopush hook pushed master to origin automatically ("autosync: pushed master -> origin") as part of the commit. No manual push needed.
+
+## Codebase Discoveries
+AGENTS.md is a symlink (mode 120000) to CLAUDE.md, exposing project instructions under the vendor-neutral AGENTS.md name.
+
+## Open Questions
+None
