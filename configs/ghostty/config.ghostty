@@ -1,3 +1,5 @@
+theme = Violite
+
 # Let Herdr receive these instead of Ghostty.
 keybind = cmd+t=unbind
 keybind = cmd+w=unbind
