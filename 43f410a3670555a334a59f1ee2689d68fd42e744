@@ -1,0 +1,22 @@
+## Conversation
+User invoked /conventional-commits for the cached diff only, asked to include the actual upstream commit that vendored the change, then asked to commit.
+
+## Actions
+- git diff --cached: one file, skills/grilling/SKILL.md, re-formatting a grilling round so questions are separated by a horizontal rule.
+- git ls-remote gave repo HEAD 5b15a47, but the specific commit that touched grilling/SKILL.md is 85f83d3 ("grilling: separate questions in a round with an HR"), found by shallow-cloning mattpocock/skills and running git log on the file. Cited 85f83d3 in the message.
+- Validated with commitlint (passed first try), copied via pbcopy, committed with git commit -s -S.
+
+## Errors & Mistakes
+None
+
+## Dead Ends
+Repo HEAD (5b15a47) was not the right SHA to cite; the file-specific commit 85f83d3 is. Used git log -- <path> on a shallow clone to disambiguate.
+
+## Hints for Future Agents
+When citing the vendoring commit, cite the commit that actually touched the vendored file (git log -1 -- <path> in a clone), not just repo HEAD. A post-commit autopush hook pushes master to origin automatically.
+
+## Codebase Discoveries
+grilling is vendored from mattpocock/skills; the vendored file is skills/grilling/SKILL.md.
+
+## Open Questions
+None
