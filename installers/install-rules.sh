@@ -18,11 +18,6 @@ readonly RULES_SKIP=(README.md)
 echo "⏳ Installing public rules into ${DEST} ..."
 link_tree file "${REPO_DIR}/rules" "$DEST" "${RULES_SKIP[@]}"
 
-if [[ -d "${REPO_DIR}/dotfilesprivate/rules" ]]; then
-    echo "⏳ Installing private rules into ${DEST} ..."
-    link_tree file "${REPO_DIR}/dotfilesprivate/rules" "$DEST" "${RULES_SKIP[@]}"
-fi
-
 # Remove broken symlinks for rules we no longer ship.
 prune_dead_symlinks "$DEST"
 echo "✅ Rules installed into ${DEST}"

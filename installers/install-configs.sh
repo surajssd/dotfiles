@@ -54,7 +54,3 @@ mkdir -p "${K9S_DIR}/skins"
 ln -sf "${CONFIGS_DIR}"/k9s/skins/vscode-light.yaml "${K9S_DIR}/skins/vscode-light.yaml"
 
 echo "✅ Config files installed successfully!"
-
-if [[ -f "${SCRIPT_DIR}"/../dotfilesprivate/install-configs.sh ]]; then
-    "${SCRIPT_DIR}"/../dotfilesprivate/install-configs.sh
-fi

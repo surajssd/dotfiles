@@ -20,11 +20,6 @@ for DEST in "${DESTS[@]}"; do
     echo "⏳ Installing public skills into ${DEST} ..."
     link_tree dir "${REPO_DIR}/skills" "$DEST"
 
-    if [[ -d "${REPO_DIR}/dotfilesprivate/skills" ]]; then
-        echo "⏳ Installing private skills into ${DEST} ..."
-        link_tree dir "${REPO_DIR}/dotfilesprivate/skills" "$DEST"
-    fi
-
     # Remove only broken symlinks for skills we no longer ship.
     prune_dead_symlinks "$DEST"
     echo "✅ Skills installed into ${DEST}"

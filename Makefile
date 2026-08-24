@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
 # Symlink installers (delegate to scripts)
-.PHONY: install-configs install-local-bin install-skills install-rules fetch-external-skills fetch-external-rules
+.PHONY: install-configs install-local-bin install-skills install-rules install-private fetch-external-skills fetch-external-rules
 # Go-tool installers (skip with an info message when dir absent)
 .PHONY: install-azure-capacity-finder install-clawbox
 # Orchestration / maintenance
@@ -34,6 +34,9 @@ install-skills: ## Install agent skills to ~/.claude/skills and ~/.agents/skills
 install-rules: ## Install agent rules to ~/.claude/rules
 	./installers/install-rules.sh
 
+install-private: ## Install the optional private dotfiles
+	@if [ -x dotfilesprivate/install.sh ]; then ./dotfilesprivate/install.sh; fi
+
 fetch-external-skills: ## Download external skills (mattpocock, bastos, blader) into skills/ — also run by 'make update'
 	./installers/fetch-external-skills.sh
 
@@ -47,6 +50,7 @@ install-clawbox: ## Install clawbox Go tool (skipped if absent)
 	$(call go-install,clawbox)
 
 install-all: install-configs install-local-bin install-skills install-rules install-azure-capacity-finder install-clawbox ## Install everything
+	$(MAKE) install-private
 
 update: pull-master fetch-external-skills fetch-external-rules install-all ## Pull latest, refresh external skills + rules, then reinstall
 

@@ -15,13 +15,7 @@ readonly LOCAL_BIN_SKIP=(util.sh git-autopush-post-commit)
 
 echo "⏳ Installing scripts from ${REPO_DIR}/local-bin dir ..."
 link_tree file "${REPO_DIR}/local-bin" "$DEST" "${LOCAL_BIN_SKIP[@]}"
-echo "✅ Installation successful for public scripts!"
-
-if [[ -d "${REPO_DIR}/dotfilesprivate/local-bin" ]]; then
-    echo "⏳ Installing scripts from ${REPO_DIR}/dotfilesprivate/local-bin ..."
-    link_tree file "${REPO_DIR}/dotfilesprivate/local-bin" "$DEST" "${LOCAL_BIN_SKIP[@]}"
-    echo "✅ Installation successful for private scripts!"
-fi
+echo "✅ Installation successful for scripts!"
 
 # Clean up dead symlinks.
 prune_dead_symlinks "$DEST"

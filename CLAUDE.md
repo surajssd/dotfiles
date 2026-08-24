@@ -59,13 +59,14 @@ make clone-private
 
 ### How Installation Works
 
-- **Scripts**: Symlinked from `local-bin/` and `dotfilesprivate/local-bin/` to `~/.local/bin/`
+- **Scripts**: Symlinked from `local-bin/` to `~/.local/bin/`
 - **Configs**: Symlinked from `configs/` to home directory with OS-specific handling:
   - macOS: Uses `zshrc`, `gpg-agent-mac.conf`, `gpg.conf`, k9s skin to `~/Library/Application Support/k9s/skins/`
   - Linux: Uses `bashrc`, `gpg-agent-linux.conf`, k9s skin to `~/.config/k9s/skins/`
   - Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`
-- **Skills**: Symlinked from `skills/` and `dotfilesprivate/skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI)
-- **Rules**: Symlinked from `rules/` and `dotfilesprivate/rules/` to `~/.claude/rules/` (Claude Code's global rules path)
+- **Skills**: Symlinked from `skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI)
+- **Rules**: Symlinked from `rules/` to `~/.claude/rules/` (Claude Code's global rules path)
+- **Private files**: Installed by the private repository's own entry point when the optional clone exists
 
 ## Shell Script Conventions
 
@@ -83,7 +84,7 @@ All shell scripts must follow these standards:
 
 ### Symlink-Based Installation
 
-Installers normally create symlinks so that `git pull` immediately updates active configs and scripts. The private config installer generates regular global instruction files for Codex and OpenCode by combining its shared base instructions with the Markdown files in `rules/`. Installers use absolute paths via `realpath` or `pwd` for reliable symlinking and handle both public and private repositories in sequence. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
+Installers normally create symlinks so that `git pull` immediately updates active configs and scripts. Public installers use absolute paths via `realpath` or `pwd`. The `install-all` target invokes the optional private installer once, without exposing private installation details to the public component installers. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
 
 ### OS-Specific Config Handling
 
@@ -92,8 +93,6 @@ Installers normally create symlinks so that `git pull` immediately updates activ
 - macOS (Darwin): `zshrc` → `~/.zshrc`, `gpg-agent-mac.conf` → `~/.gnupg/gpg-agent.conf`, `gpg.conf` → `~/.gnupg/gpg.conf`
 - Linux: `bashrc` → `~/.bashrc`, `gpg-agent-linux.conf` → `~/.gnupg/gpg-agent.conf`
 - Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`
-
-`installers/install-configs.sh` then invokes `dotfilesprivate/install-configs.sh` to install the private configs and generate the global Codex and OpenCode instruction files (see the private repo's `CLAUDE.md`).
 
 ### PATH Configuration
 
@@ -107,7 +106,7 @@ Shell configs (zshrc/bashrc) add these to PATH:
 
 ### Adding New Scripts
 
-1. Add executable script to `local-bin/` (or `dotfilesprivate/local-bin/` for private scripts)
+1. Add an executable script to `local-bin/`
 2. Ensure it follows the shell script conventions above (shebang, `set -euo pipefail`, etc.)
 3. Run `shellfmt.sh <script-path>` to lint and format
 4. Run `make install-local-bin` to symlink to `~/.local/bin`
