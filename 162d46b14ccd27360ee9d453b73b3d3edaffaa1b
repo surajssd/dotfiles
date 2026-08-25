@@ -1,0 +1,57 @@
+## Conversation
+User asked to enable "claude fable" (claude-fable-5, served via GitHub
+Copilot) as the default in the litellm config. After the first delivery
+they hit a 400 "Invalid model name passed in model=claude-fable-5" from
+Claude Code, which turned into a debugging session. Finally they asked
+to commit using the conventional-commits skill.
+
+## Actions
+- Added claude-fable-5 to configs/litellm/config.yaml model_list as
+  github_copilot/claude-fable-5, copying the other Copilot Claude
+  entries (drop thinking, *copilot_headers alias)
+- Switched DEFAULT_LITELLM_MODEL in local-bin/litellm-proxy.sh from
+  claude-opus-4-8 to claude-fable-5; updated README.md to match
+- shellfmt.sh passed; validated YAML anchor expansion with yq
+- Ran litellm-proxy.sh restart (container was up 6 days on stale
+  config), then verified: models lists claude-fable-5, and a
+  /v1/messages test request returned "ok"
+
+## Errors & Mistakes
+- First delivery only edited files and did not restart the proxy, which
+  caused the user-visible 400 error
+- docker volume ls --format '{{.CreatedAt}}' is not supported on this
+  docker; use docker volume inspect instead
+- python3 here has no yaml module; use yq for YAML checks
+
+## Dead Ends
+- Suspected prisma migrations wiped DB-stored models during the image
+  update; disproved — all migrations were additive and _prisma_migrations
+  shows the DB continuous since 2026-08-18
+
+## Hints for Future Agents
+- LiteLLM reads the bind-mounted config.yaml only at startup; any config
+  change needs litellm-proxy.sh restart to take effect
+- restart also applies pending pinned image digest updates (renovate)
+- Volumes: DB is litellm_litellm-db-data (compose project prefix),
+  Copilot OAuth is external litellm-copilot-data and survives restarts
+- A post-commit hook autopushes master and rebases on rejection, so the
+  commit SHA can change immediately (365cdc5 -> 162d46b here); attach
+  notes to the final SHA
+
+## Codebase Discoveries
+- wandb/deepseek-ai/DeepSeek-V4-Pro was listed by the old container but
+  exists nowhere durable: never in config.yaml git history and every DB
+  model table (LiteLLM_ProxyModelTable, LiteLLM_ModelTable,
+  LiteLLM_Config) is empty. It was in-memory only and is gone after the
+  restart
+- Bug: get_litellm_salt_key() in litellm-proxy.sh is defined but never
+  called; run_compose starts LiteLLM with a blank LITELLM_SALT_KEY
+  (LiteLLM then falls back to the master key for encrypting DB
+  credentials). Possibly why the UI-added model never persisted
+- LITELLM_MODEL env var overrides the default without a code change
+
+## Open Questions
+- Does the user still need wandb/deepseek-ai/DeepSeek-V4-Pro? If yes it
+  should be added to config.yaml so it survives restarts
+- Should the salt key be wired into run_compose? The keychain service
+  litellm-salt-key already exists for it
