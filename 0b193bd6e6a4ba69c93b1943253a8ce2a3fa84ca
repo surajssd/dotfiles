@@ -1,0 +1,64 @@
+## Conversation
+User asked to enable the three newly-enabled Copilot models (OpenAI
+GPT-5.6 Luna, Sol, Terra) in the litellm config, and mid-task asked to
+also remove gpt-5-5. Then asked to commit with the conventional-commits
+skill.
+
+## Actions
+- Discovered exact upstream IDs (gpt-5.6-luna/sol/terra) by calling
+  https://api.githubcopilot.com/models from inside the litellm
+  container using the token in
+  /root/.config/litellm/github_copilot/api-key.json
+- Added the three models to configs/litellm/config.yaml; removed
+  gpt-5-5; restarted the proxy after each config change
+- Verified all three models plus claude-fable-5 return "ok" via both
+  /v1/chat/completions and /v1/messages
+
+## Errors & Mistakes
+- First attempt (plain registration copying the gpt-5-5 entry) failed:
+  Copilot returned "missing Editor-Version header for IDE auth" for ALL
+  GPT models including the old gpt-5-5, on both routes. Claude models
+  were unaffected
+- Second attempt used a YAML merge key (<<: *copilot_headers) for the
+  header block; go-yq parses "<<" literally (YAML 1.2) even though
+  pyyaml honors it. Replaced with an explicit new anchor to stay
+  parser-portable
+- After the header fix, Copilot answered 'model "gpt-5.6-luna" is not
+  accessible via the /chat/completions endpoint'
+
+## Dead Ends
+- Suspected sitecustomize.py header interference; it is only a Netskope
+  SSL workaround, unrelated
+
+## Hints for Future Agents
+- Copilot GPT-5.6 models are Responses-API-only. LiteLLM's gate
+  github_copilot_supports_responses_api() (responses/transformation.py)
+  routes unknown models to chat; per-deployment "model_info: mode:
+  responses" in config.yaml flips it. New Copilot models will not be in
+  the image's model_cost registry, so expect to set this for future
+  additions
+- The chat transformation adds Copilot default headers inside a
+  try/except that silently passes on GetAPIKeyError; GPT entries carry
+  an explicit Editor-Version extra_header to be safe. Claude entries
+  work without it
+- To list current upstream Copilot model IDs: exec python in the
+  litellm container, read api-key.json token, GET
+  https://api.githubcopilot.com/models with Editor-Version and
+  Copilot-Integration-Id headers
+
+## Codebase Discoveries
+- Both github_copilot chat and responses transformations auto-detect
+  vision content and set the vision header themselves; the configured
+  Copilot-Vision-Request: "true" extra_header forces it on every
+  request (pre-existing behavior, kept for consistency)
+- gpt-5-5 was already broken on the current image (same missing-header
+  error); the litellm-proxy.sh test commands only ever exercised
+  claude-sonnet-4-6 and GLM, so this went unnoticed
+
+## Open Questions
+- Whether the missing Editor-Version on the chat path is a LiteLLM
+  regression in image 20b5044 (worth rechecking on the next digest
+  bump; if fixed upstream, the explicit Editor-Version extra_headers
+  can be dropped)
+- The unused get_litellm_salt_key() bug from the previous commit's note
+  remains open
