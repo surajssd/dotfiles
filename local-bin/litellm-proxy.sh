@@ -10,7 +10,7 @@ readonly SCRIPT_DIR
 readonly LITELLM_COMPOSE_FILE="${SCRIPT_DIR}/../configs/litellm/compose.yaml"
 readonly LITELLM_COPILOT_VOLUME="litellm-copilot-data"
 readonly DEFAULT_LITELLM_URL="http://litellm.orb.local:4000"
-readonly DEFAULT_LITELLM_MODEL="claude-opus-4-8"
+readonly DEFAULT_LITELLM_MODEL="claude-fable-5"
 readonly DEFAULT_LITELLM_KEYCHAIN_SERVICE="litellm-proxy-key"
 readonly DEFAULT_LITELLM_SALT_KEYCHAIN_SERVICE="litellm-salt-key"
 readonly DEFAULT_WANDB_KEYCHAIN_SERVICE="wandb-api-key"

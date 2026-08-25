@@ -84,7 +84,7 @@ litellm-proxy.sh claude
 litellm-proxy.sh claude --dangerously-skip-permissions --allow-dangerously-skip-permissions
 ```
 
-On the first `litellm-proxy.sh start`, follow the GitHub device-login URL and code printed by the script. The default Claude Code model is `claude-opus-4-8`; set `LITELLM_MODEL` to another model returned by `litellm-proxy.sh models`, such as `claude-sonnet-4-6` or `wandb/zai-org/GLM-5.2`. Every argument after the `claude` subcommand is passed directly to Claude Code.
+On the first `litellm-proxy.sh start`, follow the GitHub device-login URL and code printed by the script. The default Claude Code model is `claude-fable-5`; set `LITELLM_MODEL` to another model returned by `litellm-proxy.sh models`, such as `claude-sonnet-4-6` or `wandb/zai-org/GLM-5.2`. Every argument after the `claude` subcommand is passed directly to Claude Code.
 
 The proxy key is read from `LITELLM_MASTER_KEY` or the `litellm-proxy-key` Keychain entry. The upstream W&B key is read from `WANDB_API_KEY` or the `wandb-api-key` Keychain entry. To add or rotate either Keychain value:
 

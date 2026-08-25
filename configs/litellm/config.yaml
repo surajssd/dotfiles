@@ -15,6 +15,12 @@ model_list:
       - thinking
     extra_headers: &copilot_headers
       Copilot-Vision-Request: "true"
+- model_name: claude-fable-5
+  litellm_params:
+    model: github_copilot/claude-fable-5
+    additional_drop_params:
+    - thinking
+    extra_headers: *copilot_headers
 - model_name: claude-sonnet-4-6
   litellm_params:
     model: github_copilot/claude-sonnet-4.6
