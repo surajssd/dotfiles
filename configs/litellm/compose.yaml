@@ -18,6 +18,7 @@ services:
     environment:
       LITELLM_MASTER_KEY: "${LITELLM_MASTER_KEY}"
       LITELLM_SALT_KEY: "${LITELLM_SALT_KEY}"
+      LITELLM_DISABLE_NO_REDIS_WARNING: "true"
       DATABASE_URL: "postgresql://litellm:litellm@db:5432/litellm"
       STORE_MODEL_IN_DB: "True"
       PYTHONPATH: /app/config
