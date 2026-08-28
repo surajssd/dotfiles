@@ -86,11 +86,13 @@ litellm-proxy.sh claude --dangerously-skip-permissions --allow-dangerously-skip-
 
 On the first `litellm-proxy.sh start`, follow the GitHub device-login URL and code printed by the script. The default Claude Code model is `claude-fable-5`; set `LITELLM_MODEL` to another model returned by `litellm-proxy.sh models`, such as `claude-sonnet-4-6` or `wandb/zai-org/GLM-5.2`. Every argument after the `claude` subcommand is passed directly to Claude Code.
 
-The proxy key is read from `LITELLM_MASTER_KEY` or the `litellm-proxy-key` Keychain entry. The upstream W&B key is read from `WANDB_API_KEY` or the `wandb-api-key` Keychain entry. To add or rotate either Keychain value:
+Each secret is read from its environment variable first, then from the macOS Keychain entry whose service name equals the variable name: `LITELLM_MASTER_KEY` (proxy key), `LITELLM_SALT_KEY` (encrypts provider keys stored in the proxy DB; set it once and never change it), `WANDB_API_KEY` (W&B Inference), and `WANDB_QA_API_KEY` (`wandb-qa/` models on `api.qa.inference.wandb.ai`). To add or rotate a Keychain value:
 
 ```bash
-security add-generic-password -U -a "$USER" -s litellm-proxy-key -w '<LiteLLM proxy key>'
-security add-generic-password -U -a "$USER" -s wandb-api-key -w '<W&B API key>'
+security add-generic-password -U -a "$USER" -s LITELLM_MASTER_KEY -w '<LiteLLM proxy key>'
+security add-generic-password -U -a "$USER" -s LITELLM_SALT_KEY -w '<LiteLLM salt key>'
+security add-generic-password -U -a "$USER" -s WANDB_API_KEY -w '<W&B API key>'
+security add-generic-password -U -a "$USER" -s WANDB_QA_API_KEY -w '<W&B QA API key>'
 ```
 
 ## License

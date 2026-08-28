@@ -23,6 +23,7 @@ services:
       STORE_MODEL_IN_DB: "True"
       PYTHONPATH: /app/config
       WANDB_API_KEY: "${WANDB_API_KEY}"
+      WANDB_QA_API_KEY: "${WANDB_QA_API_KEY}"
     depends_on:
       db:
         condition: service_healthy

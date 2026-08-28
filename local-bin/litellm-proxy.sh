@@ -11,14 +11,8 @@ readonly LITELLM_COMPOSE_FILE="${SCRIPT_DIR}/../configs/litellm/compose.yaml"
 readonly LITELLM_COPILOT_VOLUME="litellm-copilot-data"
 readonly DEFAULT_LITELLM_URL="http://litellm.orb.local:4000"
 readonly DEFAULT_LITELLM_MODEL="claude-fable-5"
-readonly DEFAULT_LITELLM_KEYCHAIN_SERVICE="litellm-proxy-key"
-readonly DEFAULT_LITELLM_SALT_KEYCHAIN_SERVICE="litellm-salt-key"
-readonly DEFAULT_WANDB_KEYCHAIN_SERVICE="wandb-api-key"
 readonly LITELLM_URL="${LITELLM_URL:-${DEFAULT_LITELLM_URL}}"
 readonly LITELLM_MODEL="${LITELLM_MODEL:-${DEFAULT_LITELLM_MODEL}}"
-readonly LITELLM_KEYCHAIN_SERVICE="${LITELLM_KEYCHAIN_SERVICE:-${DEFAULT_LITELLM_KEYCHAIN_SERVICE}}"
-readonly LITELLM_SALT_KEYCHAIN_SERVICE="${LITELLM_SALT_KEYCHAIN_SERVICE:-${DEFAULT_LITELLM_SALT_KEYCHAIN_SERVICE}}"
-readonly WANDB_KEYCHAIN_SERVICE="${WANDB_KEYCHAIN_SERVICE:-${DEFAULT_WANDB_KEYCHAIN_SERVICE}}"
 
 function info() {
     echo "ℹ️  ${1}"
@@ -35,49 +29,23 @@ function get_keychain_secret() {
     return 1
 }
 
-function get_litellm_api_key() {
-    if [[ -n "${LITELLM_MASTER_KEY:-}" ]]; then
-        printf '%s' "${LITELLM_MASTER_KEY}"
+# Each secret is read from the environment variable named ${1}, then from
+# the macOS Keychain service of the same name.
+function get_secret() {
+    local name="${1}"
+    local description="${2}"
+
+    if [[ -n "${!name:-}" ]]; then
+        printf '%s' "${!name}"
         return 0
     fi
 
-    if get_keychain_secret "${LITELLM_KEYCHAIN_SERVICE}"; then
+    if get_keychain_secret "${name}"; then
         return 0
     fi
 
-    err "❌ No LiteLLM proxy key is available."
-    err "   Set LITELLM_MASTER_KEY or save it in Keychain service '${LITELLM_KEYCHAIN_SERVICE}'."
-    return 1
-}
-
-function get_litellm_salt_key() {
-    if [[ -n "${LITELLM_SALT_KEY:-}" ]]; then
-        printf '%s' "${LITELLM_SALT_KEY}"
-        return 0
-    fi
-
-    if get_keychain_secret "${LITELLM_SALT_KEYCHAIN_SERVICE}"; then
-        return 0
-    fi
-
-    err "❌ No LiteLLM salt key is available."
-    err "   The admin UI stores provider keys encrypted with this salt; set it once and never change it."
-    err "   Set LITELLM_SALT_KEY or save it in Keychain service '${LITELLM_SALT_KEYCHAIN_SERVICE}'."
-    return 1
-}
-
-function get_wandb_api_key() {
-    if [[ -n "${WANDB_API_KEY:-}" ]]; then
-        printf '%s' "${WANDB_API_KEY}"
-        return 0
-    fi
-
-    if get_keychain_secret "${WANDB_KEYCHAIN_SERVICE}"; then
-        return 0
-    fi
-
-    err "❌ No W&B API key is available."
-    err "   Set WANDB_API_KEY or save it in Keychain service '${WANDB_KEYCHAIN_SERVICE}'."
+    err "❌ No ${description} is available."
+    err "   Set ${name} or save it in Keychain service '${name}'."
     return 1
 }
 
@@ -99,15 +67,21 @@ function require_docker() {
 }
 
 function run_compose() {
-    local litellm_api_key
+    local litellm_master_key
+    local litellm_salt_key
     local wandb_api_key
+    local wandb_qa_api_key
 
     require_docker
-    litellm_api_key=$(get_litellm_api_key)
-    wandb_api_key=$(get_wandb_api_key)
+    litellm_master_key=$(get_secret LITELLM_MASTER_KEY "LiteLLM proxy key")
+    litellm_salt_key=$(get_secret LITELLM_SALT_KEY "LiteLLM salt key")
+    wandb_api_key=$(get_secret WANDB_API_KEY "W&B API key")
+    wandb_qa_api_key=$(get_secret WANDB_QA_API_KEY "W&B QA API key")
 
-    LITELLM_MASTER_KEY="${litellm_api_key}" \
+    LITELLM_MASTER_KEY="${litellm_master_key}" \
+        LITELLM_SALT_KEY="${litellm_salt_key}" \
         WANDB_API_KEY="${wandb_api_key}" \
+        WANDB_QA_API_KEY="${wandb_qa_api_key}" \
         docker compose --file "${LITELLM_COMPOSE_FILE}" "$@"
 }
 
@@ -184,7 +158,7 @@ function list_models() {
     local api_key
 
     require_healthy_proxy
-    api_key=$(get_litellm_api_key)
+    api_key=$(get_secret LITELLM_MASTER_KEY "LiteLLM proxy key")
 
     curl -fsS "${LITELLM_URL}/v1/models" \
         --header "Authorization: Bearer ${api_key}" |
@@ -200,7 +174,7 @@ function copy_key() {
         return 1
     fi
 
-    api_key=$(get_litellm_api_key)
+    api_key=$(get_secret LITELLM_MASTER_KEY "LiteLLM proxy key")
     printf '%s' "${api_key}" | pbcopy
     info "Master key copied to the clipboard. Log in to ${LITELLM_URL}/ui as 'admin'."
 }
@@ -212,7 +186,7 @@ function test_model() {
     local response
 
     require_healthy_proxy
-    api_key=$(get_litellm_api_key)
+    api_key=$(get_secret LITELLM_MASTER_KEY "LiteLLM proxy key")
     request_body=$(jq -n \
         --arg model "${model}" \
         '{model: $model, max_tokens: 256, messages: [{role: "user", content: "Reply with exactly ok and no punctuation."}]}')
@@ -230,7 +204,7 @@ function run_claude() {
     local api_key
 
     require_healthy_proxy
-    api_key=$(get_litellm_api_key)
+    api_key=$(get_secret LITELLM_MASTER_KEY "LiteLLM proxy key")
 
     info "Launching Claude Code with ${LITELLM_MODEL} through ${LITELLM_URL}."
     env \
@@ -266,12 +240,15 @@ function usage() {
     echo "  claude         Launch Claude Code; remaining arguments are passed through"
     echo ""
     echo "Environment variables:"
-    echo "  LITELLM_URL               Proxy URL (default: ${DEFAULT_LITELLM_URL})"
-    echo "  LITELLM_MODEL             Claude Code model (default: ${DEFAULT_LITELLM_MODEL})"
-    echo "  LITELLM_MASTER_KEY        Proxy key (defaults to macOS Keychain)"
-    echo "  LITELLM_KEYCHAIN_SERVICE  Proxy-key service (default: ${DEFAULT_LITELLM_KEYCHAIN_SERVICE})"
-    echo "  WANDB_API_KEY             W&B key (defaults to macOS Keychain)"
-    echo "  WANDB_KEYCHAIN_SERVICE    W&B-key service (default: ${DEFAULT_WANDB_KEYCHAIN_SERVICE})"
+    echo "  LITELLM_URL         Proxy URL (default: ${DEFAULT_LITELLM_URL})"
+    echo "  LITELLM_MODEL       Claude Code model (default: ${DEFAULT_LITELLM_MODEL})"
+    echo "  LITELLM_MASTER_KEY  Proxy key"
+    echo "  LITELLM_SALT_KEY    DB encryption salt; set once and never change it"
+    echo "  WANDB_API_KEY       W&B Inference key"
+    echo "  WANDB_QA_API_KEY    W&B QA Inference key"
+    echo ""
+    echo "Each key falls back to the macOS Keychain entry whose service name"
+    echo "equals the variable name."
     echo ""
     echo "Example:"
     echo "  litellm-proxy.sh claude --dangerously-skip-permissions --allow-dangerously-skip-permissions"
