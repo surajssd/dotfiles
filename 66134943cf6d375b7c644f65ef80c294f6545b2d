@@ -1,0 +1,20 @@
+## Conversation
+User shared a curl for deepseek-ai/DeepSeek-V4-Flash-0731 on api.qa.inference.wandb.ai (WANDB_QA_API_KEY) and asked to add it to litellm. The model already existed for prod; the actual ask was the QA endpoint. Mid-task the user redirected key storage to apikey.sh (private repo tool), then asked to consolidate all proxy secrets around it, then asked to commit.
+
+## Actions
+Added wandb-qa/deepseek-ai/DeepSeek-V4-Flash-0731 to configs/litellm/config.yaml; passed WANDB_QA_API_KEY through compose.yaml; replaced four per-key getters in litellm-proxy.sh with one get_secret(NAME, description) using env-then-Keychain-service-of-same-name; deleted *_KEYCHAIN_SERVICE overrides; wired LITELLM_SALT_KEY into run_compose; updated README. Migrated Keychain: litellm-proxy-key -> LITELLM_MASTER_KEY, litellm-salt-key -> LITELLM_SALT_KEY (verified byte-identical via sha256 before deleting old), deleted wandb-api-key. Verified: restart healthy (no salt warning), test-wandb ok, QA model replied, env-precedence proven via bogus LITELLM_MASTER_KEY getting 401, missing-key branch tested by extracting the function with awk and stubbing the Keychain miss.
+
+## Errors & Mistakes
+First pass invented a new kebab service name (wandb-qa-api-key) before learning apikey.sh already stored WANDB_QA_API_KEY under the env-var-named service. Tried GNU sed at /opt/homebrew/opt/coreutils/libexec/gnubin/sed which does not exist (only mktemp is guaranteed there). A comment in the public script referenced private apikey.sh; caught and removed just before committing.
+
+## Dead Ends
+None beyond the service-name false start.
+
+## Hints for Future Agents
+wandb-api-key and WANDB_API_KEY held DIFFERENT live keys; the apikey.sh one survived. The orphaned key is still valid server-side until the user revokes it in the W&B dashboard. Changing LITELLM_SALT_KEY was safe ONLY because LiteLLM_ProxyModelTable had 0 rows; once the admin UI stores anything, the salt must never change. run_compose requires all four secrets even for stop/status/logs; fix offered, not requested. Do not name apikey.sh (private repo) in public files or messages. configs/herdr/config.toml had unrelated unstaged changes, deliberately left out.
+
+## Codebase Discoveries
+config.yaml is a read-only bind mount: restart suffices, no image rebuild. The proxy hard-fails start when any get_secret lookup misses. apikey.sh stores Keychain entries with service = env var name, kind "api key"; bare apikey.sh export now also exports LITELLM_MASTER_KEY and LITELLM_SALT_KEY. post-commit hook auto-pushes master.
+
+## Open Questions
+Old prod W&B key not yet revoked upstream. Scoping secret resolution to start/restart only remains unimplemented.
