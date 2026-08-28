@@ -61,6 +61,11 @@ model_list:
     model: openai/deepseek-ai/DeepSeek-V4-Flash-0731
     api_base: https://api.inference.wandb.ai/v1
     api_key: os.environ/WANDB_API_KEY
+- model_name: wandb/deepseek-ai/DeepSeek-V4-Pro-0813
+  litellm_params:
+    model: openai/deepseek-ai/DeepSeek-V4-Pro-0813
+    api_base: https://api.inference.wandb.ai/v1
+    api_key: os.environ/WANDB_API_KEY
 - model_name: wandb-qa/deepseek-ai/DeepSeek-V4-Flash-0731
   litellm_params:
     model: openai/deepseek-ai/DeepSeek-V4-Flash-0731
