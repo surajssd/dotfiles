@@ -15,6 +15,7 @@ model_list:
       - thinking
     extra_headers: &copilot_headers
       Copilot-Vision-Request: "true"
+      Editor-Version: vscode/1.95.0
 - model_name: claude-fable-5
   litellm_params:
     model: github_copilot/claude-fable-5
@@ -36,20 +37,18 @@ model_list:
 - model_name: gpt-5-6-luna
   litellm_params:
     model: github_copilot/gpt-5.6-luna
-    extra_headers: &copilot_gpt_headers
-      Copilot-Vision-Request: "true"
-      Editor-Version: vscode/1.95.0
+    extra_headers: *copilot_headers
   model_info: &copilot_responses_mode
     mode: responses
 - model_name: gpt-5-6-sol
   litellm_params:
     model: github_copilot/gpt-5.6-sol
-    extra_headers: *copilot_gpt_headers
+    extra_headers: *copilot_headers
   model_info: *copilot_responses_mode
 - model_name: gpt-5-6-terra
   litellm_params:
     model: github_copilot/gpt-5.6-terra
-    extra_headers: *copilot_gpt_headers
+    extra_headers: *copilot_headers
   model_info: *copilot_responses_mode
 - model_name: wandb/zai-org/GLM-5.2
   litellm_params:
