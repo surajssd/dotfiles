@@ -1,0 +1,20 @@
+## Conversation
+Follow-up to a repo lint survey: the user asked Claude to fix the two small findings (gpo.sh SC2046 and auto-rebase.sh missing pipefail), then to commit what was staged.
+
+## Actions
+Quoted $(git branch --show-current) in local-bin/gpo.sh. Changed set -eu to set -euo pipefail in local-bin/auto-rebase.sh. Ran shellfmt.sh on both; both pass shellcheck and shfmt.
+
+## Errors & Mistakes
+None
+
+## Dead Ends
+None
+
+## Hints for Future Agents
+pipefail in auto-rebase.sh makes the git ls-remote | awk pipeline at the top fatal when ls-remote fails; this is intentional since the script already exits when the default branch cannot be determined. These scripts are symlinked into ~/.local/bin, so edits are live immediately.
+
+## Codebase Discoveries
+The repo convention (CLAUDE.md) requires set -euo pipefail in every script; util.sh is exempt as a sourced library.
+
+## Open Questions
+None
