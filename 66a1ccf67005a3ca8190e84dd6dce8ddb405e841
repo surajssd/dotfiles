@@ -1,0 +1,20 @@
+## Conversation
+Part of a repo improvement sweep the user requested. Claude found that bashrc carried inline copies of the git aliases that configs/aliases/git had since hardened, and the user asked for the fix.
+
+## Actions
+Replaced the inline git alias block in configs/bashrc with sourcing of configs/aliases/git, resolving the repo dir via readlink -f on BASH_SOURCE. Verified with bash -n and by sourcing aliases/git in a bash subshell (gcm/gpum/gpom/wt all defined).
+
+## Errors & Mistakes
+None
+
+## Dead Ends
+The obvious fix (loop over the whole aliases/ dir like zshrc does) was rejected: aliases/k8s uses compdef and oh-my-zsh's $ZSH completions dir, which fail under bash.
+
+## Hints for Future Agents
+bashrc is Linux/WSL/container-only (macOS installs zshrc), so GNU readlink -f is safe. bashrc still has its own inline k8s aliases; deduplicating them means splitting aliases/k8s into portable and zsh-only parts. bash gains the wt worktree function from the shared file.
+
+## Codebase Discoveries
+configs/aliases/git claims it is "sourced by both bash and zsh" but bashrc did not source it until this commit.
+
+## Open Questions
+None
