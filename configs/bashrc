@@ -38,25 +38,13 @@ command -v fzf &>/dev/null && eval "$(fzf --bash)"
 #=================================================================
 # my aliases
 
-# GIT related
-alias gs="git status"
-alias gcmt="git commit -s -S "
-alias gl="git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"
-alias grba="git rebase -S -i --autosquash "
-alias gca="git commit --amend --no-edit -S "
-alias grbm="git rebase -S -i"
+# Directory of this (symlinked) bashrc, resolved to its real repo location,
+# so the shared alias files living next to it can be sourced.
+BASHRC_DIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 
-function gcm() {
-    git checkout $(git symbolic-ref refs/remotes/origin/HEAD | cut -d/ -f4)
-}
-
-function gpum() {
-    git pull --ff upstream $(git branch --show-current)
-}
-
-function gpom() {
-    git pull --ff origin $(git branch --show-current)
-}
+# Shared with zsh. aliases/k8s is zsh-only (compdef, $ZSH completions), so
+# source the portable files individually instead of the whole directory.
+[ -f "${BASHRC_DIR}/aliases/git" ] && source "${BASHRC_DIR}/aliases/git"
 
 #=================================================================
 # General aliases
