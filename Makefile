@@ -3,9 +3,9 @@
 # Symlink installers (delegate to scripts)
 .PHONY: install-configs install-local-bin install-skills install-rules install-private fetch-external-skills fetch-external-rules
 # Go-tool installers (skip with an info message when dir absent)
-.PHONY: install-azure-capacity-finder install-clawbox
+.PHONY: install-azure-capacity-finder
 # Orchestration / maintenance
-.PHONY: install-all update pull-master test clone-private clone-azure-capacity-finder help
+.PHONY: install-all update pull-master clone-private clone-azure-capacity-finder help
 
 # Build+install a Go tool in $(1) if its dir exists; otherwise skip.
 define go-install
@@ -46,10 +46,7 @@ fetch-external-rules: ## Download external rules (abatilo) into rules/ — also 
 install-azure-capacity-finder: ## Install azure-capacity-finder Go tool (skipped if not cloned)
 	$(call go-install,azure-capacity-finder)
 
-install-clawbox: ## Install clawbox Go tool (skipped if absent)
-	$(call go-install,clawbox)
-
-install-all: install-configs install-local-bin install-skills install-rules install-azure-capacity-finder install-clawbox ## Install everything
+install-all: install-configs install-local-bin install-skills install-rules install-azure-capacity-finder ## Install everything
 	$(MAKE) install-private
 
 update: pull-master fetch-external-skills fetch-external-rules install-all ## Pull latest, refresh external skills + rules, then reinstall
@@ -58,9 +55,6 @@ pull-master: ## Pull latest from public + private + azure-capacity-finder
 	git pull --ff origin master
 	if [ -d dotfilesprivate ]; then cd dotfilesprivate && git pull --ff origin master; fi
 	if [ -d azure-capacity-finder ]; then cd azure-capacity-finder && git pull --ff origin main; fi
-
-test: ## Run clawbox tests
-	$(MAKE) -C clawbox test
 
 clone-private: ## Clone the private dotfiles repo
 	git clone git@github.com:surajssd/dotfilesprivate.git
