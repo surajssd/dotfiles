@@ -15,7 +15,7 @@ make install-all
 ## Installation
 
 ```bash
-# Install everything (configs, scripts, and skills)
+# Install everything (configs, scripts, skills, and rules)
 make install-all
 
 # Install only scripts to ~/.local/bin
@@ -37,16 +37,16 @@ make pull-master
 make update
 ```
 
-`make` is required to install (the Go tools build via `go install`, which only
-the Make targets run).
+`make` is required to install.
 
 ## Repository Structure
 
-- `configs/` — Shell configs (bashrc/zshrc), git, gpg, starship, tmux, terraform, k9s
+- `configs/` — Shell configs (bashrc/zshrc, shared aliases), git, gpg, starship, tmux, terraform, k9s, ghostty, herdr, litellm
 - `local-bin/` — Custom utility scripts (symlinked to `~/.local/bin`)
 - `skills/` — Agent skills in `SKILL.md` format (symlinked to `~/.claude/skills/` and `~/.agents/skills/`)
 - `rules/` — Agent rule `.md` files (symlinked to `~/.claude/rules/`)
 - `installers/` — Installation automation scripts
+- `containers/` — Container images (e.g. `openclaw`)
 - `dotfilesprivate/` — private/sensitive configs and scripts (separate git clone, not a submodule)
 
 ## How It Works
@@ -62,7 +62,7 @@ All installers create **symlinks** (not copies), so changes in this repo are imm
 
 GitHub Codespaces can install this repository as personal dotfiles. In your GitHub Codespaces settings, enable automatic dotfiles installation and select `surajssd/dotfiles`. Codespaces recognizes the root `install.sh` and installs the config files and shell scripts.
 
-The development container must provide `make`. Go is not required. To rerun the setup in an existing codespace:
+The development container must provide `make`. To rerun the setup in an existing codespace:
 
 ```bash
 /workspaces/.codespaces/.persistedshare/dotfiles/install.sh

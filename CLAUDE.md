@@ -20,6 +20,7 @@ Both repositories mirror the same structure:
 - `skills/` - Agent skills in `SKILL.md` format (symlinked to `~/.claude/skills/` and `~/.agents/skills/`)
 - `rules/` - Agent rule `.md` files (symlinked to `~/.claude/rules/`)
 - `installers/` - Installation automation scripts (public repo only)
+- `containers/` - Container image builds, e.g. `openclaw` (public repo only, not installed)
 
 ## Common Commands
 
@@ -61,9 +62,9 @@ make clone-private
 
 - **Scripts**: Symlinked from `local-bin/` to `~/.local/bin/`
 - **Configs**: Symlinked from `configs/` to home directory with OS-specific handling:
-  - macOS: Uses `zshrc`, `gpg-agent-mac.conf`, `gpg.conf`, k9s skin to `~/Library/Application Support/k9s/skins/`
+  - macOS: Uses `zshrc`, `gpg-agent-mac.conf`, `gpg.conf`, ghostty config to `~/Library/Application Support/com.mitchellh.ghostty/`, k9s skin to `~/Library/Application Support/k9s/skins/`
   - Linux: Uses `bashrc`, `gpg-agent-linux.conf`, k9s skin to `~/.config/k9s/skins/`
-  - Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`
+  - Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`, herdr config to `~/.config/herdr/config.toml`
 - **Skills**: Symlinked from `skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI)
 - **Rules**: Symlinked from `rules/` to `~/.claude/rules/` (Claude Code's global rules path)
 - **Private files**: Installed by the private repository's own entry point when the optional clone exists
@@ -90,9 +91,11 @@ Installers normally create symlinks so that `git pull` immediately updates activ
 
 `installers/install-configs.sh` detects the OS and symlinks the appropriate files:
 
-- macOS (Darwin): `zshrc` → `~/.zshrc`, `gpg-agent-mac.conf` → `~/.gnupg/gpg-agent.conf`, `gpg.conf` → `~/.gnupg/gpg.conf`
+- macOS (Darwin): `zshrc` → `~/.zshrc`, `gpg-agent-mac.conf` → `~/.gnupg/gpg-agent.conf`, `gpg.conf` → `~/.gnupg/gpg.conf`, `ghostty/config.ghostty` → `~/Library/Application Support/com.mitchellh.ghostty/config.ghostty`
 - Linux: `bashrc` → `~/.bashrc`, `gpg-agent-linux.conf` → `~/.gnupg/gpg-agent.conf`
-- Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`
+- Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`, `herdr/config.toml` → `~/.config/herdr/config.toml`
+
+The shell configs share alias files from `configs/aliases/`: `zshrc` sources every file in the directory, while `bashrc` sources only the portable ones (`aliases/k8s` uses zsh-only completion constructs).
 
 ### PATH Configuration
 
