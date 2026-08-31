@@ -60,7 +60,7 @@ All installers create **symlinks** (not copies), so changes in this repo are imm
 
 ## GitHub Codespaces
 
-GitHub Codespaces can install this repository as personal dotfiles. In your GitHub Codespaces settings, enable automatic dotfiles installation and select `surajssd/dotfiles`. Codespaces recognizes the root `install.sh` and installs the config files and shell scripts.
+GitHub Codespaces can install this repository as personal dotfiles. In your GitHub Codespaces settings, enable automatic dotfiles installation and select `surajssd/dotfiles`. Codespaces recognizes the root `install.sh`, which runs `make install-all`: config files, shell scripts, agent skills, and agent rules.
 
 The development container must provide `make`. To rerun the setup in an existing codespace:
 

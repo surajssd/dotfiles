@@ -9,5 +9,4 @@ if ! command -v make >/dev/null 2>&1; then
     exit 1
 fi
 
-make -C "${SCRIPT_DIR}" install-configs install-local-bin
-make -C "${SCRIPT_DIR}" install-private
+make -C "${SCRIPT_DIR}" install-all
