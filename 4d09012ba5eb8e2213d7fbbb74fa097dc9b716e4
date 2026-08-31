@@ -1,0 +1,20 @@
+## Conversation
+Continuing the tool cleanup from the clawbox removal, the user asked to also remove azure-capacity-finder because they are not using it.
+
+## Actions
+Confirmed no azure-capacity-finder clone exists in the repo and no binary exists in ~/go/bin, so the change is wiring-only. Removed install-azure-capacity-finder, clone-azure-capacity-finder, the pull-master line for it, its .PHONY entries, and the now-unused go-install define from the Makefile. Removed azure-capacity-finder/ from .gitignore. Verified with make help and make -n install-all. Committed with -s -S after commitlint passed.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+azure-capacity-finder was a gitignored side clone (like dotfilesprivate), never committed here, so nothing in the repo tree was deleted. The upstream repo github.com:surajssd/azure-capacity-finder.git still exists untouched. The go-install Makefile define is gone; re-add it if a Go tool returns to this repo.
+
+## Codebase Discoveries
+None beyond the above.
+
+## Open Questions
+containers/openclaw/ and .github/workflows/build-openclaw-image.yaml remain and are likely orphaned since the clawbox removal; the user has not yet decided on them.
