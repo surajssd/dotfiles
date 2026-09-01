@@ -21,12 +21,15 @@ update_brew() {
     # Recent Homebrew makes "Ask mode" the default, so 'brew upgrade' prompts
     # "Do you want to proceed? [y/n]" and blocks this non-interactive script.
     # --yes (a.k.a. --no-ask) restores the old non-interactive behavior.
-    # Limit unattended upgrades to formulae. GUI casks such as Chrome, Edge,
-    # and Notion manage their own updates; upgrading them through Homebrew can
-    # replace their application bundles while they are installed or running.
     brew upgrade --formula --yes
 
-    echo "✅ Brew update and formula upgrade complete (casks skipped)."
+    echo "⏳ Running brew cask upgrade..."
+    # Without --greedy this skips casks marked auto_updates (Chrome, Notion,
+    # etc.), which manage their own updates. Upgrading a cask replaces its
+    # application bundle, so a running app may need a restart afterwards.
+    brew upgrade --cask --yes
+
+    echo "✅ Brew update, formula upgrade, and cask upgrade complete."
 }
 
 update_apt() {
