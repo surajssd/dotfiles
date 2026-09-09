@@ -16,6 +16,15 @@ model_list:
     extra_headers: &copilot_headers
       Copilot-Vision-Request: "true"
       Editor-Version: vscode/1.95.0
+- model_name: claude-fable-5-1
+  litellm_params:
+    model: github_copilot/claude-fable-5.1
+    reasoning_effort: xhigh
+    # LiteLLM's Copilot chat config filters reasoning_effort out before the
+    # request is built; allowed_openai_params bypasses that filter.
+    allowed_openai_params: &reasoning_effort_passthrough
+    - reasoning_effort
+    extra_headers: *copilot_headers
 - model_name: claude-fable-5
   litellm_params:
     model: github_copilot/claude-fable-5
@@ -48,6 +57,13 @@ model_list:
 - model_name: gpt-5-6-terra
   litellm_params:
     model: github_copilot/gpt-5.6-terra
+    extra_headers: *copilot_headers
+  model_info: *copilot_responses_mode
+- model_name: gpt-6-astra
+  litellm_params:
+    model: github_copilot/gpt-6-astra
+    reasoning_effort: xhigh
+    allowed_openai_params: *reasoning_effort_passthrough
     extra_headers: *copilot_headers
   model_info: *copilot_responses_mode
 - model_name: wandb/zai-org/GLM-5.2

@@ -10,7 +10,7 @@ readonly SCRIPT_DIR
 readonly LITELLM_COMPOSE_FILE="${SCRIPT_DIR}/../configs/litellm/compose.yaml"
 readonly LITELLM_COPILOT_VOLUME="litellm-copilot-data"
 readonly DEFAULT_LITELLM_URL="http://litellm.orb.local:4000"
-readonly DEFAULT_LITELLM_MODEL="claude-fable-5"
+readonly DEFAULT_LITELLM_MODEL="claude-fable-5-1"
 readonly LITELLM_URL="${LITELLM_URL:-${DEFAULT_LITELLM_URL}}"
 readonly LITELLM_MODEL="${LITELLM_MODEL:-${DEFAULT_LITELLM_MODEL}}"
 
