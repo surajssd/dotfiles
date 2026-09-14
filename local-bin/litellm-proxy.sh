@@ -71,17 +71,23 @@ function run_compose() {
     local litellm_salt_key
     local wandb_api_key
     local wandb_qa_api_key
+    local wandb_openai_project
+    local wandb_qa_openai_project
 
     require_docker
     litellm_master_key=$(get_secret LITELLM_MASTER_KEY "LiteLLM proxy key")
     litellm_salt_key=$(get_secret LITELLM_SALT_KEY "LiteLLM salt key")
     wandb_api_key=$(get_secret WANDB_API_KEY "W&B API key")
     wandb_qa_api_key=$(get_secret WANDB_QA_API_KEY "W&B QA API key")
+    wandb_openai_project=$(get_secret WANDB_OPENAI_PROJECT "W&B OpenAI project")
+    wandb_qa_openai_project=$(get_secret WANDB_QA_OPENAI_PROJECT "W&B QA OpenAI project")
 
     LITELLM_MASTER_KEY="${litellm_master_key}" \
         LITELLM_SALT_KEY="${litellm_salt_key}" \
         WANDB_API_KEY="${wandb_api_key}" \
         WANDB_QA_API_KEY="${wandb_qa_api_key}" \
+        WANDB_OPENAI_PROJECT="${wandb_openai_project}" \
+        WANDB_QA_OPENAI_PROJECT="${wandb_qa_openai_project}" \
         docker compose --file "${LITELLM_COMPOSE_FILE}" "$@"
 }
 

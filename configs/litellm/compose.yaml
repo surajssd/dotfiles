@@ -24,6 +24,8 @@ services:
       PYTHONPATH: /app/config
       WANDB_API_KEY: "${WANDB_API_KEY}"
       WANDB_QA_API_KEY: "${WANDB_QA_API_KEY}"
+      WANDB_OPENAI_PROJECT: "${WANDB_OPENAI_PROJECT}"
+      WANDB_QA_OPENAI_PROJECT: "${WANDB_QA_OPENAI_PROJECT}"
     depends_on:
       db:
         condition: service_healthy

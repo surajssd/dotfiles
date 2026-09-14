@@ -71,18 +71,24 @@ model_list:
     model: openai/zai-org/GLM-5.2
     api_base: https://api.inference.wandb.ai/v1
     api_key: os.environ/WANDB_API_KEY
+    extra_headers: &wandb_headers
+      OpenAI-Project: os.environ/WANDB_OPENAI_PROJECT
 - model_name: wandb/deepseek-ai/DeepSeek-V4-Flash-0731
   litellm_params:
     model: openai/deepseek-ai/DeepSeek-V4-Flash-0731
     api_base: https://api.inference.wandb.ai/v1
     api_key: os.environ/WANDB_API_KEY
+    extra_headers: *wandb_headers
 - model_name: wandb/deepseek-ai/DeepSeek-V4-Pro-0813
   litellm_params:
     model: openai/deepseek-ai/DeepSeek-V4-Pro-0813
     api_base: https://api.inference.wandb.ai/v1
     api_key: os.environ/WANDB_API_KEY
+    extra_headers: *wandb_headers
 - model_name: wandb-qa/deepseek-ai/DeepSeek-V4-Flash-0731
   litellm_params:
     model: openai/deepseek-ai/DeepSeek-V4-Flash-0731
     api_base: https://api.qa.inference.wandb.ai/v1
     api_key: os.environ/WANDB_QA_API_KEY
+    extra_headers:
+      OpenAI-Project: os.environ/WANDB_QA_OPENAI_PROJECT
