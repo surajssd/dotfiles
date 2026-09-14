@@ -1,0 +1,20 @@
+## Conversation
+The user reported W&B model authentication failures and requested a fix. They then asked to keep project header values private, asked whether the fix was tested, and authorized committing only staged changes.
+
+## Actions
+Read the LiteLLM configuration, launcher, Compose definition, existing commit notes, and the supplied reference checkout. Reproduced a 401 Invalid Authentication response. Added project headers to all four W&B entries, then moved their values to macOS Keychain and environment references. Updated the launcher, Compose environment, and README. Ran shellfmt.sh successfully and git diff --check. Restarted LiteLLM and verified all four models returned ok through /v1/messages with Keychain-backed values. Validated the commit message and committed the four staged files with -s -S. Disabled hooks for this commit only because the post-commit hook automatically publishes trunk and the user prohibits publication.
+
+## Errors & Mistakes
+The initial reference search included generated results and produced excessive output. curl and rg were unavailable inside the container; used Python httpx for probes. The first commit command was rejected before execution because its cleanup used rm -f: "rm -f style commands are not permitted. Use a safer approach". Retried without cleanup and the signed commit succeeded.
+
+## Dead Ends
+The first GLM probe used max_tokens 64 and exhausted the allowance on reasoning. The subsequent /v1/messages tests used 256 and returned ok.
+
+## Hints for Future Agents
+WANDB_OPENAI_PROJECT and WANDB_QA_OPENAI_PROJECT are stored in Keychain under matching service names. Do not put their values into tracked files or notes. Environment variables take precedence over Keychain. Nested os.environ references in extra_headers work in this pinned LiteLLM version. These values are available at runtime to administrators and are sent upstream. The automatic post-commit push must be disabled when publication is not authorized.
+
+## Codebase Discoveries
+All three production models share a YAML header anchor; QA uses a separate project variable. The existing get_secret function works for project values as well as API keys. Recreating the container is required when adding environment variables.
+
+## Open Questions
+None.
