@@ -2,7 +2,7 @@ name: litellm
 
 services:
   litellm:
-    image: ghcr.io/berriai/litellm@sha256:c8756e7b9a61fe45df2ccb5b781d388c3b2f3a21ef9e4956630caef20f9f03aa
+    image: ghcr.io/berriai/litellm@sha256:d295634e09c648dcdb72c4cc2dd226f5fb87823a73e88cbbed6f205e4deb044b
     container_name: litellm
     restart: unless-stopped
     stop_grace_period: 30s
