@@ -1,0 +1,20 @@
+## Conversation
+The user asked why update.sh upgraded graphical applications and requested exceptions for Microsoft Edge and Google Chrome. The user then requested a commit.
+
+## Actions
+Inspected local-bin/update.sh and its history. Replaced the unconditional Homebrew cask upgrade with exclusions for microsoft-edge and google-chrome. Ran shellfmt.sh, bash -n, git diff --check, and commitlint. Created the signed commit.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+Homebrew skips casks marked auto_updates unless --greedy is used. Google Chrome declares auto_updates, but Microsoft Edge does not, so Edge needs an explicit --exclude to avoid browser updates.
+
+## Codebase Discoveries
+The git commit invoked the repository autosync hook, which pushed master to origin automatically.
+
+## Open Questions
+None.
