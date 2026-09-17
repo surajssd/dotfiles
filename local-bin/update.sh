@@ -24,10 +24,9 @@ update_brew() {
     brew upgrade --formula --yes
 
     echo "⏳ Running brew cask upgrade..."
-    # Without --greedy this skips casks marked auto_updates (Chrome, Notion,
-    # etc.), which manage their own updates. Upgrading a cask replaces its
-    # application bundle, so a running app may need a restart afterwards.
-    brew upgrade --cask --yes
+    # Browsers manage their own updates. Exclude Edge explicitly because its
+    # cask does not declare auto_updates, unlike Chrome.
+    brew upgrade --cask --yes --exclude=microsoft-edge,google-chrome
 
     echo "✅ Brew update, formula upgrade, and cask upgrade complete."
 }
