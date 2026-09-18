@@ -24,9 +24,10 @@ update_brew() {
     brew upgrade --formula --yes
 
     echo "⏳ Running brew cask upgrade..."
-    # Browsers manage their own updates. Exclude Edge explicitly because its
-    # cask does not declare auto_updates, unlike Chrome.
-    brew upgrade --cask --yes --exclude=microsoft-edge,google-chrome
+    # Homebrew upgrades auto_updates casks (Edge, VS Code, Tailscale, ...)
+    # whenever the app bundle on disk is older than the tap version. Those apps
+    # update themselves, so opt out and let brew handle only the rest.
+    HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 brew upgrade --cask --yes
 
     echo "✅ Brew update, formula upgrade, and cask upgrade complete."
 }
