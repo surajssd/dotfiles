@@ -77,7 +77,9 @@ TMP_DIRS=()
 clone_cache_cleanup() {
     local d
     for d in "${TMP_DIRS[@]:-}"; do
-        [[ -n "$d" ]] && rm -rf "$d"
+        if [[ -n "$d" ]]; then
+            rm -rf "$d"
+        fi
     done
 }
 

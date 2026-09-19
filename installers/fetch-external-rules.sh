@@ -22,12 +22,15 @@ source "${SCRIPT_DIR}/lib.sh"
 # Registry: mode|repo_url|author|upstream_subpath|dest_name
 # - upstream_subpath is the path to the .md within the upstream repo.
 # - dest_name is the filename under rules/.
+# abatilo/vimrc removed its rules/ directory in 17bf559 (2026-09-16) and
+# replaced it with a single AGENTS.md that rewrites the content, so these
+# entries are preserve: the files stay frozen at upstream d4e1614.
 RULES=(
-    "fetch|https://github.com/abatilo/vimrc|github.com/abatilo|rules/simple.md|simple.md"
-    "fetch|https://github.com/abatilo/vimrc|github.com/abatilo|rules/comments.md|comments.md"
-    "fetch|https://github.com/abatilo/vimrc|github.com/abatilo|rules/commit-notes.md|commit-notes.md"
-    "fetch|https://github.com/abatilo/vimrc|github.com/abatilo|rules/simplified-technical-english.md|simplified-technical-english.md"
-    "fetch|https://github.com/abatilo/vimrc|github.com/abatilo|rules/subtractive-engineering.md|subtractive-engineering.md"
+    "preserve|https://github.com/abatilo/vimrc|github.com/abatilo|rules/simple.md|simple.md"
+    "preserve|https://github.com/abatilo/vimrc|github.com/abatilo|rules/comments.md|comments.md"
+    "preserve|https://github.com/abatilo/vimrc|github.com/abatilo|rules/commit-notes.md|commit-notes.md"
+    "preserve|https://github.com/abatilo/vimrc|github.com/abatilo|rules/simplified-technical-english.md|simplified-technical-english.md"
+    "preserve|https://github.com/abatilo/vimrc|github.com/abatilo|rules/subtractive-engineering.md|subtractive-engineering.md"
 )
 
 # Clean up cached clones on exit.
@@ -59,8 +62,10 @@ for entry in "${RULES[@]}"; do
 done
 
 echo "✅ Processed ${#RULES[@]} registry entries"
-for i in "${!CLONE_URLS[@]}"; do
-    echo "ℹ️  ${CLONE_URLS[$i]} @ $(git -C "${CLONE_DIRS[$i]}" rev-parse HEAD)"
-done
-echo "ℹ️  Record the upstream SHA(s) above in your commit message."
+if ((${#CLONE_URLS[@]})); then
+    for i in "${!CLONE_URLS[@]}"; do
+        echo "ℹ️  ${CLONE_URLS[$i]} @ $(git -C "${CLONE_DIRS[$i]}" rev-parse HEAD)"
+    done
+    echo "ℹ️  Record the upstream SHA(s) above in your commit message."
+fi
 echo "ℹ️  Run 'make install-rules' to symlink them into ~/.claude/rules."

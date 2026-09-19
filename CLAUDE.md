@@ -45,7 +45,7 @@ make install-rules
 # Download external skills (mattpocock, bastos, blader) into skills/ — also run by 'make update'
 make fetch-external-skills
 
-# Download external rules (abatilo) into rules/ — also run by 'make update'
+# Verify vendored rules in rules/ (fetches any fetch-mode entries) — also run by 'make update'
 make fetch-external-rules
 
 # Pull latest from both public and private repos
@@ -154,8 +154,8 @@ Each rule is a standalone `.md` file under `rules/` containing plain-markdown in
 
 Some rules are vendored (copied) from upstream repos. `installers/fetch-external-rules.sh` drives this via the same pipe-delimited registry / two-mode (`fetch`/`preserve`) pattern as `fetch-external-skills.sh`, but operates per-file on `.md` rules:
 
-- **`fetch`**: clone the upstream repo, copy the rule `.md` into `rules/<name>` verbatim (no frontmatter or attribution is injected — rules are plain markdown). The `simple`, `comments`, `commit-notes`, `simplified-technical-english`, and `subtractive-engineering` rules are vendored this way from [`abatilo/vimrc`](https://github.com/abatilo/vimrc).
-- **`preserve`**: the rule is already vendored and locally customised; the script verifies it exists and reports its source but never overwrites it.
+- **`fetch`**: clone the upstream repo, copy the rule `.md` into `rules/<name>` verbatim (no frontmatter or attribution is injected — rules are plain markdown). No rule currently uses this mode.
+- **`preserve`**: the rule is already vendored and either locally customised or no longer available upstream; the script verifies it exists and reports its source but never overwrites it. The `simple`, `comments`, `commit-notes`, `simplified-technical-english`, and `subtractive-engineering` rules use this mode. They were vendored from [`abatilo/vimrc`](https://github.com/abatilo/vimrc) at `d4e1614`, and upstream later deleted its `rules/` directory in favour of a single `AGENTS.md`, so the files are frozen at that version.
 
 Fetched rules are committed to the repo. Run `make fetch-external-rules` to refresh them; the script prints the upstream commit SHA, which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs stay offline), but `make update` does run it — after `fetch-external-skills` and before `install-all` — so a full update also refreshes the vendored rules. `install-rules.sh` then symlinks the vendored files like any other local rule.
 
