@@ -1,0 +1,20 @@
+## Conversation
+User asked to commit the already-staged changes under skills/, attributing them to the upstream repo they were vendored from, matching the style of earlier vendoring commits.
+
+## Actions
+Inspected git status and staged diff (4 files under skills/humanizer/). Read prior re-vendor commits (c0df599, 78b6a14, 43f410a) for message style. Cloned blader/humanizer at HEAD 9862685 and diffed each staged file against it to confirm provenance. Listed upstream commits e2e92e7..9862685 via gh api to summarize the changes. Drafted the message, validated with the conventional-commits skill's commitlint script (passed), committed with git commit -s -S.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+Looked for the fetch script's clone cache to recover the upstream SHA locally; installers/lib.sh removes cached clones on exit (trap clone_cache_cleanup), so a fresh clone was needed instead.
+
+## Hints for Future Agents
+Staged SKILL.md matches upstream exactly except for one injected frontmatter line (metadata.author: github.com/blader) added by fetch-external-skills.sh; a diff against upstream showing only that line confirms a clean vendoring. A post-commit autosync hook pushes master to origin immediately on commit.
+
+## Codebase Discoveries
+Upstream humanizer v3.0.0 (34ca949) cut the pattern count from 35 to 25. The unstaged configs/herdr/config.toml change was intentionally left out of this commit.
+
+## Open Questions
+None.

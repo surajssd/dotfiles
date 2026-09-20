@@ -1,0 +1,27 @@
+## Conversation
+The user asked to commit the already-staged (cached) changes and to include the upstream commits that brought the skill changes. No request to modify content, only to record provenance in the commit message per the repo's fetch-external-skills convention.
+
+## Actions
+- Ran `git status` / `git diff --cached --stat` / `git diff --cached` to inspect the staged changes: domain-modeling (em-dash to colon rewrites) and humanizer (v2.11.2 packaging simplification removing the skills/humanizer/SKILL.md symlink, plus Plain Language rewrite and README humanization).
+- Cloned mattpocock/skills and blader/humanizer upstream repos to /tmp to find the SHAs.
+- Diffed vendored files against upstream history to confirm exact matches:
+  - domain-modeling SKILL.md/ADR-FORMAT.md/CONTEXT-FORMAT.md match mattpocock/skills @ 3216582 ("Remove all em-dashes from the repo"); unchanged up to repo HEAD 85f83d3.
+  - humanizer SKILL.md/README.md/AGENTS.md/scripts/validate-package.py match blader/humanizer @ e2e92e7 (repo HEAD). The packaging simplification commit is 38b8890 (v2.11.2).
+- Committed with `git commit -s -S` including upstream SHAs in the message.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+- The vendored SKILL.md files carry injected attribution (license: MIT, metadata.author) added by installers/fetch-external-skills.sh inject_attribution(), so a raw diff against upstream SKILL.md will show those extra frontmatter lines — that is expected, not a content mismatch.
+- The deleted skills/humanizer/skills/humanizer/SKILL.md was a symlink (mode 120000) to ../../SKILL.md, removed upstream in v2.11.2 (38b8890). Do not recreate it; current Claude Code loads the root SKILL.md directly.
+- An autosync git hook pushed master to origin automatically on commit. No manual push needed in this repo.
+
+## Codebase Discoveries
+- This repo has a post-commit autosync hook that pushes the current branch to origin immediately after a successful commit.
+
+## Open Questions
+None.

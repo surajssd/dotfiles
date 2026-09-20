@@ -1,0 +1,21 @@
+## Conversation
+User invoked /conventional-commits for the cached diff only, then asked to commit.
+
+## Actions
+- git diff --cached: one file, configs/ghostty/config.ghostty, adding "theme = Violite" plus a blank line at the top.
+- Validated with commitlint (passed first try), copied via pbcopy, committed with git commit -s -S.
+
+## Errors & Mistakes
+None
+
+## Dead Ends
+None
+
+## Hints for Future Agents
+Ghostty config is symlinked, so the theme change is live immediately. A post-commit autopush hook pushes master to origin automatically.
+
+## Codebase Discoveries
+None
+
+## Open Questions
+None

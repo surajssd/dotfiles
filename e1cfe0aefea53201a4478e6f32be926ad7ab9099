@@ -1,0 +1,20 @@
+## Conversation
+User reported "400 litellm.BadRequestError: Github_copilotException - bad request: missing Editor-Version header for IDE auth" on claude models served through the LiteLLM proxy, then asked to commit the fix.
+
+## Actions
+Read configs/litellm/config.yaml and local-bin/litellm-proxy.sh. Added Editor-Version: vscode/1.95.0 to the &copilot_headers anchor (claude models), deleted the now-identical &copilot_gpt_headers anchor, and pointed the three gpt-5.6 models at *copilot_headers. Verified anchor resolution with yq explode. Restarted the proxy via litellm-proxy.sh restart, tested claude-sonnet-4-6 via test-copilot and claude-opus-4-8 via direct curl to /v1/messages; both returned "ok". Committed only configs/litellm/config.yaml; configs/herdr/config.toml stayed uncommitted.
+
+## Errors & Mistakes
+First anchor-resolution check used python3 yaml (module missing) and a raw yq string query that printed anchors literally; yq 'explode(.)' with -o json gave the real resolved headers.
+
+## Dead Ends
+None
+
+## Hints for Future Agents
+GitHub Copilot's API requires an Editor-Version header on every request; any new github_copilot/ model entry must reference *copilot_headers or requests fail with 400. Config changes require litellm-proxy.sh restart (recreates the container); secrets come from the macOS Keychain. A post-commit hook autopushes master to origin, so committing on master publishes immediately.
+
+## Codebase Discoveries
+litellm-proxy.sh test-copilot hardcodes claude-sonnet-4-6; other models need a direct curl with the LITELLM_MASTER_KEY Keychain secret.
+
+## Open Questions
+None

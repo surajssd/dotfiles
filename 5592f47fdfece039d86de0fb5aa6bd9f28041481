@@ -1,0 +1,20 @@
+## Conversation
+Item #4 of a repo improvement sweep: the user asked to make install.sh "on par" with make install-all so Codespaces also gets agent skills and rules.
+
+## Actions
+Collapsed install.sh's two make invocations into one make install-all call; updated the README Codespaces sentence to match. Ran shellfmt.sh (clean) and executed ./install.sh end to end on this machine as verification; all five stages succeeded.
+
+## Errors & Mistakes
+None
+
+## Dead Ends
+None
+
+## Hints for Future Agents
+Only install.sh was staged when the user said "commit it"; README.md was committed with it via pathspec because the Codespaces sentence belongs to the same change. The verification run showed the private repo's installer builds a Go tool (kargo-pipeline via go install), so Go IS needed when dotfilesprivate is present. It never is in Codespaces, so install.sh needs only make.
+
+## Codebase Discoveries
+The old README claim "the Go tools build via go install" (removed in aa236af) referred to the private repo's kargo-pipeline, not to anything in the public repo.
+
+## Open Questions
+None

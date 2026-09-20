@@ -1,0 +1,20 @@
+## Conversation
+User asked to commit the remaining staged change, following the same flow as the prior two vendoring commits.
+
+## Actions
+Only staged file was configs/herdr/config.toml, adding a [theme] section (name = "dracula", auto_switch = false). This is a local config, not vendored, so no upstream commit hash applies. Validated message with commitlint (exit 0). Committed with git commit -s -S. Auto-push hook pushed to origin.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+Unlike the two prior commits (grilling, humanizer), this is NOT a vendored file — no "vendored from <sha>" line belongs in the message. herdr config lives under configs/herdr/ and is symlinked by install-configs.
+
+## Codebase Discoveries
+None.
+
+## Open Questions
+Working tree still has unstaged changes: CLAUDE.md, README.md, local-bin/litellm-proxy.sh, and untracked configs/litellm/. Not committed — left for the user.

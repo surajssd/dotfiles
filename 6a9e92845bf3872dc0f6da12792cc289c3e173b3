@@ -1,0 +1,20 @@
+## Conversation
+User asked to implement a confirmed plan document for local-bin/worktree-cleanup.sh: an interactive command that finds git repos under a scan root, verifies branch-backed worktrees against GitHub PRs, and removes only safe ones. Over several sessions of real usage the user requested: ctrl-a/ctrl-d fzf bindings, a trash emoji on the confirm prompt, PR_STATE emojis, tilde-shortened display paths, REPO column relative to PWD, acceptance of merged PRs whose head or merge commit contains the local HEAD (CI bots push render commits on top; some tooling fast-forwards the branch to the squash commit), and finally acceptance of CLOSED PRs with the state shown as the first picker column.
+
+## Actions
+Wrote the script (~1000 lines, bash 3.2 compatible), ran shellfmt.sh after every change, tested with stubbed gh/fzf/timeout binaries in temp repos (dirty/detached/locked/prunable/spaces/501-sentinel/stale-breadcrumb/diverged cases), and did live read-only scans plus one live removal in a throwaway clone of surajssd/dotfiles (PR #62).
+
+## Errors & Mistakes
+Original PWD was compared unresolved, so the orphaned-shell warning missed because /var/folders symlinks to /private/var; fixed with pwd -P. The exact-headRefOid rule from the plan missed most real merged PRs (CI amends branches), which drove the containment loosening. fzf hangs non-interactive test harnesses; tests must exclude it from PATH to force the numbered menu.
+
+## Dead Ends
+None significant. A local-path git clone hardlinks all objects, which silently defeated a test meant to exercise the refs/pull fetch path; a file:// clone was needed.
+
+## Hints for Future Agents
+The exit code is nonzero whenever any locally eligible branch ends UNKNOWN (for example no PR exists), even when all removals succeed; the user has questioned this once and may want it split later. gh templates use {{with .mergeCommit}} because the field is null for unmerged PRs. Selection resolves through internal row ids, never displayed text; display paths are tilde/PWD-relative and lossy. The repo's post-commit hook auto-rebases and pushes master, so commit SHAs change immediately after commit; attach notes to the post-rebase SHA.
+
+## Codebase Discoveries
+The user's worktrees live under ~/.herdr/worktrees/<repo>/ and as sibling dirs of the main checkout. Their CI (github-actions bot) pushes "chore: render manifests (cdx)" commits onto PR branches before merge, and some tooling resets local branches to the squash-merge commit, so exact head matching almost never holds.
+
+## Open Questions
+Whether "no PR found" should stay an UNKNOWN nonzero exit or become a known skip. The post-removal checked-out-branch guard and mid-removal OID-change path are race guards verified only via git semantics, not end-to-end.

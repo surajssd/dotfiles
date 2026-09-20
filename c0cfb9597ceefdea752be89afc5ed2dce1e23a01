@@ -1,0 +1,22 @@
+## Conversation
+The user ran update.sh and make fetch-external-rules died with "upstream not found: rules/simple.md in https://github.com/abatilo/vimrc". They asked whether the path had changed. After the investigation they chose preserve mode over vendoring the new AGENTS.md or deleting the fetch script, then asked to commit.
+
+## Actions
+Cloned abatilo/vimrc fresh, unshallowed it, and ran git log on rules/ to find the deleting commit 17bf559 (2026-09-16). Confirmed d4e1614 (our pinned SHA) is an ancestor of master and that all five vendored files are byte-identical to 17bf559^:rules/*.md. Flipped the five registry entries to preserve, rewrote rules/README.md with links pinned to d4e1614, updated the CLAUDE.md and Makefile descriptions. Ran shellfmt.sh on both scripts, ran make fetch-external-rules under bash 5.3 and /bin/bash 3.2, ran fetch-external-skills.sh to confirm the lib.sh change did not break it and left the skills tree clean. Committed with git commit -s -S -F; the git-autopush-post-commit hook pushed master to origin.
+
+## Errors & Mistakes
+First comparison of vendored files vs upstream used `git diff --quiet <rev>:path <worktree path>`, which is not a valid form and reported every file as DIFFERS. Redid it with `git show <rev>:path | diff -q - <file>` and all five were identical.
+After flipping to preserve, make still exited 1 even though the script printed its success line. Cause: clone_cache_cleanup in lib.sh ended on `[[ -n "$d" ]] && rm -rf "$d"`, and with TMP_DIRS empty the `${TMP_DIRS[@]:-}` expansion yields one empty element, so the last command's status was 1 and the EXIT trap returned 1. This was latent before because fetch-external-skills.sh always clones something.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+The fetch scripts must run under macOS /bin/bash 3.2, which is why lib.sh uses parallel indexed arrays and `${arr[@]:-}` instead of associative arrays. An EXIT trap's function return status becomes the script's exit status, so every helper used as a trap must end on a statement that returns 0 in the no-op case.
+upstream's replacement AGENTS.md is a rewrite, not a concatenation: the commit-note template has six differently named sections, "third concrete use" became "a heuristic, not a threshold", and the fence guidance was softened. Adopting it changes agent behaviour in every session, so it is a deliberate decision, not a refresh.
+
+## Codebase Discoveries
+rules/README.md is hand-maintained and was linking to blob/master paths that 404 now; it links to the pinned commit instead. The git-autopush-post-commit hook pushes master immediately on commit, so there is no window to amend after committing on master.
+
+## Open Questions
+Whether to adopt upstream's AGENTS.md at all, and if so whether to vendor it as one rule or keep the five files. Deferred by the user.

@@ -1,0 +1,25 @@
+## Conversation
+User asked for an option in gpo.sh to automatically request a Copilot review "as balanced" when pushing a PR branch, citing coreweave/inference-tools#121. Two questions settled the design: the trigger is an opt-in --copilot flag (not always-on, not a prompt), and the Balanced level on PR 121 came from the repository/org default, not a per-request choice.
+
+## Actions
+Read gpo.sh, util.sh, auto-rebase.sh, worktree-cleanup.sh, configs/aliases/git for conventions. Inspected PR 121 with gh: reviews and ReviewRequestedEvent timeline items show the BOT copilot-pull-request-reviewer requested repeatedly by the user from the web UI. Introspected the GraphQL schema: RequestReviewsInput and RequestReviewsByLoginInput have no effort field; CopilotCodeReviewParametersInput (rulesets) has only reviewDraftPullRequests and reviewOnPush. Read GitHub docs on code review and automatic review configuration. Found cli/cli#14188 (effort flag request), labelled blocked with "There is no API for this right now". Rewrote gpo.sh, ran shellfmt.sh, tested: no flag on master; --copilot --dry-run on master (no PR); --copilot --dry-run in worktrees for MERGED PR 115 and CLOSED PR 119. All exited 0 with the expected skip messages.
+
+## Errors & Mistakes
+WebSearch is unavailable through the litellm proxy ("The use of the web search tool is not supported"); used WebFetch on docs pages instead. WebFetch of a guessed path raw.githubusercontent.com/cli/cli/trunk/pkg/cmd/pr/shared/copilot_replacer.go returned 404; used gh api on api/queries_repo.go instead.
+
+## Dead Ends
+Searched for any way to pass the effort level from a script. None exists: REST requested_reviewers takes only reviewers and team_reviewers, GraphQL has no effort field, gh has no flag. Considered a separate default-branch check before calling gh; dropped it because a failing `gh pr view` already covers the default branch and every other branch without a PR.
+
+## Hints for Future Agents
+- --copilot is opt-in on purpose: auto-rebase.sh runs `gpo.sh -f` on every rebase and must never trigger paid reviews.
+- The happy path (`gh pr edit N --add-reviewer @copilot` on an OPEN PR) was not executed in this session because it posts to a real work PR and consumes credits. The user runs it on the next push to PR 121. Check that the resulting review body says "Review effort level: Balanced".
+- `set -x` is scoped to a subshell around git push so the gh and jq calls stay out of the trace.
+- `gh pr view` exit 1 with stderr `no pull requests found for branch "X"` is the "not a PR branch" signal; its stderr is intentionally left visible.
+
+## Codebase Discoveries
+- gh 2.101.0 maps @copilot to bot login copilot-pull-request-reviewer (CopilotReviewerLogin in api/queries_repo.go) and uses the requestReviewsByLogin mutation with botLogins ["copilot-pull-request-reviewer[bot]"].
+- Effort level (Lite/Balanced) lives in Settings > Copilot > Code review at repo or org level. Rulesets only toggle automatic requests, review-on-push, and draft review.
+- This repo's post-commit hook (git-autopush-post-commit) pushes master on every commit.
+
+## Open Questions
+- Whether re-requesting with `gh pr edit --add-reviewer @copilot` while Copilot is already a pending requested reviewer triggers a fresh review the way the sidebar sync button does. PR 121's timeline shows each web UI re-request produced a new review, so it is expected to, but it is unconfirmed from the CLI.

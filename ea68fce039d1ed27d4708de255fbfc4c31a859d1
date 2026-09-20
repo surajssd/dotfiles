@@ -1,0 +1,20 @@
+## Conversation
+User asked to remove clawbox because they do not use it, then asked to commit the removal.
+
+## Actions
+Deleted clawbox/ via git rm and removed the installed binary ~/go/bin/clawbox. Removed the install-clawbox target, its .PHONY entries, its place in install-all, and the whole `test` target (it only ran clawbox tests) from the Makefile. Removed the clawbox/clawbox line from .gitignore. Validated the message with the conventional-commits skill linter, committed with -s -S. Left containers/openclaw/ and .github/workflows/build-openclaw-image.yaml in place.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+A post-commit autosync hook (local-bin/git-autopush-post-commit) auto-pushes master; when the push is rejected it rebases onto origin/master and pushes, so the SHA printed by `git commit` may not be the final one — check `git log` before attaching notes. Here the commit printed as 75f9085 but landed as ea68fce.
+
+## Codebase Discoveries
+containers/openclaw/ and the build-openclaw-image.yaml workflow exist to build the image clawbox ran; they still reference clawbox only in comments and are likely unused now, but the user has not confirmed their removal.
+
+## Open Questions
+Whether containers/openclaw/ and .github/workflows/build-openclaw-image.yaml should also be deleted.

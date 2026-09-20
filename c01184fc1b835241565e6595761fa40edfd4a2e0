@@ -1,0 +1,20 @@
+## Conversation
+User ran update.sh and asked to fix findings from its output (Homebrew tap trust warnings, git-lfs caveat). In follow-ups they asked to add `brew upgrade --cask` to update.sh, asked which casks have auto_updates, then asked to commit the script change.
+
+## Actions
+Untapped coder/coder and manaflow-ai/cmux (nothing installed came from either). Edited local-bin/update.sh: replaced the "casks skipped" design with a `brew upgrade --cask --yes` step after the formula upgrade, updated the comment and the success message. Ran shellfmt.sh (clean). Committed only local-bin/update.sh with `git commit -s -S`; configs/herdr/config.toml was already dirty before the session and was left unstaged.
+
+## Errors & Mistakes
+`brew untap --force manaflow-ai/cmux` uninstalled /Applications/cmux.app even though the installed cmux cask came from official homebrew/cask (name collision with the tap's cask). Reinstalled the same version 0.64.22 from homebrew/cask immediately.
+
+## Dead Ends
+Considered `brew trust` for the taps instead of untapping; rejected because nothing installed actually came from them.
+
+## Hints for Future Agents
+The cask step deliberately omits --greedy: auto_updates casks (Edge, VS Code, Tailscale, etc.) keep self-updating. Note that discord/notion/obsidian/whatsapp have auto_updates=true yet still appear in plain `brew outdated --cask`, so they DO get upgraded by this step. A post-commit hook autopushes master on commit, so amend before committing, not after.
+
+## Codebase Discoveries
+This commit reverses 3d8d56f ("update.sh: Don't update GUIs") at the user's explicit request.
+
+## Open Questions
+Whether cask upgrades of running GUI apps cause trouble in practice; if so, the fallback is restoring the formula-only behavior or filtering specific casks.

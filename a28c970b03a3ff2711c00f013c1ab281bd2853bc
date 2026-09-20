@@ -1,0 +1,37 @@
+## Conversation
+User asked to (1) make Claude Fable 5.1 the default in the litellm config, (2) add OpenAI GPT-6 Astra, and (3) whether reasoning effort can be set in the litellm config. After the first pass, the user asked whether the running litellm image was the latest (it was one release behind, 1.99.0 vs 1.100.0; Renovate PR #64 was open). The user merged #64 and restarted, then asked to actually set reasoning effort. Finally asked to commit only the staged files. Before staging, the user edited the config themselves: changed reasoning_effort from high (my choice) to xhigh, and moved gpt-6-astra after gpt-5-6-terra so the &copilot_responses_mode anchor stayed on gpt-5-6-luna.
+
+## Actions
+Verified upstream model IDs by exec'ing Python in the litellm container and GETting https://api.githubcopilot.com/models with the token from /root/.config/litellm/github_copilot/api-key.json (needed ssl.VERIFY_X509_STRICT cleared because the sitecustomize.py Netskope workaround does not apply in docker exec). Added claude-fable-5-1 and gpt-6-astra entries; changed DEFAULT_LITELLM_MODEL in local-bin/litellm-proxy.sh; updated README.md (left unstaged by the user, so NOT in this commit; README still says claude-fable-5 at this SHA). Ran shellfmt.sh, yq explode to check anchors, litellm-proxy.sh restart several times, and many curl probes against /v1/messages, /v1/chat/completions and /v1/responses. Traced LiteLLM internals by copying small Python scripts into the container (docker cp to /tmp; they vanish on restart because restart recreates the container) and running litellm.completion / litellm.anthropic.messages.acreate / litellm.aresponses with litellm._turn_on_debug() to capture the "POST Request Sent from LiteLLM" body.
+
+## Errors & Mistakes
+- First probe used a bat-and-ball puzzle; too trivial, adaptive thinking never fired, which made the additional_drop_params: [thinking] look like the culprit. It was not. Use the prime-sum prompt ("sum of all primes between 100 and 200") to make Claude think.
+- Assumed reasoning_effort in litellm_params would just work; on 1.99.0 and 1.100.0 it is silently dropped on the chat route (see Codebase Discoveries).
+- Used reasoning_effort: bogus as a forwarding probe for gpt-6-astra. Invalid for the chat-to-Responses bridge: LiteLLM drops unknown values before mapping, so a 200 proves nothing there. Use none/minimal instead; Copilot's Responses endpoint rejects them for gpt-6-astra with "Unsupported value", which proves the param arrived.
+- litellm.aresponses(model="github_copilot/gpt-6-astra") in the SDK without register_model({...mode: responses}) falls back to chat/completions and Copilot returns 'model "gpt-6-astra" is not accessible via the /chat/completions endpoint'.
+- One curl+jq pipeline printed nothing for gpt-6-astra; it was my jq filter, not the proxy.
+
+## Dead Ends
+- Trying to confirm the drop's purpose from git history: commit cad217e introduced additional_drop_params: [thinking] with no explanation and no note.
+- Hoping upstream main had fixed the chat-route drop: main still has no map_openai_params override in GithubCopilotConfig; no GitHub issue or PR found for it.
+
+## Hints for Future Agents
+- Config changes need `litellm-proxy.sh restart`; the container is recreated, so anything docker cp'd into it is gone.
+- LiteLLM router merges request kwargs OVER litellm_params, but reasoning_effort in litellm_params still wins over a request-level thinking param on /v1/messages (thinking: disabled and legacy budget_tokens both still ran at the configured effort). Only a request output_config.effort overrides it. Clients cannot turn thinking off once the default is set.
+- Copilot accepts low/medium/high/xhigh/max for both models. GPT-6 Astra rejects none and minimal. Copilot default with no params: claude-fable-5 thinks, claude-fable-5.1 does not.
+- additional_drop_params: [thinking] on the other four Claude entries is dead config on 1.100.0: no effect on /v1/messages (LiteLLM converts the legacy thinking shape to adaptive and forwards it), and the chat route drops thinking anyway. Not removed because out of scope; candidate for deletion.
+- Copilot chat/completions for Claude does not return thinking text; the only signal is completion_tokens jumping (about 5 text + about 200 thinking at high).
+- Copilot's /models also lists claude-opus-5 and claude-sonnet-5, not yet in config.
+
+## Codebase Discoveries
+- Root cause of the drop: GithubCopilotConfig (litellm/llms/github_copilot/chat/transformation.py) overrides get_supported_openai_params to add thinking and reasoning_effort for Claude, but inherits map_openai_params from litellm/llms/openai/openai.py, which delegates to litellm.openAIGPTConfig.map_openai_params, a separate OpenAIGPTConfig instance that consults ITS OWN supported list. So the override is never used. Independent of drop_params (verified with drop_params=False). gpt-6-astra hits the same filter for a second reason: name matches neither is_model_gpt_5_model nor the model map.
+- allowed_openai_params: [reasoning_effort] in litellm_params bypasses that filter on both the Claude chat route and the gpt chat-to-Responses bridge. Verified on the wire via SDK and via proxy (bogus -> Copilot 400 for claude-fable-5.1; none -> Copilot 400 for gpt-6-astra).
+- /v1/messages route (GithubCopilotAnthropicMessagesConfig) translates reasoning_effort into thinking: {type: adaptive, display: summarized} + output_config: {effort: X}, and converts legacy budget_tokens into adaptive + effort (1024 -> low, 4096 -> high).
+- renovate.json still has a stale regex manager for LITELLM_VERSION in litellm-proxy.sh; that variable no longer exists. The digest bumps come from the built-in docker-compose manager.
+- The post-commit hook autopushes master to origin immediately.
+
+## Open Questions
+- Whether to remove additional_drop_params: [thinking] from the remaining Claude entries.
+- Whether xhigh is the right default for interactive Claude Code use (user chose it; not measured for latency).
+- Whether to file the LiteLLM bug upstream.
+- README.md default-model text and configs/herdr/config.toml remain uncommitted in the working tree.

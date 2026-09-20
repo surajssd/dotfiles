@@ -1,0 +1,20 @@
+## Conversation
+Docs-drift cleanup the user asked for after Claude cross-checked README/CLAUDE.md against the installers.
+
+## Actions
+Removed the "Go tools build via go install" claim from README (Go wiring was removed in 4d09012); trimmed the related "Go is not required" from the Codespaces section. Added ghostty (macOS) and herdr (both OSes) symlinks to both docs' config-handling sections, added containers/ to both structure lists, fixed the install-all comment to include rules, and documented how configs/aliases/ files are sourced.
+
+## Errors & Mistakes
+None
+
+## Dead Ends
+None
+
+## Hints for Future Agents
+install.sh intentionally installs less than make install-all (no skills/rules); the user deferred deciding whether Codespaces should get skills/rules too.
+
+## Codebase Discoveries
+containers/openclaw holds a Dockerfile, entrypoint.sh, and an fs shim; it was previously undocumented in both README and CLAUDE.md.
+
+## Open Questions
+Should install.sh (Codespaces bootstrap) also run install-skills and install-rules? Deferred by the user as item #4.

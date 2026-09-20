@@ -1,0 +1,20 @@
+## Conversation
+User wanted their PR branch auto-rebased: poll every 30s, rebase when behind, then run gpo.sh -f. Started as an inline snippet, then a temp script, then this permanent script. Requirements evolved to: detect the default branch (not assume main), work from git worktrees while keeping the local default branch in the main checkout updated, prefer the upstream remote over origin, rebase without opening an editor, and on conflicts fail plus send a macOS notification. Later swapped the INTERVAL env var for a -i flag and split the startup info onto separate lines.
+
+## Actions
+Created local-bin/auto-rebase.sh. Validated with shellfmt.sh (shellcheck + shfmt clean). Committed with git commit -s -S using a commitlint-validated message.
+
+## Errors & Mistakes
+First draft used a zsh shebang; shellcheck does not support zsh (SC1071), so it switched to bash. The Claude Code sandbox blocked chmod/commit in this repo until the user disabled it; commitlint's cache install also needed XDG_CACHE_HOME redirected to a temp dir under the sandbox.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+The user's grbm alias is `git rebase -S -i`; the script keeps -S -i but sets GIT_SEQUENCE_EDITOR=true to auto-accept the todo list (GIT_EDITOR alone is not enough for interactive rebase). Default branch is read from `git ls-remote --symref <remote> HEAD`, not local origin/HEAD, which can be stale or unset. `git rev-parse --path-format=absolute --git-common-dir` locates the main checkout from any worktree; a fetch from a worktree updates shared remote-tracking refs, so the rebase target is fresh even when the main checkout is on another branch. Unattended `git rebase -S` stalls if the signing key needs a passphrase or touch.
+
+## Codebase Discoveries
+This repo has a post-commit autosync hook that pushes master to origin immediately after commit.
+
+## Open Questions
+None.

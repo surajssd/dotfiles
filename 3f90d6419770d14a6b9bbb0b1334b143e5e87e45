@@ -1,0 +1,20 @@
+## Conversation
+The user asked to remove the Go requirement from install.sh and configure only config files and shell scripts. The user then asked to commit the change.
+
+## Actions
+Read the existing commit note for install.sh. Changed install.sh to require only make and invoke install-configs plus install-local-bin. Updated only the matching GitHub Codespaces documentation. Preserved unrelated README, CLAUDE.md, LiteLLM script, and LiteLLM config changes. Ran shellfmt.sh, Bash syntax validation, ShellCheck, a stubbed invocation test that fails if Go runs, a Make dry run, and git diff checks. Validated the commit message with commitlint. Created a signed and signed-off commit with the post-commit hook disabled.
+
+## Errors & Mistakes
+None
+
+## Dead Ends
+None
+
+## Hints for Future Agents
+The repository post-commit hook can push automatically. Keep it disabled for commits that must remain local. README.md still contains an unrelated unstaged LiteLLM section.
+
+## Codebase Discoveries
+The root install.sh is the GitHub Codespaces bootstrap. The install-all Make target also installs agent skills, agent rules, and optional Go tools, so install.sh now names the two intended targets directly.
+
+## Open Questions
+None

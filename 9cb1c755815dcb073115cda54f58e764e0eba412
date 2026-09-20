@@ -1,0 +1,20 @@
+## Conversation
+The user asked what can be fixed in the repo. Claude surveyed the repo and reported that local-bin/check-azure-capacity.sh failed shellcheck and shfmt, plus smaller lint issues in gpo.sh and auto-rebase.sh. The user then deleted check-azure-capacity.sh themselves and staged the deletion with git add, and asked Claude to commit the staged changes.
+
+## Actions
+Verified with rg that nothing else in the repo references check-azure-capacity.sh, then committed the staged deletion.
+
+## Errors & Mistakes
+None
+
+## Dead Ends
+None
+
+## Hints for Future Agents
+The deletion was the user's own decision, made after a lint report; the script was the repo's only shellfmt.sh violator (SC2155, SC2207, SC2064, SC2086, shfmt drift). The user chose removal over fixing. A post-commit autosync hook pushes master to origin automatically on every commit.
+
+## Codebase Discoveries
+dotfilesprivate/local-bin/aks-find-vm-usage.sh also fails shfmt, but that lives in the separate private repo.
+
+## Open Questions
+None
