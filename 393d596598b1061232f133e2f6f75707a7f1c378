@@ -1,0 +1,20 @@
+## Conversation
+The user asked to disable the automatic upgrade of Ghostty "the way we disabled for edge and chrome". After research showed brew already skips Ghostty, the user chose "Only the brew upgrade" (no functional change, comment only) over disabling Ghostty's built-in Sparkle updater. The user then asked for a commit.
+
+## Actions
+Used an explore subagent to find the Edge/Chrome mechanism: local-bin/update.sh sets HOMEBREW_NO_UPGRADE_AUTO_UPDATES_CASKS=1 on the cask upgrade, which skips every cask declaring auto_updates true. Ran `brew info --cask --json=v2 ghostty | jq` and confirmed auto_updates: true, installed 1.3.1. Confirmed the env var in `man brew`. Ran `brew outdated --cask` and `--greedy-auto-updates` to see what is skipped. Checked configs/ghostty/config.ghostty has no auto-update key and read Ghostty's own `auto-update` docs via `ghostty +show-config --default --docs`. Asked the user which updater they meant. Edited the comment in update.sh to name Chrome and Ghostty and to record the `brew info --cask <name> | grep auto_updates` check. Ran shellfmt.sh, linted the message with the conventional-commits validator, committed with -s -S.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+Considered setting `auto-update = off` in configs/ghostty/config.ghostty to stop Ghostty's own Sparkle updater. The user did not want that; brew was the only concern.
+
+## Hints for Future Agents
+Edge and Chrome are not excluded by name anywhere. Any cask with auto_updates true is skipped by update.sh. Check a cask with `brew info --cask <name>`; the header shows "(auto_updates)" when covered. Ghostty is installed via brew on this machine but is NOT in essential-brew-overrides.sh's mac_cask_packages list. The note on d8a0390 claims Edge does not declare auto_updates; that was wrong and bfd1074 corrected the approach. `git commit` in this repo triggers an autosync hook that pushes master to origin immediately, so there is no window to amend. shellfmt.sh appears to stage the file it formats (the edit showed as staged before any `git add`).
+
+## Codebase Discoveries
+Ghostty's built-in updater is configurable via `auto-update = off|check|download` and `auto-update-channel = stable|tip` in the Ghostty config (macOS only). When unset, Sparkle's user defaults preference applies.
+
+## Open Questions
+None.
