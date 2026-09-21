@@ -32,7 +32,7 @@ fi
 
 (
     set -x
-    git push -u origin "$branch" "${push_args[@]}"
+    git push -u origin "$branch" ${push_args[@]+"${push_args[@]}"}
 )
 
 if [[ "$copilot" -eq 0 ]]; then
