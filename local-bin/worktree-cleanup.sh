@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 #
-# Interactively remove git worktrees whose branches have merged GitHub pull
-# requests, together with their local branches. Never forces removal, never
-# touches remote branches.
+# Interactively remove git worktrees whose branches are merged, together with
+# their local branches. A branch is merged when a GitHub pull request for it
+# is merged or closed, or, when no pull request decides, when the worktree
+# HEAD is already contained in the remote-tracking default branch. Never
+# forces removal, never fetches, never touches remote branches.
 
 set -euo pipefail
 
@@ -15,6 +17,7 @@ NL='
 GH_TIMEOUT=30
 PR_VIEW_TEMPLATE='{{.number}}{{"\t"}}{{.state}}{{"\t"}}{{.headRefName}}{{"\t"}}{{.headRefOid}}{{"\t"}}{{.baseRefName}}{{"\t"}}{{with .mergeCommit}}{{.oid}}{{end}}'
 PR_LIST_TEMPLATE='{{range .}}{{.number}}{{"\t"}}{{.state}}{{"\t"}}{{.headRefName}}{{"\t"}}{{.headRefOid}}{{"\t"}}{{.baseRefName}}{{"\t"}}{{with .mergeCommit}}{{.oid}}{{end}}{{"\n"}}{{end}}'
+REPO_VIEW_TEMPLATE='{{.nameWithOwner}}{{"\t"}}{{with .defaultBranchRef}}{{.name}}{{end}}'
 
 export GH_PROMPT_DISABLED=1
 export GH_NO_UPDATE_NOTIFIER=1
@@ -29,10 +32,14 @@ TMP_DIR=""
 
 # Repositories, parallel arrays indexed by repository id.
 REPO_COUNT=0
-REPO_KEY=()  # canonical common git dir, the deduplication identity
-REPO_SEED=() # directory the repository was discovered from
-REPO_MAIN=() # main worktree path, filled during enumeration
-REPO_GH=()   # unset | ok | fail: cached gh repository resolution
+REPO_KEY=()        # canonical common git dir, the deduplication identity
+REPO_SEED=()       # directory the repository was discovered from
+REPO_MAIN=()       # main worktree path, filled during enumeration
+REPO_GH=()         # unset | ok | fail: cached gh repository resolution
+REPO_TRUNK=()      # unset | ok | fail: cached default branch resolution
+REPO_TRUNK_REF=()  # refs/remotes/<remote>/<name> when ok
+REPO_TRUNK_NAME=() # default branch name from gh, or from the remote HEAD symref
+REPO_TRUNK_ERR=()  # why the default branch could not be resolved
 
 # Worktree rows, parallel arrays indexed by row id. Machine data lives here;
 # rendered table text is derived from it and never parsed back.
@@ -57,7 +64,7 @@ REMOVED_COUNT=0
 REVAL_SKIPPED=0
 FAILED_COUNT=0
 
-# Outputs of pr_lookup.
+# Outputs of pr_lookup, trunk_lookup, and resolve_state.
 LK_STATE=UNKNOWN
 LK_PR="-"
 LK_REASON=""
@@ -73,11 +80,21 @@ function usage() {
     echo ""
     echo "Recursively discovers git repositories under scan-root (default: the"
     echo "current directory), lists their linked worktrees, and interactively"
-    echo "removes worktrees whose branch has a GitHub pull request that is"
-    echo "MERGED or CLOSED and that contains every local commit: the PR head"
-    echo "matches the local worktree HEAD exactly or contains it as an"
-    echo "ancestor, or (for merged PRs) the merge commit contains it. The"
-    echo "matching local branch is deleted after the worktree is removed."
+    echo "removes worktrees whose branch is merged. A branch is merged when:"
+    echo ""
+    echo "  1. A GitHub pull request for it is MERGED or CLOSED and contains"
+    echo "     every local commit: the PR head matches the local worktree HEAD"
+    echo "     exactly or contains it as an ancestor, or (for merged PRs) the"
+    echo "     merge commit contains it."
+    echo "  2. No pull request decides, and the local worktree HEAD is already"
+    echo "     contained in the remote-tracking default branch (for example"
+    echo "     origin/main) as last fetched. Nothing is fetched. Run git fetch"
+    echo "     first to pick up merges pushed from elsewhere. The default branch"
+    echo "     name comes from GitHub, or from the remote HEAD symref set by"
+    echo "     git remote set-head <remote> --auto. The upstream remote is"
+    echo "     preferred over origin."
+    echo ""
+    echo "The matching local branch is deleted after the worktree is removed."
     echo ""
     echo "Discovery skips these directories:"
     echo "    node_modules, .terraform, vendor, .venv, .cache"
@@ -86,9 +103,10 @@ function usage() {
     echo "worktree is under scan-root. All worktrees of an included repository"
     echo "are then considered, even ones outside scan-root."
     echo ""
-    echo "Never removed: main worktrees, and detached, dirty, locked, prunable,"
-    echo "or unverified worktrees. Open pull requests never qualify."
-    echo "Remote branches are never deleted."
+    echo "Never removed: main worktrees, worktrees on the default branch, and"
+    echo "detached, dirty, locked, prunable, or unverified worktrees. Open pull"
+    echo "requests containing the local HEAD never qualify. Remote branches are"
+    echo "never deleted."
     echo ""
     echo "Options:"
     echo "    --help, -h    ❓ Show this help message"
@@ -192,6 +210,10 @@ function add_repo() {
     REPO_SEED[REPO_COUNT]=${dir}
     REPO_MAIN[REPO_COUNT]=""
     REPO_GH[REPO_COUNT]="unset"
+    REPO_TRUNK[REPO_COUNT]="unset"
+    REPO_TRUNK_REF[REPO_COUNT]=""
+    REPO_TRUNK_NAME[REPO_COUNT]=""
+    REPO_TRUNK_ERR[REPO_COUNT]=""
     REPO_COUNT=$((REPO_COUNT + 1))
 }
 
@@ -359,15 +381,56 @@ function enumerate_repo() {
 }
 
 function resolve_repo_gh() {
-    local repoidx=${1} dir=${2}
+    local repoidx=${1} dir=${2} out default_branch
     if [[ ${REPO_GH[repoidx]} != unset ]]; then
         return 0
     fi
-    if run_gh "${dir}" repo view --json nameWithOwner --template '{{.nameWithOwner}}' >/dev/null; then
+    if out=$(run_gh "${dir}" repo view --json nameWithOwner,defaultBranchRef --template "${REPO_VIEW_TEMPLATE}"); then
         REPO_GH[repoidx]=ok
+        IFS=${TAB} read -r _ default_branch <<<"${out}"
+        REPO_TRUNK_NAME[repoidx]=${default_branch}
     else
         REPO_GH[repoidx]=fail
     fi
+}
+
+# Resolves the remote-tracking default branch, upstream preferred over
+# origin. The branch name comes from GitHub, else from the remote HEAD
+# symref. Nothing is fetched.
+function resolve_repo_trunk() {
+    local repoidx=${1} dir=${2} remote name ref
+    if [[ ${REPO_TRUNK[repoidx]} != unset ]]; then
+        return 0
+    fi
+    resolve_repo_gh "${repoidx}" "${dir}"
+    REPO_TRUNK[repoidx]=fail
+
+    if git -C "${dir}" remote get-url upstream >/dev/null 2>&1; then
+        remote=upstream
+    elif git -C "${dir}" remote get-url origin >/dev/null 2>&1; then
+        remote=origin
+    else
+        REPO_TRUNK_ERR[repoidx]="no upstream or origin remote"
+        return 0
+    fi
+
+    name=${REPO_TRUNK_NAME[repoidx]}
+    if [[ -z ${name} ]] && ref=$(git -C "${dir}" symbolic-ref -q "refs/remotes/${remote}/HEAD" 2>/dev/null); then
+        name=${ref#"refs/remotes/${remote}/"}
+    fi
+    if [[ -z ${name} ]]; then
+        REPO_TRUNK_ERR[repoidx]="default branch unknown, run: git remote set-head ${remote} --auto"
+        return 0
+    fi
+
+    ref="refs/remotes/${remote}/${name}"
+    if ! git -C "${dir}" show-ref --verify --quiet "${ref}"; then
+        REPO_TRUNK_ERR[repoidx]="${ref} not present, fetch first"
+        return 0
+    fi
+    REPO_TRUNK[repoidx]=ok
+    REPO_TRUNK_REF[repoidx]=${ref}
+    REPO_TRUNK_NAME[repoidx]=${name}
 }
 
 # Returns 0 when local_head is an ancestor of (or equal to) target, meaning
@@ -550,7 +613,54 @@ function pr_lookup() {
     fi
 }
 
-function resolve_prs() {
+# Decides from the remote-tracking default branch when no pull request did.
+# Appends to LK_REASON so the pull request outcome stays visible.
+function trunk_lookup() {
+    local dir=${1} branch=${2} head=${3} repoidx=${4}
+    local trunk_ref trunk_name trunk_display ahead
+    if [[ ${REPO_TRUNK[repoidx]} != ok ]]; then
+        LK_REASON="${LK_REASON}${LK_REASON:+, }${REPO_TRUNK_ERR[repoidx]}"
+        return 0
+    fi
+    trunk_ref=${REPO_TRUNK_REF[repoidx]}
+    trunk_name=${REPO_TRUNK_NAME[repoidx]}
+    trunk_display=${trunk_ref#refs/remotes/}
+    if [[ ${branch} == "${trunk_name}" ]]; then
+        LK_REASON="${LK_REASON}${LK_REASON:+, }is the default branch"
+        return 0
+    fi
+    if git -C "${dir}" merge-base --is-ancestor "${head}" "${trunk_ref}" 2>/dev/null; then
+        LK_STATE=MERGED
+        LK_PR="-"
+        LK_REASON="${LK_REASON}${LK_REASON:+, }all local commits are in ${trunk_display}"
+        LK_DETAIL="${trunk_display} contains local HEAD ${head}"
+        return 0
+    fi
+    ahead=$(git -C "${dir}" rev-list --count "${trunk_ref}..${head}" 2>/dev/null) || ahead="?"
+    LK_REASON="${LK_REASON}${LK_REASON:+, }${ahead} commits not in ${trunk_display}"
+}
+
+# Resolves the merge state of one branch: the pull request outcome first,
+# then the remote-tracking default branch when no pull request decided.
+function resolve_state() {
+    local dir=${1} branch=${2} head=${3} repoidx=${4}
+    LK_STATE=UNKNOWN
+    LK_PR="-"
+    LK_REASON=""
+    LK_DETAIL=""
+    resolve_repo_gh "${repoidx}" "${dir}"
+    if [[ ${REPO_GH[repoidx]} == ok ]]; then
+        pr_lookup "${dir}" "${branch}" "${head}"
+    else
+        LK_REASON="gh could not resolve a GitHub repository from the remotes"
+    fi
+    if [[ ${LK_STATE} == UNKNOWN ]]; then
+        resolve_repo_trunk "${repoidx}" "${dir}"
+        trunk_lookup "${dir}" "${branch}" "${head}" "${repoidx}"
+    fi
+}
+
+function resolve_states() {
     local id pending=0
     for ((id = 0; id < ROW_COUNT; id++)); do
         if [[ ${R_ACTION[id]} == PENDING ]]; then
@@ -561,7 +671,7 @@ function resolve_prs() {
         return 0
     fi
 
-    err "⏳ Resolving pull requests for ${pending} candidate branches..."
+    err "⏳ Resolving merge state for ${pending} candidate branches..."
     local n=0 path branch repoidx
     for ((id = 0; id < ROW_COUNT; id++)); do
         if [[ ${R_ACTION[id]} != PENDING ]]; then
@@ -573,16 +683,7 @@ function resolve_prs() {
         repoidx=${R_REPOIDX[id]}
         err "⏳ [${n}/${pending}] ${branch} ($(tilde_path "${path}"))"
 
-        resolve_repo_gh "${repoidx}" "${path}"
-        if [[ ${REPO_GH[repoidx]} == fail ]]; then
-            R_PR[id]="-"
-            R_STATE[id]=UNKNOWN
-            R_ACTION[id]=SKIP
-            R_REASON[id]="gh could not resolve a GitHub repository from the remotes"
-            continue
-        fi
-
-        pr_lookup "${path}" "${branch}" "${R_HEAD[id]}"
+        resolve_state "${path}" "${branch}" "${R_HEAD[id]}" "${repoidx}"
         R_PR[id]=${LK_PR}
         R_STATE[id]=${LK_STATE}
         R_REASON[id]=${LK_REASON}
@@ -686,7 +787,7 @@ function build_previews() {
         {
             echo "Branch: ${R_BRANCH[id]}"
             echo ""
-            echo "Verified pull requests:"
+            echo "Verification:"
             echo "${R_DETAIL[id]}"
             echo ""
             echo "Latest commits:"
@@ -909,9 +1010,9 @@ function remove_one() {
         return 0
     fi
 
-    pr_lookup "${path}" "${branch}" "${cur_head}"
+    resolve_state "${path}" "${branch}" "${cur_head}" "${repoidx}"
     if [[ ${LK_STATE} != MERGED && ${LK_STATE} != CLOSED ]]; then
-        reval_skip "${path}" "fresh PR check did not confirm a merged or closed PR: ${LK_REASON}"
+        reval_skip "${path}" "fresh check did not confirm merged or closed: ${LK_REASON}"
         return 0
     fi
 
@@ -960,7 +1061,7 @@ function print_summary() {
     echo "Summary:"
     echo "    ✅ Removed worktrees and branches: ${REMOVED_COUNT}"
     echo "    ℹ️ Known skipped worktrees: ${known_skips}"
-    echo "    ℹ️ Worktrees with unknown PR information: ${unknown}"
+    echo "    ℹ️ Worktrees with unknown merge state: ${unknown}"
     echo "    ℹ️ Skipped during final revalidation: ${REVAL_SKIPPED}"
     echo "    ❌ Failed or partially completed removals: ${FAILED_COUNT}"
 }
@@ -1000,7 +1101,7 @@ function main() {
         compute_exit
     fi
 
-    resolve_prs
+    resolve_states
     sort_rows
     render_table
     collect_removable
