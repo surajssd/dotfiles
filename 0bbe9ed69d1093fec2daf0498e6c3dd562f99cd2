@@ -1,0 +1,20 @@
+## Conversation
+User asked worktree-cleanup.sh to also remove worktrees whose branches were merged into the default branch directly, without a pull request, citing ~/code/work/github.com/coreweave/inference-evals where commits land on main by direct push and 8 worktrees never qualified. Asked in plan mode which default branch should count; user chose remote-tracking only (origin/main as last fetched), no local main, no fetch. Then asked to commit.
+
+## Actions
+Read the whole script and the previous commit's note. Surveyed every coreweave repo with many worktrees using merge-base --is-ancestor against origin/<default> to confirm the rule would catch them (inference-evals 7/8, infr-api 7/10 with default develop, inference-tools ~30/38). Verified the gh template `{{.nameWithOwner}}{{"\t"}}{{with .defaultBranchRef}}{{.name}}{{end}}` prints name<TAB>branch. Added REPO_TRUNK* parallel arrays, resolve_repo_trunk, trunk_lookup, resolve_state, rewired resolve_prs (renamed resolve_states) and the remove_one revalidation to resolve_state. Ran shellfmt.sh. Live read-only scans of inference-evals, infr-api, infr. End-to-end removal test under /bin/bash 3.2 with a file:// remote (gh fails there) plus unknown-default, no-remote and worktree-on-main cases. Committed with -s -S; the post-commit hook pushed master.
+
+## Errors & Mistakes
+First end-to-end test script ran under zsh via the tool shell and failed with `command not found: rg` and `PIPESTATUS[1]: parameter not set` because PATH was trimmed to a temp bin dir without rg and zsh has no PIPESTATUS. Rewrote it as a #!/bin/bash file with rg symlinked into the temp bin. My first attempt at the worktree-on-default-branch case checked out main detached in the linked worktree, so it hit the detached SKIP path instead; a second test using `git worktree add <path> main` while the main checkout sat on another branch exercised the `is the default branch` reason.
+
+## Dead Ends
+Considered git cherry (patch equivalence) for squash/rebase merges without a PR. Left out deliberately: it fires on whitespace-only equivalent diffs and would widen the removal rule beyond commit containment. Considered a main/master guessing tier and an "exactly one remote" fallback; dropped both after review, since gh plus the origin/HEAD symref cover the real repos and the error text tells the user how to fix the symref.
+
+## Hints for Future Agents
+resolve_state is the only entry point now and resets all four LK_* globals itself. pr_lookup also resets them but is skipped when gh fails, so do not call pr_lookup directly from anywhere new. Repositories where gh fails (offline, non-GitHub remote) used to be an immediate SKIP and now get the ancestry check; this is intentional and is what the file:// end-to-end test relies on. The exit code is still 1 whenever any row ends UNKNOWN, so a scan of a repo with one unpushed branch exits 1 even after successful removals. In inference-evals origin/HEAD is unset, so trunk resolution there depends on gh; with gh unavailable the row says `default branch unknown, run: git remote set-head origin --auto`. A linked worktree checked out on the default branch name is reported UNKNOWN with `is the default branch` and counts toward the nonzero exit.
+
+## Codebase Discoveries
+infr-api's default branch is develop, not main, and the script resolves it correctly via gh. Several coreweave repos have `worktree/<adjective>-<noun>-<hex>` branches created by herdr that are fully merged and now removable. The macOS system bash is 3.2.57; the tool shell is zsh, so bash-only test harnesses must be written to a file and run with /bin/bash explicitly.
+
+## Open Questions
+Whether UNKNOWN rows should still force exit 1 now that most former "no PR found" rows resolve. Whether to add an opt-in fetch of the default branch before checking; the user declined it for now.
