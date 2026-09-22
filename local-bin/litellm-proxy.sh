@@ -44,6 +44,10 @@ function get_secret() {
         return 0
     fi
 
+    if [[ "${3:-required}" == "optional" ]]; then
+        return 0
+    fi
+
     err "❌ No ${description} is available."
     err "   Set ${name} or save it in Keychain service '${name}'."
     return 1
@@ -77,10 +81,10 @@ function run_compose() {
     require_docker
     litellm_master_key=$(get_secret LITELLM_MASTER_KEY "LiteLLM proxy key")
     litellm_salt_key=$(get_secret LITELLM_SALT_KEY "LiteLLM salt key")
-    wandb_api_key=$(get_secret WANDB_API_KEY "W&B API key")
-    wandb_qa_api_key=$(get_secret WANDB_QA_API_KEY "W&B QA API key")
-    wandb_openai_project=$(get_secret WANDB_OPENAI_PROJECT "W&B OpenAI project")
-    wandb_qa_openai_project=$(get_secret WANDB_QA_OPENAI_PROJECT "W&B QA OpenAI project")
+    wandb_api_key=$(get_secret WANDB_API_KEY "W&B API key" optional)
+    wandb_qa_api_key=$(get_secret WANDB_QA_API_KEY "W&B QA API key" optional)
+    wandb_openai_project=$(get_secret WANDB_OPENAI_PROJECT "W&B OpenAI project" optional)
+    wandb_qa_openai_project=$(get_secret WANDB_QA_OPENAI_PROJECT "W&B QA OpenAI project" optional)
 
     LITELLM_MASTER_KEY="${litellm_master_key}" \
         LITELLM_SALT_KEY="${litellm_salt_key}" \
@@ -250,11 +254,14 @@ function usage() {
     echo "  LITELLM_MODEL       Claude Code model (default: ${DEFAULT_LITELLM_MODEL})"
     echo "  LITELLM_MASTER_KEY  Proxy key"
     echo "  LITELLM_SALT_KEY    DB encryption salt; set once and never change it"
-    echo "  WANDB_API_KEY       W&B Inference key"
-    echo "  WANDB_QA_API_KEY    W&B QA Inference key"
+    echo "  WANDB_API_KEY       W&B Inference key (optional)"
+    echo "  WANDB_QA_API_KEY    W&B QA Inference key (optional)"
+    echo "  WANDB_OPENAI_PROJECT     W&B OpenAI project (optional)"
+    echo "  WANDB_QA_OPENAI_PROJECT  W&B QA OpenAI project (optional)"
     echo ""
     echo "Each key falls back to the macOS Keychain entry whose service name"
     echo "equals the variable name."
+    echo "W&B settings are only needed when using the corresponding W&B models."
     echo ""
     echo "Example:"
     echo "  litellm-proxy.sh claude --dangerously-skip-permissions --allow-dangerously-skip-permissions"
