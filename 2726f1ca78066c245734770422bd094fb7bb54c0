@@ -1,0 +1,20 @@
+## Conversation
+User ran gpo.sh with no arguments in the ai-dynamo/dynamo repo and got "line 35: push_args[@]: unbound variable". Asked why it fails, then asked to commit the fix.
+
+## Actions
+Read local-bin/gpo.sh. Checked `which -a bash` and `bash --version`: /usr/bin/env bash resolves to /bin/bash 3.2.57 on this Mac. Searched local-bin for an existing idiom and found ${flags[@]+"${flags[@]}"} in essential-brew-overrides.sh:91. Applied the same idiom on line 35. Ran shellfmt.sh (shellcheck + shfmt pass) and a /bin/bash -u smoke test with empty and one-element arrays.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+Every script in local-bin runs under bash 3.2 on macOS. Any "${arr[@]}" expansion of a possibly empty array under set -u must use the ${arr[@]+"${arr[@]}"} idiom. The git-autopush-post-commit hook pushes master to origin immediately on commit, so there is no separate push step; notes still need an explicit push of refs/notes/commits.
+
+## Codebase Discoveries
+gpo.sh was added in 975d819 with the --copilot flag; the empty-array bug was latent since then and only surfaces when no extra push arguments are given on macOS.
+
+## Open Questions
+None.
