@@ -1,0 +1,21 @@
+## Conversation
+The user asked to make wta and wtpr create worktrees under ~/.herdr/worktrees, creating missing directories first. The user then asked to commit the change.
+
+## Actions
+Read configs/aliases/git, its recent history with notes, CLAUDE.md, and local-bin/shellfmt.sh. Updated both worktree destinations while preserving their directory naming pattern. Added mkdir -p with an immediate return on failure. Ran shellfmt.sh configs/aliases/git, Bash and Zsh syntax checks, and git diff --check successfully. Read the conventional-commits skill and validated the commit message with its bundled validator. Committed the staged alias change with -s -S. Disabled hooks for this invocation because the active post-commit hook automatically pushes to GitHub and the user's instructions prohibit publishing. Left the unrelated configs/herdr/config.toml modification uncommitted.
+
+## Errors & Mistakes
+A search included a nonexistent config path and printed: rg: configs/gitconfig: No such file or directory (os error 2). Continued by reading the actual post-commit hook and inspecting Git configuration directly.
+The first combined commit command was rejected before execution because its temporary-file cleanup used rm -f: "rm -f style commands are not permitted. Use a safer approach". Retried with plain rm for the single temporary file created by this command.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+The post-commit hook automatically pushes commits on main/master and can rebase if the push fails. Use an invocation-scoped hooks override when a commit must remain local. No remote push was authorized in this session. The directory prefix still comes from basename of PWD, matching the prior behavior.
+
+## Codebase Discoveries
+The aliases file is sourced by Bash and Zsh. ~/.herdr/worktrees already existed on this machine. wta still switches to an existing branch's registered worktree regardless of its location. wtpr retains its existing GitHub CLI checkout and failure cleanup behavior.
+
+## Open Questions
+None. Validation covered lint, formatting, and syntax; no real worktrees or pull requests were created during verification.
