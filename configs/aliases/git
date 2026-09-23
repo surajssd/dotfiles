@@ -132,13 +132,16 @@ wta() {
     current_dir_name="$(basename "$PWD")"
     # Sanitize branch name for the directory (replace slashes with dashes)
     local sanitized_branch_name="${branch_name//\//-}"
-    local worktree_dir="../${current_dir_name}-${sanitized_branch_name}"
+    local worktree_root="$HOME/.herdr/worktrees"
+    local worktree_dir="${worktree_root}/${current_dir_name}-${sanitized_branch_name}"
 
     # Check if worktree directory already exists
     if [[ -d "$worktree_dir" ]]; then
         echo "Error: Directory '$worktree_dir' already exists"
         return 1
     fi
+
+    mkdir -p "$worktree_root" || return 1
 
     # Existing branch with no worktree → reuse it; otherwise create a new branch.
     if [[ $branch_exists -eq 1 ]]; then
@@ -203,11 +206,12 @@ wtpr() {
         branch=$(echo "$pr" | awk '{print $2}')
     fi
 
-    # Match wta's naming: ../<repo-dir>-<branch> with slashes sanitized.
+    # Match wta's naming: <repo-dir>-<branch> with slashes sanitized.
     local current_dir_name safe_branch worktree_dir
+    local worktree_root="$HOME/.herdr/worktrees"
     current_dir_name="$(basename "$PWD")"
     safe_branch="${branch//\//-}"
-    worktree_dir="../${current_dir_name}-${safe_branch}"
+    worktree_dir="${worktree_root}/${current_dir_name}-${safe_branch}"
 
     if [[ -d "$worktree_dir" ]]; then
         echo "❌ Directory '$worktree_dir' already exists" >&2
@@ -231,6 +235,8 @@ wtpr() {
     # remote for. (`--set-upstream-to origin/<branch>` could not: the branch isn't
     # on origin/upstream, so it failed silently.) `--no-checkout` skips populating
     # files gh is about to overwrite anyway.
+    mkdir -p "$worktree_root" || return 1
+
     local orig_dir="$PWD"
     if ! git worktree add --detach --no-checkout "$worktree_dir"; then
         echo "❌ Failed to create worktree for PR #${pr_number}" >&2
