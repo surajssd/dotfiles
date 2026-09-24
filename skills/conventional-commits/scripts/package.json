@@ -2,8 +2,8 @@
   "name": "conventional-commits-skill-linter",
   "private": true,
   "dependencies": {
-    "commitlint": "21.2.2",
-    "@commitlint/config-conventional": "21.2.2",
+    "commitlint": "21.2.3",
+    "@commitlint/config-conventional": "21.2.3",
     "conventional-changelog-conventionalcommits": "10.4.0"
   }
 }
