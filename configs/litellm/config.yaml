@@ -25,6 +25,12 @@ model_list:
     allowed_openai_params: &reasoning_effort_passthrough
     - reasoning_effort
     extra_headers: *copilot_headers
+- model_name: claude-opus-5-5
+  litellm_params:
+    model: github_copilot/claude-opus-5.5
+    reasoning_effort: xhigh
+    allowed_openai_params: *reasoning_effort_passthrough
+    extra_headers: *copilot_headers
 - model_name: claude-fable-5
   litellm_params:
     model: github_copilot/claude-fable-5
