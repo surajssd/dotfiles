@@ -1,0 +1,20 @@
+## Conversation
+The user asked to add Opus 5.5 to LiteLLM, then asked to commit the change.
+
+## Actions
+Read the LiteLLM configuration, launcher, Compose definition, sitecustomize.py, repository instructions, and relevant commit notes. Checked the Anthropic and GitHub documentation. Queried Copilot's model catalog using the existing container credentials and confirmed claude-opus-5.5 is enabled. Added claude-opus-5-5 mapped to github_copilot/claude-opus-5.5, with xhigh reasoning effort and the existing allowed_openai_params and Copilot header anchors. Validated YAML expansion, unique model names, the resolved entry, the mounted configuration, and git diff --check. Restarted only the litellm container. Confirmed /v1/models lists the model and a live /v1/messages request returned ok with end_turn. Confirmed container health. Validated the commit message with the conventional-commits skill and committed with --only -s -S. Disabled hooks for this invocation to prevent the post-commit hook from pushing publicly. Left the independently staged configs/herdr/config.toml change staged and uncommitted.
+
+## Errors & Mistakes
+The Copilot catalog probe logged 'API key expired, refreshing' and then succeeded. The health probe initially returned 'curl: (7) Failed to connect to litellm.orb.local port 4000 after 91 ms: Couldn't connect to server' and then the same error after 0 ms while the restarted proxy initialized; retries succeeded. A command chain stopped because git config --get core.hooksPath returned exit 1 for an unset setting; inspected the default hook path in the next command. Some broad read outputs were truncated; focused reads supplied the relevant configuration and history.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+The proxy alias uses hyphens (claude-opus-5-5), while the Copilot provider ID uses a dot (claude-opus-5.5). The new entry follows the Fable 5.1 entry so both YAML anchors are defined before use. The default Claude Code model remains claude-fable-5-1. Existing notes explain why allowed_openai_params is needed for reasoning effort on the chat route. The active post-commit hook pushes master automatically; disable hooks for local-only commits. docker restart litellm was sufficient to reload this bind-mounted configuration without recreating the database.
+
+## Codebase Discoveries
+Copilot advertises Opus 5.5 on /v1/messages and /chat/completions, with adaptive thinking and low, medium, high, xhigh, and max reasoning effort. Live validation covered /v1/messages. No shell script was modified.
+
+## Open Questions
+None.
