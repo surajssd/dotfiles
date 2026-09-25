@@ -93,11 +93,13 @@ wt() {
 # Create (or switch to) a worktree for a branch and cd into it.
 # New branch: creates it. Existing branch: cd to its worktree, or make one.
 wta() {
-    local branch_name="$1"
+    local branch_name="${1:-}"
+    local base_branch="${2:-HEAD}"
 
-    if [[ -z "$branch_name" ]]; then
-        echo "Usage: wta <branch-name>"
+    if [[ -z "$branch_name" || $# -gt 2 ]]; then
+        echo "Usage: wta <branch-name> [base-branch]"
         echo "Creates (or switches to) a worktree for <branch-name> and changes into it."
+        echo "New branches start from <base-branch> (default: HEAD)."
         return 1
     fi
 
@@ -110,6 +112,11 @@ wta() {
     local branch_exists=0
     if git show-ref --verify --quiet "refs/heads/$branch_name"; then
         branch_exists=1
+    fi
+
+    if [[ $branch_exists -eq 1 && $# -eq 2 ]]; then
+        echo "❌ Branch '$branch_name' already exists; omit <base-branch> to use it." >&2
+        return 1
     fi
 
     # If the branch already exists and is checked out in a worktree, go there.
@@ -148,8 +155,8 @@ wta() {
         echo "Creating worktree '$worktree_dir' for existing branch '$branch_name'..."
         git worktree add "$worktree_dir" "$branch_name"
     else
-        echo "Creating worktree '$worktree_dir' with new branch '$branch_name'..."
-        git worktree add -b "$branch_name" "$worktree_dir"
+        echo "Creating worktree '$worktree_dir' with new branch '$branch_name' from '$base_branch'..."
+        git worktree add -b "$branch_name" "$worktree_dir" "$base_branch"
     fi || {
         echo "Failed to create worktree"
         return 1
