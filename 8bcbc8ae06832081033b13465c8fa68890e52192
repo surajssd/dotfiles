@@ -1,0 +1,20 @@
+## Conversation
+The user asked wta to accept a base branch other than main or master for stacked PRs. After implementation and verification, the user asked to commit and push the change.
+
+## Actions
+Read configs/aliases/git, CLAUDE.md, the relevant Git history and commit notes, README.md, and local-bin/shellfmt.sh. Added the optional second positional base branch argument, defaulting to HEAD. Updated usage and creation output. Rejected extra arguments and an explicit base for an existing target branch. Ran shellfmt.sh, Bash and Zsh syntax checks, and git diff --check successfully. Ran real-worktree integration checks in temporary local clones under /bin/bash and /bin/zsh for local and remote bases, default HEAD from main and a feature branch, existing branches with and without worktrees, invalid bases, missing arguments, and excess arguments. All checks passed, and test clones and worktrees were removed. Read the conventional-commits skill and validated the commit message. Fetched origin/master and remote notes. Fast-forwarded master over non-overlapping dependency updates. Confirmed remote notes are an ancestor of local notes. Committed only configs/aliases/git with --only -s -S and invocation-scoped hooks disabled so this note can be attached before the explicitly requested push. Left the unrelated configs/herdr/config.toml modification uncommitted.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+The syntax is wta <branch-name> [base-branch]. Existing behavior already used the current HEAD, not a hardcoded main or master branch. An explicit base is rejected when the target branch already exists, so it cannot silently ignore the requested base or reset an existing branch. The aliases file is sourced by both Bash and Zsh. Existing interactive shells need to source the aliases file again. The post-commit hook automatically pushes master and may rebase; bypass it when a note must be attached before pushing. Push master and refs/notes/commits together after attaching this note.
+
+## Codebase Discoveries
+There is no dedicated test suite for these shell aliases. Temporary shared local clones provide real worktree coverage without creating test commits. Worktrees use the current directory basename under ~/.herdr/worktrees, and branch slashes become dashes in directory names. Selecting a base only sets the starting commit; this function does not create a PR or configure its target branch.
+
+## Open Questions
+None.
