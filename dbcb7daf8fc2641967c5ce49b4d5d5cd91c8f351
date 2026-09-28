@@ -1,0 +1,20 @@
+## Conversation
+The user asked to do the same for the newly cached changes after the previous signed, local-only Humanizer commit. The staged set contains three PR multi-agent review files. The request was to commit the existing changes, without a push.
+
+## Actions
+Inspected git status, the complete staged diff, relevant commit history with notes, and the unstaged configuration diff. Read the shell formatter and runner context. Used the conventional-commits skill already read in this conversation. Ran bash -n, shellcheck, shfmt -d -i 4, and shellfmt.sh on run_reviewer.sh; all passed and the formatter made no content changes. Ran git diff --cached --check successfully. Confirmed the three staged files contain 139 insertions and 49 deletions, and reviewed the combined diff statistics against the merge base with origin/master, which also include the previously reviewed Humanizer commit and the unrelated unstaged Herdr setting. The commit message passed commitlint with zero problems and zero warnings. Verified the index tree remained 4d07ea5c2c2f9a6413e1aa225538b14d75d8d76a, then committed with -s -S and invocation-scoped hooks disabled. Attached this note immediately after committing. No source content was authored or restaged in this turn, and no generated files were added.
+
+## Errors & Mistakes
+A search for test files or nested agent guidance returned no matches and exit 1, which skipped a subsequent redundant git log command in the same shell chain. Relevant commit history had already been read successfully in the initial call.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+The post-commit hook automatically pushes master, so disable hooks for a local-only commit. This change belongs only to skills/pr-multi-agent-review; the plan review skill is not changed. agy and cursor pass their prompts through argv, with the operating system argument-size limit. The agy delivery note is specific to that CLI. The runner intentionally omits set -e because reviewer failures are classified explicitly.
+
+## Codebase Discoveries
+Prior relevant history includes 572e3eb, feat(multi-agent-review): swap `gemini` reviewer for `agy` (Antigravity CLI), which recorded the old stdin approach as unverified. The staged update documents live observations of agy 1.2.x rejecting an empty prompt, requiring headless permissions and workspace trust, and emitting review text through a shell instead of its final response without a delivery note. It also documents stale Cursor logins and adds recovery hints for authentication and permission failures. These live observations were already present in the staged changes; this turn performed static checks only and did not launch reviewer agents or change their settings.
+
+## Open Questions
+None for the commit request. The unrelated configs/herdr/config.toml modification remains unstaged. Live reviewer behavior was not re-tested in this turn.
