@@ -1,0 +1,20 @@
+## Conversation
+The user asked to commit the cached code and use previous commits as precedent. The staged changes refresh the vendored Humanizer skill to v3.1.0. The request did not include a push or changes to the staged content.
+
+## Actions
+Read the conventional-commits skill, repository guidance, Humanizer guidance, recent history, and earlier Humanizer vendoring commits with their notes. Inspected the staged changes and unrelated unstaged changes. Confirmed the staged scope is six Humanizer files, with 323 insertions and 105 deletions. Cloned blader/humanizer and compared every indexed Humanizer file to upstream HEAD 225a6f39ac85f76ee48dbad772ea4abe4ed6c9d8. Every file matched after removing the expected local metadata.author attribution from SKILL.md. Ran scripts/validate-package.py in the complete upstream clone, which reported Humanizer package v3.1.0 is valid. Validated the Cursor manifest with jq and ran git diff --cached --check. The commit message passed the conventional-commits validator with zero problems and zero warnings. Committed the existing index with -s -S and invocation-scoped hooks disabled to prevent an automatic push. Attached this note immediately after committing.
+
+## Errors & Mistakes
+Several combined diff and history reads exceeded tool output limits. Re-read the affected diffs in smaller calls. A config lookup exited 1 because core.hooksPath was unset; a later lookup and hook directory inspection confirmed the active post-commit symlink.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+The post-commit hook automatically pushes master and may rebase. Disable hooks for a local-only commit. The vendoring script deliberately excludes .claude-plugin, so the package validator requires the complete upstream clone. No package files were added to work around that existing exclusion. The injected metadata.author line is expected and must survive future vendoring.
+
+## Codebase Discoveries
+The previous Humanizer vendoring commit was 5a25dad and used docs(skills): re-vendor humanizer from upstream v3.0.0 with an upstream SHA in the body. This refresh adds a 26th pattern about replies repeating known context, a Cursor manifest, a separate changelog, revised examples, and stronger package validation. All six changed files are vendored upstream content; no generated build artifacts or local source edits were introduced.
+
+## Open Questions
+None. Pre-existing unstaged changes in configs/herdr/config.toml and three skills/pr-multi-agent-review files remain outside this commit.
