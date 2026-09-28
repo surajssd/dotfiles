@@ -18,12 +18,11 @@
 # on stdin, via a file redirect (`tool < prompt`). stdin has no argv size limit, so
 # large PRs are fine, and a file redirect (not a pipe) means a tool that exits without
 # draining stdin does NOT make us take SIGPIPE. claude, codex, and opencode were
-# verified to read the full prompt from stdin; agy (Google Antigravity CLI) is wired
-# by analogy to its gemini-cli lineage but not yet live-verified — see the note in
-# references/reviewer-cli-matrix.md. cursor (cursor-agent) is the one exception BY
-# DESIGN, not by omission: its CLI takes the prompt as an argv string with no
-# documented stdin support, so its branch below reads ${PROMPT_BUILT} into the argv
-# instead of relying on this redirect.
+# verified to read the full prompt from stdin. Two tools are exceptions BY DESIGN, not
+# by omission, and read ${PROMPT_BUILT} into their argv instead of relying on this
+# redirect: cursor (cursor-agent) has no documented stdin support, and agy (Google
+# Antigravity CLI 1.2.x) rejects `-p ""` with the prompt on stdin ("empty prompt").
+# See references/reviewer-cli-matrix.md for both.
 #
 # Writes the review to --output-file and a one-line status to <output-file>.status.
 # Always exits 0 (a failed reviewer is recorded, not fatal) so a background fan-out
@@ -112,6 +111,16 @@ mkdir -p "$(dirname "${OUTPUT_FILE}")"
 # with different models/efforts under distinct labels. The collator keys on the label.
 IDENTITY="You are the panel member labelled \"${LABEL}\"${MODEL:+ (model: ${MODEL})}${EFFORT:+ (effort: ${EFFORT})}. Begin your review's \"# Review by …\" heading with exactly \"${LABEL}\" so your output is attributed correctly when collated."
 
+# agy takes the prompt's "write your review to stdout" literally: without this note it
+# ran a shell `echo` of the review inside a tool call, headless mode discarded that
+# output, and its final message was a three-line summary claiming the review had been
+# printed (status ok-empty). Telling it that its final response text IS the captured
+# stdout produced a sentinel-clean review on the same PR (agy 1.2.6, 2026-09-28).
+PREAMBLE=""
+if [ "${TOOL}" = "agy" ]; then
+    PREAMBLE='DELIVERY NOTE: the text of your final response is what the collator captures as "stdout". Do NOT run a shell command such as echo, cat, or printf to print the review; write the whole review, including both sentinel lines, directly as your final response text.'
+fi
+
 # safe_fence FILE — longest fence that the file's content cannot close. CommonMark
 # lets a closing fence carry ≤3 leading spaces and trailing spaces, so we must treat
 # `   ~~~~  ` as a tilde run too, not only pure-tilde lines — otherwise indented
@@ -137,6 +146,7 @@ trap 'rm -f "${PROMPT_BUILT}"' EXIT
 
 {
     printf '%s\n\n' "${IDENTITY}"
+    [ -n "${PREAMBLE}" ] && printf '%s\n\n' "${PREAMBLE}"
     cat "${PROMPT_FILE}"
 } >"${PROMPT_BUILT}"
 
@@ -240,11 +250,14 @@ run_guarded() {
     return "${rc}"
 }
 
-# Build the per-tool command. The prompt arrives on stdin for EVERY tool (via the
-# redirect in run_guarded), so each command takes an empty prompt slot — `-p ""`,
-# `run ""`, etc. — and the model flag goes BEFORE any positional/stdin marker. Each
-# branch mirrors a row in references/reviewer-cli-matrix.md.
+# Build the per-tool command. The prompt arrives on stdin (via the redirect in
+# run_guarded) for every tool except agy and cursor, so those commands take an empty
+# prompt slot — `-p`, `run ""`, `-` — and the model flag goes BEFORE any
+# positional/stdin marker. Each branch mirrors a row in references/reviewer-cli-matrix.md.
+# LOGIN_HINT names the command that repairs an authentication failure for tools where
+# that command is known; the status line quotes it so the orchestrator can relay it.
 declare -a CMD
+LOGIN_HINT=""
 case "${TOOL}" in
 claude)
     CMD=(claude -p --permission-mode plan)
@@ -260,13 +273,17 @@ codex)
     CMD+=(-)
     ;;
 agy)
-    # Google Antigravity CLI (gemini-cli lineage). `agy -p ""` runs print mode and reads
-    # the prompt from stdin. It has no hard read-only mode like gemini's `--approval-mode
-    # plan`; `--sandbox` is the nearest — it runs terminal-restricted AND auto-approves tool
-    # calls (so a headless run won't hang on a permission prompt) while still letting the
-    # agent read repo source. `--print-timeout` is pinned to our outer guard so agy's default
-    # 5-minute print wait can't truncate a long review before the watchdog acts.
-    CMD=(agy -p "" --sandbox --print-timeout "${TIMEOUT}s")
+    # Google Antigravity CLI (gemini-cli lineage). agy 1.2.x rejects `-p ""` with the prompt
+    # on stdin (`error: Error: empty prompt. Usage: agy --print "your prompt here"`), so like
+    # cursor it gets the assembled prompt as the -p argv string — same argv-size caveat.
+    # It has no hard read-only mode like gemini's `--approval-mode plan`; `--sandbox` is the
+    # nearest — terminal-restricted, and it auto-approves tool calls so a headless run won't
+    # hang on a permission prompt. Headless mode still auto-DENIES any tool that is not
+    # listed under permissions.allow in ~/.gemini/antigravity-cli/settings.json, and it
+    # refuses a cwd missing from trustedWorkspaces there; a denial is detected below and
+    # reported as an actionable status. `--print-timeout` (default 0 = unbounded) is pinned
+    # to our outer guard so agy can end its turn cleanly before the watchdog kills it.
+    CMD=(agy -p "$(cat "${PROMPT_BUILT}")" --sandbox --print-timeout "${TIMEOUT}s")
     [ -n "${MODEL}" ] && CMD+=(--model "${MODEL}")
     [ -n "${EFFORT}" ] && err "ℹ️ [${LABEL}] agy has no reasoning-effort flag; ignoring --effort ${EFFORT}"
     ;;
@@ -287,7 +304,11 @@ cursor)
     # stdin redirect run_guarded gives every command, read the assembled prompt into the
     # argv itself. This can hit the OS argv-size limit on very large diffs/plans — a
     # different, less graceful failure than this script's context-overflow detection.
+    #
+    # `cursor-agent status` can report "Login successful!" while `-p` runs still fail with
+    # "Authentication required" (stale stored login, 2026-09-28); `cursor-agent login` fixes it.
     CMD=(cursor-agent -p "$(cat "${PROMPT_BUILT}")" --plan --trust --output-format text)
+    LOGIN_HINT="cursor-agent login"
     [ -n "${MODEL}" ] && CMD+=(--model "${MODEL}")
     [ -n "${EFFORT}" ] && err "ℹ️ [${LABEL}] cursor has no reasoning-effort flag; pick a different --model (e.g. cursor-grok-4.5-medium) instead; ignoring --effort ${EFFORT}"
     ;;
@@ -305,10 +326,10 @@ cursor)
     ;;
 esac
 
-# cursor is the one tool whose prompt arrives via argv, not the stdin redirect every
-# other command gets from run_guarded — say so accurately in the progress line.
+# agy and cursor receive the prompt via argv, not the stdin redirect every other
+# command gets from run_guarded — say so accurately in the progress line.
 DELIVERY="via stdin"
-[ "${TOOL}" = "cursor" ] && DELIVERY="via argv"
+case "${TOOL}" in agy | cursor) DELIVERY="via argv" ;; esac
 echo "⏳ [${LABEL}] running ${TOOL}${MODEL:+ (model: ${MODEL})}${EFFORT:+ (effort: ${EFFORT})} ${DELIVERY} ..." >&2
 START="$(date +%s)"
 
@@ -397,6 +418,39 @@ record_overflow() {
     err "❌ [${LABEL}] ${OVERFLOW_HINT}"
 }
 
+# Did the CLI refuse because its stored login is missing or stale? Matched on stderr
+# only (the tool's own error stream), never on review prose. Observed: cursor-agent
+# `Error: Authentication required. Please run 'agent login' first, or set CURSOR_API_KEY
+# environment variable.` while `cursor-agent status` still claimed to be logged in.
+looks_like_auth_failure() {
+    has_both_sentinels && return 1
+    grep -qiE 'authentication required|not (logged|signed) in|please (log|sign) in|login required|run .{0,20}login' \
+        "${ERR_FILE}" 2>/dev/null
+}
+
+AUTH_HINT="${TOOL} is not logged in; run '${LOGIN_HINT:-the ${TOOL} login command}' and re-run this label once"
+record_auth_failure() {
+    write_stub "NOT LOGGED IN"
+    echo "errored: ${AUTH_HINT}" >"${STATUS_FILE}"
+    err "❌ [${LABEL}] ${AUTH_HINT}"
+}
+
+# Did agy's headless mode auto-deny a tool call? It then exits 0 with empty stdout and
+# a stderr line such as `jetski: no output produced — a tool required the "read_file"
+# permission that headless mode cannot prompt for, so it was auto-denied`. The fix is a
+# settings.json allow list, so say so instead of reporting a bare "no output".
+looks_like_denied_permission() {
+    has_both_sentinels && return 1
+    grep -qiE 'auto-denied|cannot prompt for|permission .*denied' "${RAW_FILE}" "${ERR_FILE}" 2>/dev/null
+}
+
+DENIED_HINT="${TOOL} auto-denied a tool permission in headless mode; add the permissions.allow list and this repo's path to trustedWorkspaces in ~/.gemini/antigravity-cli/settings.json (see references/reviewer-cli-matrix.md), then re-run this label once"
+record_denied_permission() {
+    write_stub "TOOL PERMISSION AUTO-DENIED"
+    echo "errored: ${DENIED_HINT}" >"${STATUS_FILE}"
+    err "❌ [${LABEL}] ${DENIED_HINT}"
+}
+
 # Decide status. Distinguish the common exit codes rather than collapsing all
 # failures into "FAILED": 124 = timeout, 126 = found-but-not-executable, 127 =
 # command not found (e.g. CLI vanished from PATH mid-run).
@@ -429,7 +483,9 @@ elif [ "${RC}" -eq 0 ] && [ -s "${RAW_FILE}" ]; then
         err "⚠️  [${LABEL}] finished but produced no usable review."
     fi
 elif [ "${RC}" -eq 0 ]; then
-    if looks_like_context_overflow; then
+    if looks_like_denied_permission; then
+        record_denied_permission
+    elif looks_like_context_overflow; then
         record_overflow
     else
         write_stub "PRODUCED NO OUTPUT"
@@ -437,7 +493,11 @@ elif [ "${RC}" -eq 0 ]; then
         err "⚠️  [${LABEL}] exited 0 but wrote nothing to stdout."
     fi
 else
-    if looks_like_context_overflow; then
+    if looks_like_auth_failure; then
+        record_auth_failure
+    elif looks_like_denied_permission; then
+        record_denied_permission
+    elif looks_like_context_overflow; then
         record_overflow
     else
         write_stub "FAILED"

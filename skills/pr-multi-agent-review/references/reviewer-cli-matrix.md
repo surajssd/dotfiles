@@ -12,7 +12,7 @@ every tool to wrap its review in `===PR-REVIEW-BEGIN===`/`===PR-REVIEW-END===` s
 `run_reviewer.sh` extracts between them, which is how any TUI progress chatter a tool prints
 to stdout gets stripped out of the saved review.
 
-## Prompt delivery: stdin for every tool except cursor
+## Prompt delivery: stdin for every tool except agy and cursor
 
 Early versions of this skill treated `opencode` as **argv-only** and passed the prompt as a
 single command-line argument — bounded on **Linux to 128 KiB per argv element**
@@ -22,12 +22,16 @@ run `git diff` itself) or hard-truncated the prompt, so that reviewer reviewed a
 That split was based on a wrong assumption: `opencode` reads the full prompt from stdin —
 verified by piping a 450 KiB prompt whose only real instruction sat at the very *tail* and
 confirming the tool acted on it (so nothing was truncated). The other CLIs (`claude`, `codex`)
-were verified the same way. `agy` (Google Antigravity CLI) is wired by analogy to its gemini-cli
-lineage but is **not yet live-verified**: agy binds a localhost port that the offline test
-sandbox refuses, so smoke-test it on a real run. `run_reviewer.sh` therefore delivers **every**
-tool's prompt — instructions + context + the full embedded diff — on **stdin** via a file
-redirect (`tool < file`, not a pipe, so a tool that exits without draining stdin doesn't trigger
-SIGPIPE). There is no argv cap, no diff-pointer fallback, and no truncation for any tool.
+were verified the same way. `run_reviewer.sh` therefore delivers those three tools' prompt —
+instructions + context + the full embedded diff — on **stdin** via a file redirect
+(`tool < file`, not a pipe, so a tool that exits without draining stdin doesn't trigger
+SIGPIPE). There is no argv cap, no diff-pointer fallback, and no truncation for those tools.
+
+`agy` (Google Antigravity CLI) was wired the same way by analogy to its gemini-cli lineage, and
+live runs proved that wrong: agy 1.2.5 and 1.2.6 exit 1 on `agy -p "" < prompt` with
+`error: Error: empty prompt. Usage: agy --print "your prompt here"`. It never reads the prompt
+from stdin, so its branch now passes the assembled prompt as the `-p` argv string, exactly like
+cursor below, with the same argv-size caveat.
 
 **`cursor` reopens exactly the argv problem this section describes, by design, not oversight.**
 `agent --help` documents its prompt as a positional argv argument
@@ -41,7 +45,7 @@ against a realistically large diff before trusting it here.
 |---|---|
 | `claude` | full prompt + diff on **stdin** |
 | `codex` | full prompt + diff on **stdin** (trailing `-`) |
-| `agy` | full prompt + diff on **stdin** (`-p ""`) |
+| `agy` | full prompt + diff on **argv** (`-p "<prompt>"`) — 1.2.x rejects `-p ""` + stdin |
 | `opencode` | full prompt + diff on **stdin** (`run ""`) |
 | `cursor` | full prompt + diff on **argv** (`-p "<prompt>"`) — no stdin support |
 
@@ -49,7 +53,7 @@ against a realistically large diff before trusting it here.
 |---|---|---|---|---|---|
 | `claude` | `claude -p` (prompt on stdin) | `--permission-mode plan` | `--model <id>` | *(none)* | Plan mode can't edit/run mutating tools. No reasoning-effort flag in `-p` mode. |
 | `codex` | `codex exec -` (stdin) | `--sandbox read-only` | `-m <id>` | `-c model_reasoning_effort="<lvl>"` | Trailing `-` makes `exec` read the prompt from stdin. Effort is a config override (precede the `-`). |
-| `agy` | `agy -p ""` (stdin) | `--sandbox` (soft) | `--model <id>` | *(none)* | Google Antigravity CLI. No hard read-only mode; `--sandbox` is terminal-restricted **and** auto-approves so a headless run can't hang. No reasoning-effort flag. **Not yet live-verified.** |
+| `agy` | `agy -p "<prompt>"` (argv) | `--sandbox` (soft) | `--model <id>` | *(none)* | Google Antigravity CLI. No hard read-only mode; `--sandbox` is terminal-restricted **and** auto-approves so a headless run can't hang. Headless mode auto-denies tools missing from `permissions.allow` in `~/.gemini/antigravity-cli/settings.json` and needs the repo in `trustedWorkspaces`. The runner prepends a delivery note so it does not `echo` the review through a shell. No reasoning-effort flag. Live-verified on 1.2.6 (2026-09-28). |
 | `opencode` | `opencode run ""` (stdin) | *(none)* | `-m provider/model` | `--variant <lvl>` | No hard read-only; rely on prompt + git check. Model needs `provider/` prefix. `--variant` is provider-specific reasoning effort. |
 | `cursor` | `cursor-agent -p "<prompt>"` (argv) | `--plan` | `--model <id>` | *(none — pick a different model id)* | Binary is `cursor-agent` (aliased `agent`). `--plan` is a genuine hard read-only mode, same tier as `claude`/`codex`. `--trust` avoids a workspace-trust prompt hang. Grok 4.5 ids: `cursor-grok-4.5-high\|medium\|low`, each with a `-fast` variant. No reasoning-effort flag — use a different Grok id instead. |
 
@@ -82,21 +86,43 @@ which must likewise precede the `-`.
 
 ### agy
 ```bash
-printf '%s' "$PROMPT" | agy -p "" --sandbox --print-timeout "${TIMEOUT}s" [--model "$MODEL"]
+agy -p "$(cat prompt-file)" --sandbox --print-timeout "${TIMEOUT}s" [--model "$MODEL"]
 ```
 `agy` is the Google **Antigravity CLI** (gemini-cli lineage — note the `~/.gemini/antigravity-cli`
-config path). `agy -p ""` (alias `--print`/`--prompt`) runs a single prompt non-interactively and
-reads the prompt from stdin, so no argv size limit applies. Unlike the old gemini CLI it has **no
-hard read-only mode** (`--approval-mode plan` does not exist here); `--sandbox` is the closest —
-the binary documents it as "a sandbox with terminal restrictions" that also **auto-approves** tool
-calls ("Sandbox mode: auto-approve in sandbox") and overrides the per-file "Allow access?" prompt,
-so a headless run reads source freely without hanging on a confirmation. That makes agy *soft*
-read-only (writes aren't hard-blocked), so it sits with opencode on the trust boundary, not with
-claude/codex. `--print-timeout` (default 5m) is pinned to the outer timeout so a long review isn't
-truncated. Avoid `--dangerously-skip-permissions` — that auto-approves shell too, the opposite of
-what a reviewer wants. **Caveat:** agy starts a local language-server process and binds a localhost
-port, which the offline test sandbox blocks, so its stdin round-trip is wired by analogy to
-gemini-cli and **not yet live-verified** — smoke-test on a real PR.
+config path). `-p` (alias `--print`/`--prompt`) runs a single prompt non-interactively; the prompt
+must be the argument itself, because 1.2.x rejects an empty `-p ""` with the prompt on stdin
+(`error: Error: empty prompt`). That puts agy on the argv path with cursor, so the OS argv-size
+ceiling applies — smoke-test on a large diff. Unlike the old gemini CLI it has **no hard read-only
+mode** (`--approval-mode plan` does not exist here); `--sandbox` is the closest — the binary
+documents it as "a sandbox with terminal restrictions" that also **auto-approves** tool calls
+("Sandbox mode: auto-approve in sandbox"). That makes agy *soft* read-only (writes aren't
+hard-blocked), so it sits with opencode on the trust boundary, not with claude/codex.
+`--print-timeout` (default `0s`, unbounded) is pinned to the outer timeout so agy can end its turn
+before the watchdog kills it. Avoid `--dangerously-skip-permissions` — that auto-approves shell
+too, the opposite of what a reviewer wants.
+
+Three more things headless agy needs, all learned from live runs (1.2.5 on 2026-09-17, 1.2.6 on
+2026-09-28):
+
+1. **Permission allow list.** Even under `--sandbox`, headless mode auto-*denies* any tool not
+   allowed in `~/.gemini/antigravity-cli/settings.json`. The symptom is exit 0, empty stdout, and
+   stderr `jetski: no output produced — a tool required the "read_file" permission that headless
+   mode cannot prompt for, so it was auto-denied` (a later run names `"command"`). The runner
+   reports this as `errored: … auto-denied a tool permission …`. Before dispatching agy, back up
+   that file, then add:
+   ```json
+   "permissions": {"allow": ["read_file(*)", "list_dir(*)", "grep_search(*)", "find_by_name(*)", "view_file(*)", "command(*)"]}
+   ```
+   and restore the backup after the panel finishes. `command(*)` auto-approves shell, which is why
+   agy shares opencode's trust tier and why the list is temporary rather than permanent.
+2. **Trusted workspace.** The repo's real path must appear in that file's `trustedWorkspaces`
+   array or agy prompts and hangs. Each new worktree is a new path.
+3. **Delivery note.** Told to "write your review to stdout", agy 1.2.6 ran a shell `echo` of the
+   review inside a tool call, headless mode discarded that output, and its final message was three
+   lines claiming the review "has been successfully printed to stdout" (status `ok-empty`).
+   `run_reviewer.sh` now prepends a `DELIVERY NOTE` telling it that its final response text is the
+   captured stdout; the same PR then returned a sentinel-clean review in 75 s. This is the one
+   per-tool prompt deviation in the panel — disclose it in the final report.
 
 ### opencode
 ```bash
@@ -127,7 +153,12 @@ these ids via `--model`. **Prompt delivery is the one thing to watch**: unlike e
 here, `cursor-agent` takes its prompt as an argv string (`agent --help` documents no stdin
 support), so the assembled prompt (instructions + context + full diff) is read into the argv
 rather than piped via stdin — this reintroduces the argv-size ceiling the rest of this doc exists
-to avoid. Smoke-test with a realistically large PR diff.
+to avoid. Smoke-test with a realistically large PR diff. **Stale login:** `cursor-agent status` can
+print `Login successful! Logged in (unable to fetch user details)` while every `-p` run exits 1 with
+`Error: Authentication required. Please run 'agent login' first, or set CURSOR_API_KEY environment
+variable.` (observed 2026-09-28). The runner reports this as `errored: cursor is not logged in; run
+'cursor-agent login' …`; the user runs `cursor-agent login` interactively (the orchestrator cannot),
+then the label is re-run once.
 
 ## Adding a new reviewer
 
