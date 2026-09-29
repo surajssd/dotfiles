@@ -1,0 +1,20 @@
+## Conversation
+The user asked to commit the cached (staged) changes "like they were done in the past". Read as: commit the index following the precedent of earlier re-vendor commits (44ab149, 78b6a14, 43f410a), not as backdating. The request did not include a push and did not ask to stage anything further.
+
+## Actions
+Inspected git status, the staged diff with rename detection, and past vendored-skill commit messages plus the note on 44ab149. Staged scope is two files in skills/domain-modeling: CONTEXT-FORMAT.md renamed to GLOSSARY-FORMAT.md (70% similarity) and SKILL.md edited, 22 insertions and 22 deletions. Used gh api to list upstream mattpocock/skills commits touching skills/engineering/domain-modeling and to fetch every file in that directory at upstream HEAD d81f3a183412e71a5b1e84ca21bc1a35eea03a60. Diffed each staged file against upstream: GLOSSARY-FORMAT.md, ADR-FORMAT.md, and agents/openai.yaml are byte-identical; SKILL.md differs only by the license: MIT and metadata.author lines injected by fetch-external-skills.sh. Drafted the message in the same shape as 78b6a14 (upstream HEAD plus the last commit that touched the skill), linted it with the conventional-commits validator (0 problems, 0 warnings), and committed with -s -S and core.hooksPath=/dev/null so the post-commit auto-push hook did not fire. Signature verified as G.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+.git/hooks/post-commit symlinks to local-bin/git-autopush-post-commit, which pushes master. Pass -c core.hooksPath=/dev/null for a local-only commit. The user's global rules forbid pushing or posting on GitHub on their behalf. Verifying a vendored skill against upstream needs no clone: gh api with Accept: application/vnd.github.raw and ?ref=<sha> returns each file. The injected license and metadata.author lines in SKILL.md are expected and are the only permitted difference from upstream.
+
+## Codebase Discoveries
+Upstream commit d80fa0f4ebe0c5714af0adf8670336065233ecc6 (2026-09-17) renamed the CONTEXT.md / CONTEXT-MAP.md convention to GLOSSARY.md / GLOSSARY-MAP.md across the domain-modeling skill. Upstream HEAD at commit time was d81f3a1, the v1.3 release merge. The registry entry for domain-modeling lives at installers/fetch-external-skills.sh line 27 in fetch mode.
+
+## Open Questions
+None. The unstaged change to configs/herdr/config.toml was pre-existing and intentionally left out of this commit. The commit has not been pushed; refs/notes/commits must be pushed alongside master when the user pushes.
