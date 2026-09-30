@@ -297,10 +297,11 @@ func TestNewRelativeExternalParentIsStoredAbsolute(t *testing.T) {
 func TestNewParentValidationHappensBeforeCreation(t *testing.T) {
 	initRepo(t, "upstream", "https://github.com/acme/widgets")
 	root := t.TempDir()
-	parentFixture(t, root)
+	parentPath := parentFixture(t, root)
 	writeFile(t, filepath.Join(root, "github.com", "acme", "gizmos", "260901000000-parent-plan.md"), "# Twin\n")
 	before := listFiles(t, root)
 	cases := map[string]string{
+		parentPath:                     "ambiguous",
 		"[[260901000000-parent-plan]]": "ambiguous",
 		"[[260999000000-nope]]":        "not found",
 		"/no/such/file.md":             "does not exist",

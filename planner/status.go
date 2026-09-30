@@ -4,7 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 const statusHelp = `Change a plan's front matter in place. status_checked becomes today, the
@@ -106,10 +109,10 @@ func runStatus(deps dependencies, root string, args []string, opts statusOptions
 	case err != nil:
 		return fmt.Errorf("%s: %w", p.relPath, err)
 	}
-	if err := os.WriteFile(p.path, updated, 0o644); err != nil {
+	if err := writePlanFile(p.path, updated); err != nil {
 		return err
 	}
-	reloaded, err := loadPlan(root, p.path)
+	reloaded, err := loadPlan(c.root, p.path)
 	if err != nil {
 		return err
 	}
@@ -150,7 +153,7 @@ func runLinks(deps dependencies, root, key string, args []string) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", p.relPath, err)
 		}
-		if err := os.WriteFile(p.path, updated, 0o644); err != nil {
+		if err := writePlanFile(p.path, updated); err != nil {
 			return err
 		}
 	}
@@ -160,6 +163,34 @@ func runLinks(deps dependencies, root, key string, args []string) error {
 		out.WriteString("  " + value + "\n")
 	}
 	return writeOutput(deps.stdout, out.String())
+}
+
+func writePlanFile(path string, data []byte) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	file, err := os.CreateTemp(filepath.Dir(path), ".planner-*.md")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = file.Close()
+		_ = os.Remove(file.Name())
+	}()
+	if err := file.Chmod(info.Mode().Perm()); err != nil {
+		return err
+	}
+	if _, err := file.Write(data); err != nil {
+		return err
+	}
+	if err := file.Sync(); err != nil {
+		return err
+	}
+	if err := file.Close(); err != nil {
+		return err
+	}
+	return os.Rename(file.Name(), path)
 }
 
 // fieldEdit is one front matter key with its rendered lines, without the
@@ -191,61 +222,80 @@ func lineEnding(lines []string) string {
 	return "\n"
 }
 
-// updateFrontMatter rewrites the edited keys of a front matter block and keeps
-// every other byte. A replaced key also drops its continuation lines: the
-// indented lines of a block scalar or list, and list items written at column
-// zero. Missing keys are appended before the closing delimiter in the order
-// given. A file without front matter yields errNoFrontMatter.
+// YAML key positions keep quoted keys and blank lines inside scalar values
+// from being mistaken for field boundaries. Unedited text stays byte-for-byte.
 func updateFrontMatter(data []byte, edits []fieldEdit) ([]byte, error) {
-	lines := strings.SplitAfter(string(data), "\n")
-	if len(lines) == 0 || strings.TrimRight(lines[0], "\r\n") != "---" {
+	block, _, hasFront, err := splitFrontMatter(string(data))
+	if err != nil {
+		return nil, err
+	}
+	if !hasFront {
 		return nil, errNoFrontMatter
 	}
-	eol := lineEnding(lines)
-	closing := -1
-	for i := 1; i < len(lines); i++ {
-		if strings.TrimRight(lines[i], "\r\n") == "---" {
-			closing = i
-			break
+	var document yaml.Node
+	if err := yaml.Unmarshal([]byte(block), &document); err != nil {
+		return nil, err
+	}
+	var fields []*yaml.Node
+	indent := ""
+	if len(document.Content) > 0 {
+		mapping := document.Content[0]
+		if mapping.Kind != yaml.MappingNode || mapping.Style&yaml.FlowStyle != 0 {
+			return nil, errors.New("front matter must use a block mapping for in-place updates")
+		}
+		fields = mapping.Content
+		if len(fields) > 0 {
+			indent = strings.Repeat(" ", fields[0].Column-1)
 		}
 	}
-	if closing < 0 {
-		return nil, errors.New("front matter has no closing ---")
-	}
+	lines := strings.SplitAfter(string(data), "\n")
+	eol := lineEnding(lines)
+	closing := strings.Count(block, "\n") + 1
 	byKey := map[string]fieldEdit{}
 	for _, edit := range edits {
 		byKey[edit.key] = edit
 	}
 	out := []string{lines[0]}
 	seen := map[string]bool{}
-	skipContinuation := false
-	for _, line := range lines[1:closing] {
-		continuation := strings.HasPrefix(line, " ") || strings.HasPrefix(line, "\t") || strings.HasPrefix(line, "- ")
-		if skipContinuation && continuation {
+	cursor := 1
+	for i := 0; i < len(fields); i += 2 {
+		key := fields[i]
+		edit, ok := byKey[key.Value]
+		if !ok {
 			continue
 		}
-		skipContinuation = false
-		key, _, found := strings.Cut(line, ":")
-		key = strings.TrimSpace(key)
-		if edit, ok := byKey[key]; found && ok && !continuation && !seen[key] {
-			out = append(out, renderEdit(edit, eol))
-			seen[key] = true
-			skipContinuation = true
-			continue
+		end := closing
+		if i+2 < len(fields) {
+			end = fields[i+2].Line
 		}
-		out = append(out, line)
+		for end > key.Line+1 {
+			line := strings.TrimRight(lines[end-1], "\r\n")
+			if strings.TrimSpace(line) != "" && !strings.HasPrefix(line, indent+"#") {
+				break
+			}
+			end--
+		}
+		out = append(out, lines[cursor:key.Line]...)
+		out = append(out, renderEdit(edit, eol, indent))
+		cursor = end
+		seen[key.Value] = true
 	}
+	out = append(out, lines[cursor:closing]...)
 	for _, edit := range edits {
 		if !seen[edit.key] {
-			out = append(out, renderEdit(edit, eol))
+			out = append(out, renderEdit(edit, eol, indent))
 		}
 	}
 	out = append(out, lines[closing:]...)
-	return []byte(strings.Join(out, "")), nil
+	updated := []byte(strings.Join(out, ""))
+	if _, err := decodeFrontMatter(updated); err != nil {
+		return nil, fmt.Errorf("updated front matter does not decode: %w", err)
+	}
+	return updated, nil
 }
 
-func renderEdit(edit fieldEdit, eol string) string {
-	return strings.ReplaceAll(edit.text, "\n", eol) + eol
+func renderEdit(edit fieldEdit, eol, indent string) string {
+	return indent + strings.ReplaceAll(edit.text, "\n", eol+indent) + eol
 }
 
 // newFrontMatter puts a fresh block holding type: plan and the edits in front

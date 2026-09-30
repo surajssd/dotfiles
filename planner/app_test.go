@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var update = flag.Bool("set", false, "rewrite golden files")
+var update = flag.Bool("update", false, "rewrite golden files")
 
 var fixedNow = time.Date(2026, time.September, 29, 12, 0, 0, 0, time.Local)
 
@@ -48,7 +48,10 @@ func run(t *testing.T, deps dependencies, args ...string) error {
 // corpus points at.
 func fixtureHome(t *testing.T) string {
 	t.Helper()
-	home := t.TempDir()
+	home, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Setenv("HOME", home)
 	writeFile(t, filepath.Join(home, ".claude", "plans", "widgets-recipe.md"), "# Widgets recipe\n")
 	return home
@@ -89,8 +92,13 @@ func assertGolden(t *testing.T, name, got string) {
 }
 
 func TestListGolden(t *testing.T) {
-	fixtureHome(t)
-	root := fixtureRoot(t)
+	home := fixtureHome(t)
+	root := filepath.Join(home, "plans")
+	for _, dir := range []string{"plans", "external"} {
+		if err := os.CopyFS(filepath.Join(home, dir), os.DirFS(filepath.Join("testdata", dir))); err != nil {
+			t.Fatal(err)
+		}
+	}
 	// The tree shows the legacy parent of an active child, so it hides one
 	// plan fewer than the flat list.
 	hiddenTree := "3 plans without valid front matter hidden (--all shows them; planner check lists the problems)\n"
@@ -127,7 +135,7 @@ func TestListGolden(t *testing.T) {
 			if err := run(t, deps, append(tc.args, "--root", root)...); err != nil {
 				t.Fatal(err)
 			}
-			got := strings.ReplaceAll(io.stdout.String(), root, "<root>")
+			got := strings.NewReplacer(root, "<root>", "~/plans", "<root>").Replace(io.stdout.String())
 			assertGolden(t, tc.name, got)
 			if io.stderr.String() != tc.stderr {
 				t.Errorf("stderr = %q, want %q", io.stderr, tc.stderr)
@@ -415,7 +423,8 @@ func TestCompletion(t *testing.T) {
 		unwanted []string
 	}{
 		{[]string{"get", "--root", root, "widgets-u"}, []string{"widgets-umbrella\tWidgets umbrella", "widgets-unknown-status\t"}, []string{"gadgets-cross-child", "widgets-crlf"}},
-		{[]string{"get", "--root", root, "260906"}, []string{"260906120000-shared-name\tShared name in gadgets", "260906120000-shared-name\tShared name in gizmos"}, []string{"\nshared-name\t"}},
+		{[]string{"get", "--root", root, "260906"}, nil, []string{"260906120000-shared-name"}},
+		{[]string{"get", "--root", root, root + "/github.com/acme/g"}, []string{root + "/github.com/acme/gadgets/260906120000-shared-name.md\t", root + "/github.com/acme/gizmos/260906120000-shared-name.md\t"}, nil},
 		{[]string{"get", "--root", root, "sha"}, nil, []string{"shared-name"}},
 		{[]string{"describe", "--root", root, "widgets-umbrella", "widgets-"}, []string{"widgets-crlf\t"}, []string{"widgets-umbrella\t"}},
 		{[]string{"set", "status", "--root", root, "widgets-umbrella", "In"}, []string{"InProgress"}, []string{"Implemented", "widgets-"}},
@@ -449,5 +458,27 @@ func TestCompletion(t *testing.T) {
 	}
 	if got := io.stdout.String(); !strings.HasPrefix(got, ":") {
 		t.Errorf("completion without a root printed %q", got)
+	}
+}
+
+func TestPlanCompletionsResolve(t *testing.T) {
+	fixtureHome(t)
+	root := fixtureRoot(t)
+	c, err := loadCorpus(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deps, io := testDependencies("", true, 0)
+	if err := run(t, deps, "__complete", "get", "--root", root, ""); err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(io.stdout.String()), "\n") {
+		if strings.HasPrefix(line, ":") {
+			continue
+		}
+		ref, _, _ := strings.Cut(line, "\t")
+		if _, err := findPlan(c, ref); err != nil {
+			t.Errorf("completion %q does not resolve: %v", ref, err)
+		}
 	}
 }

@@ -114,6 +114,10 @@ func loadCorpus(root string) (*corpus, error) {
 	if !info.IsDir() {
 		return nil, fmt.Errorf("plan root is not a directory: %s", root)
 	}
+	root, err = filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, err
+	}
 	c := &corpus{root: root, byBasename: map[string][]*plan{}, byPath: map[string]*plan{}}
 	err = filepath.WalkDir(root, func(filePath string, entry fs.DirEntry, err error) error {
 		if err != nil {

@@ -1,4 +1,4 @@
-NAME                          REPO           STATUS           CHECKED   TITLE                          TYPE     PATH                                                                                                                                                NOTE
+NAME                          REPO           STATUS           CHECKED   TITLE                          TYPE     PATH                                                                          NOTE
 loose-plan                    -              InProgress       28d!      Loose plan                     plan     <root>/260901090000-loose-plan.md                                            Loose plan directly under the root.
 gadgets-cross-child           acme/gadgets   InProgress       0d        Gadgets cross child            plan     <root>/github.com/acme/gadgets/260905120000-gadgets-cross-child.md           A child filed in another repository.
 shared-name                   acme/gadgets   Implemented      19d       Shared name in gadgets         plan     <root>/github.com/acme/gadgets/260906120000-shared-name.md                   One of two plans sharing a basename.

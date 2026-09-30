@@ -204,7 +204,8 @@ func parentLine(value string) string {
 }
 
 func quoteYAML(value string) string {
-	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(value) + `"`
+	quoted, _ := json.Marshal(value)
+	return string(quoted)
 }
 
 // insertParent adds the parent line after the opening --- of a piped front
@@ -266,13 +267,17 @@ func canonicalReference(root, ref string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if _, err := os.Stat(absolute); err != nil {
+	resolved, err := filepath.EvalSymlinks(absolute)
+	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return "", fmt.Errorf("parent path does not exist: %s", absolute)
 		}
 		return "", err
 	}
-	if p, ok := c.byPath[absolute]; ok {
+	if p, ok := c.byPath[resolved]; ok {
+		if matches := c.lookup(p.basename); len(matches) != 1 {
+			return "", ambiguousReference(ref, matches)
+		}
 		return "[[" + p.basename + "]]", nil
 	}
 	if strings.HasPrefix(ref, "~") || filepath.IsAbs(ref) {

@@ -2,8 +2,11 @@ package main
 
 import (
 	"os"
+	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 )
 
@@ -124,6 +127,101 @@ func TestStatusRefusesBrokenFrontMatter(t *testing.T) {
 	}
 	if data, _ := os.ReadFile(path); string(data) != broken {
 		t.Error("file changed")
+	}
+}
+
+func TestStatusPreservesYAMLAndNoteText(t *testing.T) {
+	for _, note := range []string{
+		"status_note: |\n  First paragraph.\n\n  Second paragraph.\n",
+		"\"status_note\": \"Old note.\"\n",
+		"status_note: \"First line\n  second line\"\n",
+	} {
+		for _, eol := range []string{"\n", "\r\n"} {
+			root, path := statusRoot(t)
+			suffix := "# Keep this comment.\nowner: me\n---\n\n# Title\n\nKeep this body.\n"
+			input := "---\ntype: plan\n\"implementation_status\": InProgress\nstatus_checked: 2026-09-01\n" + note + suffix
+			writeFile(t, path, strings.ReplaceAll(input, "\n", eol))
+			if err := os.Chmod(path, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			replacement := "First line.\nSecond line.\t\"quoted\" \\path\r\nLast."
+			deps, _ := testDependencies("", true, 0)
+			if err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "Implemented", "--note", replacement); err != nil {
+				t.Fatal(err)
+			}
+			got := readFile(t, path)
+			front, err := decodeFrontMatter([]byte(got))
+			if err != nil || front.StatusNote != replacement || front.ImplementationStatus != "Implemented" {
+				t.Errorf("note %q: front = %+v, error = %v", note, front, err)
+			}
+			if !strings.HasSuffix(got, strings.ReplaceAll(suffix, "\n", eol)) {
+				t.Errorf("unrelated content changed: %q", got)
+			}
+			info, err := os.Stat(path)
+			if err != nil || info.Mode().Perm() != 0o600 {
+				t.Fatalf("file permissions changed: %v, %v", info, err)
+			}
+		}
+	}
+}
+
+func TestMetadataWriteFailureKeepsPlan(t *testing.T) {
+	if root := os.Getenv("PLANNER_TEST_WRITE_ROOT"); root != "" {
+		signal.Ignore(syscall.SIGXFSZ)
+		if err := syscall.Setrlimit(syscall.RLIMIT_FSIZE, &syscall.Rlimit{Cur: 96, Max: 96}); err != nil {
+			t.Fatal(err)
+		}
+		args := []string{"set", "status", "--root", root, "widgets-plan", "--note", "Updated."}
+		if os.Getenv("PLANNER_TEST_WRITE_KIND") == "issue" {
+			args = []string{"set", "issue", "--root", root, "widgets-plan", "https://example.com/ticket/1"}
+		}
+		deps, _ := testDependencies("", true, 0)
+		if err := run(t, deps, args...); err == nil || !strings.Contains(err.Error(), "file too large") {
+			t.Fatalf("write error = %v", err)
+		}
+		return
+	}
+	for _, kind := range []string{"status", "issue"} {
+		root, path := statusRoot(t)
+		cmd := exec.Command(os.Args[0], "-test.run=^TestMetadataWriteFailureKeepsPlan$")
+		cmd.Env = append(os.Environ(), "PLANNER_TEST_WRITE_ROOT="+root, "PLANNER_TEST_WRITE_KIND="+kind)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("%s: %v\n%s", kind, err, out)
+		}
+		if got := readFile(t, path); got != statusFixture {
+			t.Errorf("%s: failed write changed the plan: %q", kind, got)
+		}
+		if files := listFiles(t, root); len(files) != 1 {
+			t.Errorf("%s: temporary files remain: %v", kind, files)
+		}
+	}
+}
+
+func TestStatusKeepsPlanWhenReplacementBreaksAnAlias(t *testing.T) {
+	root, path := statusRoot(t)
+	input := "---\ntype: plan\nimplementation_status: InProgress\nstatus_checked: 2026-09-01\nstatus_note: &note https://example.com/parent\nparent: *note\n---\n# Title\n"
+	writeFile(t, path, input)
+	deps, _ := testDependencies("", true, 0)
+	err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "--note", "Changed.")
+	if err == nil || !strings.Contains(err.Error(), "does not decode") {
+		t.Fatalf("invalid replacement error = %v", err)
+	}
+	if got := readFile(t, path); got != input {
+		t.Errorf("rejected replacement changed the file: %q", got)
+	}
+}
+
+func TestLinkEditsPreserveCommentsAndUnrelatedFields(t *testing.T) {
+	root, path := statusRoot(t)
+	input := strings.Replace(statusFixture, "owner: me\n", "\"issues\":\n  - https://example.com/one\n\n# Keep this comment.\nowner: me\n", 1)
+	writeFile(t, path, input)
+	deps, _ := testDependencies("", true, 0)
+	if err := run(t, deps, "set", "issue", "--root", root, "widgets-plan", "https://example.com/two"); err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Replace(input, "\"issues\":\n  - https://example.com/one\n", "issues:\n  - https://example.com/one\n  - https://example.com/two\n", 1)
+	if got := readFile(t, path); got != want {
+		t.Errorf("link update changed unrelated text: %q", got)
 	}
 }
 

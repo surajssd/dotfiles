@@ -97,7 +97,7 @@ func parentChain(c *corpus, p *plan) (chain []string, cycle bool) {
 	current := p
 	for {
 		next, ok := resolveParentPlan(c, current)
-		if !ok || !next.valid() {
+		if !ok {
 			return chain, false
 		}
 		chain = append(chain, next.basename)
@@ -139,6 +139,9 @@ func matchPlans(c *corpus, ref string) ([]*plan, error) {
 		absolute, err := filepath.Abs(expanded)
 		if err != nil {
 			return nil, err
+		}
+		if resolved, err := filepath.EvalSymlinks(absolute); err == nil {
+			absolute = resolved
 		}
 		if p, ok := c.byPath[absolute]; ok {
 			return []*plan{p}, nil

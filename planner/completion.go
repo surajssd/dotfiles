@@ -26,9 +26,8 @@ func (c completer) corpus() (*corpus, bool) {
 	return corp, true
 }
 
-// plans offers the short name of every plan, or the basename when several
-// plans share a short name, each with its title as the description. Plans
-// already named on the command line are left out.
+// plans offers a unique short name, basename, or path for each plan, with its
+// title as the description. Plans already named on the command line are left out.
 func (c completer) plans(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	corp, ok := c.corpus()
 	if !ok {
@@ -47,6 +46,9 @@ func (c completer) plans(cmd *cobra.Command, args []string, toComplete string) (
 		name := p.name
 		if counts[name] > 1 {
 			name = p.basename
+			if len(corp.lookup(name)) > 1 {
+				name = p.path
+			}
 		}
 		if given[p.basename] || given[p.name] || !strings.HasPrefix(name, toComplete) {
 			continue

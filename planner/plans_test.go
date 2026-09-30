@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -101,6 +102,47 @@ func TestCorpusWalkSkipsHiddenSymlinkedAndNonMarkdown(t *testing.T) {
 	}
 	if len(c.plans) != 1 || c.plans[0].basename != "260101000000-kept" || c.plans[0].repo != "a/b" {
 		t.Fatalf("plans = %#v", c.plans)
+	}
+}
+
+func TestSymlinkRootAndPlanReferences(t *testing.T) {
+	root, path := statusRoot(t)
+	alias := filepath.Join(t.TempDir(), "plans")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Fatal(err)
+	}
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ref := range []string{path, filepath.Join(alias, rel), "widgets-plan"} {
+		deps, io := testDependencies("", true, 0)
+		if err := run(t, deps, "get", "--root", alias, "-o", "name", ref); err != nil {
+			t.Error(err)
+		}
+		if got := io.stdout.String(); got != "260910120000-widgets-plan\n" {
+			t.Errorf("%s: output = %q", ref, got)
+		}
+	}
+}
+
+func TestTreeIncludesCyclesWithInvalidMetadata(t *testing.T) {
+	root := t.TempDir()
+	for name, parent := range map[string]string{"a": "b", "b": "a"} {
+		note := "status_note: Valid.\n"
+		if name == "b" {
+			note = "status_note: [invalid, type]\n"
+		}
+		writeFile(t, filepath.Join(root, "260930120000-"+name+".md"), "---\ntype: plan\nparent: \"[[260930120000-"+parent+"]]\"\nimplementation_status: InProgress\nstatus_checked: 2026-09-29\n"+note+"---\n# "+name+"\n")
+	}
+	for _, names := range [][]string{nil, {"a"}, {"b"}} {
+		deps, io := testDependencies("", true, 0)
+		if err := run(t, deps, append([]string{"tree", "--root", root, "--all"}, names...)...); err != nil {
+			t.Fatal(err)
+		}
+		if out := io.stdout.String(); !strings.Contains(out, "(parent cycle)") {
+			t.Fatalf("cycle disappeared from tree: %q", out)
+		}
 	}
 }
 
