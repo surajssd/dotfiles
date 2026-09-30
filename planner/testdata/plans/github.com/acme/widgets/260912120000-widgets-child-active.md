@@ -1,9 +1,9 @@
 ---
-type: plan
-parent: "[[260910120000-widgets-umbrella]]"
-implementation_status: NotImplemented
-status_checked: 2026-09-20
-status_note: "Waiting on the umbrella decision."
+Type: plan
+Parent: "[[260910120000-widgets-umbrella]]"
+ImplementationStatus: NotImplemented
+StatusChecked: 2026-09-20
+StatusNote: "Waiting on the umbrella decision."
 ---
 
 # Widgets child active

@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-const statusFixture = "---\ntype: plan\nparent: \"[[260901000000-parent-plan]]\"\nimplementation_status: InProgress\nstatus_checked: 2026-09-01\nstatus_note: \"Old note.\"\nowner: me\n---\n\n# Title\n\nBody with status_checked: text that must not change.\n"
+const statusFixture = "---\nType: plan\nParent: \"[[260901000000-parent-plan]]\"\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: \"Old note.\"\nowner: me\n---\n\n# Title\n\nBody with status_checked: text that must not change.\n"
 
 func statusRoot(t *testing.T) (string, string) {
 	t.Helper()
@@ -26,7 +26,7 @@ func TestStatusChangesStatusDateAndNoteOnly(t *testing.T) {
 	if err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "Implemented", "--note", `Merged in "PR #7".`); err != nil {
 		t.Fatal(err)
 	}
-	want := "---\ntype: plan\nparent: \"[[260901000000-parent-plan]]\"\nimplementation_status: Implemented\nstatus_checked: 2026-09-29\nstatus_note: \"Merged in \\\"PR #7\\\".\"\nowner: me\n---\n\n# Title\n\nBody with status_checked: text that must not change.\n"
+	want := "---\nType: plan\nParent: \"[[260901000000-parent-plan]]\"\nImplementationStatus: Implemented\nStatusChecked: 2026-09-29\nStatusNote: \"Merged in \\\"PR #7\\\".\"\nowner: me\n---\n\n# Title\n\nBody with status_checked: text that must not change.\n"
 	if got := readFile(t, path); got != want {
 		t.Errorf("content:\n%s", got)
 	}
@@ -46,7 +46,7 @@ func TestStatusReferenceForms(t *testing.T) {
 			t.Errorf("%s: %v", ref, err)
 		}
 	}
-	if !strings.Contains(readFile(t, path), "implementation_status: InProgress\nstatus_checked: 2026-09-29\nstatus_note: \"Old note.\"") {
+	if !strings.Contains(readFile(t, path), "ImplementationStatus: InProgress\nStatusChecked: 2026-09-29\nStatusNote: \"Old note.\"") {
 		t.Errorf("touch changed more than the date:\n%s", readFile(t, path))
 	}
 }
@@ -57,7 +57,7 @@ func TestStatusNoteOnly(t *testing.T) {
 	if err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "--note", "Still going."); err != nil {
 		t.Fatal(err)
 	}
-	if got := readFile(t, path); !strings.Contains(got, "implementation_status: InProgress\nstatus_checked: 2026-09-29\nstatus_note: \"Still going.\"\n") {
+	if got := readFile(t, path); !strings.Contains(got, "ImplementationStatus: InProgress\nStatusChecked: 2026-09-29\nStatusNote: \"Still going.\"\n") {
 		t.Errorf("content:\n%s", got)
 	}
 }
@@ -95,7 +95,7 @@ func TestStatusAddsFrontMatterToLegacyPlan(t *testing.T) {
 	if err := run(t, deps, "set", "status", "--root", root, "legacy", "Implemented", "--note", "Shipped long ago."); err != nil {
 		t.Fatal(err)
 	}
-	want := "---\r\ntype: plan\r\nimplementation_status: Implemented\r\nstatus_checked: 2026-09-29\r\nstatus_note: \"Shipped long ago.\"\r\n---\r\n\r\n# Legacy\r\n\r\nBody.\r\n"
+	want := "---\r\nType: plan\r\nImplementationStatus: Implemented\r\nStatusChecked: 2026-09-29\r\nStatusNote: \"Shipped long ago.\"\r\n---\r\n\r\n# Legacy\r\n\r\nBody.\r\n"
 	if got := readFile(t, path); got != want {
 		t.Errorf("content:\n%q", got)
 	}
@@ -104,12 +104,12 @@ func TestStatusAddsFrontMatterToLegacyPlan(t *testing.T) {
 func TestStatusReplacesBlockScalarNoteAndAppendsMissingKeys(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "github.com", "acme", "widgets", "260913120000-folded.md")
-	writeFile(t, path, "---\ntype: plan\nstatus_note: >\n  first line\n  second line\nimplementation_status: InProgress\n---\n# Folded\n")
+	writeFile(t, path, "---\nType: plan\nStatusNote: >\n  first line\n  second line\nImplementationStatus: InProgress\n---\n# Folded\n")
 	deps, _ := testDependencies("", true, 0)
 	if err := run(t, deps, "set", "status", "--root", root, "folded", "Superseded", "--note", "Replaced."); err != nil {
 		t.Fatal(err)
 	}
-	want := "---\ntype: plan\nstatus_note: \"Replaced.\"\nimplementation_status: Superseded\nstatus_checked: 2026-09-29\n---\n# Folded\n"
+	want := "---\nType: plan\nStatusNote: \"Replaced.\"\nImplementationStatus: Superseded\nStatusChecked: 2026-09-29\n---\n# Folded\n"
 	if got := readFile(t, path); got != want {
 		t.Errorf("content:\n%s", got)
 	}
@@ -118,7 +118,7 @@ func TestStatusReplacesBlockScalarNoteAndAppendsMissingKeys(t *testing.T) {
 func TestStatusRefusesBrokenFrontMatter(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "github.com", "acme", "widgets", "260914120000-broken.md")
-	broken := "---\ntype: plan\ntype: plan\n---\n# Broken\n"
+	broken := "---\nType: plan\nType: plan\n---\n# Broken\n"
 	writeFile(t, path, broken)
 	deps, _ := testDependencies("", true, 0)
 	err := run(t, deps, "set", "status", "--root", root, "broken", "Implemented")
@@ -132,14 +132,14 @@ func TestStatusRefusesBrokenFrontMatter(t *testing.T) {
 
 func TestStatusPreservesYAMLAndNoteText(t *testing.T) {
 	for _, note := range []string{
-		"status_note: |\n  First paragraph.\n\n  Second paragraph.\n",
-		"\"status_note\": \"Old note.\"\n",
-		"status_note: \"First line\n  second line\"\n",
+		"StatusNote: |\n  First paragraph.\n\n  Second paragraph.\n",
+		"\"StatusNote\": \"Old note.\"\n",
+		"StatusNote: \"First line\n  second line\"\n",
 	} {
 		for _, eol := range []string{"\n", "\r\n"} {
 			root, path := statusRoot(t)
 			suffix := "# Keep this comment.\nowner: me\n---\n\n# Title\n\nKeep this body.\n"
-			input := "---\ntype: plan\n\"implementation_status\": InProgress\nstatus_checked: 2026-09-01\n" + note + suffix
+			input := "---\nType: plan\n\"ImplementationStatus\": InProgress\nStatusChecked: 2026-09-01\n" + note + suffix
 			writeFile(t, path, strings.ReplaceAll(input, "\n", eol))
 			if err := os.Chmod(path, 0o600); err != nil {
 				t.Fatal(err)
@@ -199,7 +199,7 @@ func TestMetadataWriteFailureKeepsPlan(t *testing.T) {
 
 func TestStatusKeepsPlanWhenReplacementBreaksAnAlias(t *testing.T) {
 	root, path := statusRoot(t)
-	input := "---\ntype: plan\nimplementation_status: InProgress\nstatus_checked: 2026-09-01\nstatus_note: &note https://example.com/parent\nparent: *note\n---\n# Title\n"
+	input := "---\nType: plan\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: &note https://example.com/parent\nParent: *note\n---\n# Title\n"
 	writeFile(t, path, input)
 	deps, _ := testDependencies("", true, 0)
 	err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "--note", "Changed.")
@@ -213,13 +213,13 @@ func TestStatusKeepsPlanWhenReplacementBreaksAnAlias(t *testing.T) {
 
 func TestLinkEditsPreserveCommentsAndUnrelatedFields(t *testing.T) {
 	root, path := statusRoot(t)
-	input := strings.Replace(statusFixture, "owner: me\n", "\"issues\":\n  - https://example.com/one\n\n# Keep this comment.\nowner: me\n", 1)
+	input := strings.Replace(statusFixture, "owner: me\n", "\"Issues\":\n  - https://example.com/one\n\n# Keep this comment.\nowner: me\n", 1)
 	writeFile(t, path, input)
 	deps, _ := testDependencies("", true, 0)
 	if err := run(t, deps, "set", "issue", "--root", root, "widgets-plan", "https://example.com/two"); err != nil {
 		t.Fatal(err)
 	}
-	want := strings.Replace(input, "\"issues\":\n  - https://example.com/one\n", "issues:\n  - https://example.com/one\n  - https://example.com/two\n", 1)
+	want := strings.Replace(input, "\"Issues\":\n  - https://example.com/one\n", "Issues:\n  - https://example.com/one\n  - https://example.com/two\n", 1)
 	if got := readFile(t, path); got != want {
 		t.Errorf("link update changed unrelated text: %q", got)
 	}
@@ -233,7 +233,7 @@ func TestNewParentAcceptsShortName(t *testing.T) {
 	if err := run(t, deps, "create", "--root", root, "--parent", "parent-plan", "short"); err != nil {
 		t.Fatal(err)
 	}
-	if got := readFile(t, strings.TrimSpace(io.stdout.String())); !strings.Contains(got, "\nparent: \"[[260901000000-parent-plan]]\"\n") {
+	if got := readFile(t, strings.TrimSpace(io.stdout.String())); !strings.Contains(got, "\nParent: \"[[260901000000-parent-plan]]\"\n") {
 		t.Errorf("content:\n%s", got)
 	}
 }

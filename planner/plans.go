@@ -15,27 +15,27 @@ import (
 )
 
 type frontMatter struct {
-	Type                 string   `yaml:"type"`
-	Parent               string   `yaml:"parent"`
-	Issues               []string `yaml:"issues"`
-	PullRequests         []string `yaml:"pull_requests"`
-	ImplementationStatus string   `yaml:"implementation_status"`
-	SupersededBy         string   `yaml:"superseded_by"`
-	StatusChecked        string   `yaml:"status_checked"`
-	StatusNote           string   `yaml:"status_note"`
+	Type                 string   `yaml:"Type"`
+	Parent               string   `yaml:"Parent"`
+	Issues               []string `yaml:"Issues"`
+	PullRequests         []string `yaml:"PullRequests"`
+	ImplementationStatus string   `yaml:"ImplementationStatus"`
+	SupersededBy         string   `yaml:"SupersededBy"`
+	StatusChecked        string   `yaml:"StatusChecked"`
+	StatusNote           string   `yaml:"StatusNote"`
 }
 
 // knownKeys are the front matter keys the schema defines; check reports every
 // other key as an advisory.
 var knownKeys = map[string]bool{
-	"type":                  true,
-	"parent":                true,
-	"issues":                true,
-	"pull_requests":         true,
-	"implementation_status": true,
-	"superseded_by":         true,
-	"status_checked":        true,
-	"status_note":           true,
+	"Type":                 true,
+	"Parent":               true,
+	"Issues":               true,
+	"PullRequests":         true,
+	"ImplementationStatus": true,
+	"SupersededBy":         true,
+	"StatusChecked":        true,
+	"StatusNote":           true,
 }
 
 type plan struct {

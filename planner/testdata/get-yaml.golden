@@ -4,11 +4,11 @@ items:
     path: <root>/github.com/acme/widgets/260910120000-widgets-umbrella.md
     repo: acme/widgets
     title: Widgets umbrella
-    type: plan
-    parent: ~/.claude/plans/widgets-recipe.md
-    implementation_status: InProgress
-    status_checked: "2026-09-29"
-    status_note: Umbrella for the widgets recipe effort.
+    Type: plan
+    Parent: ~/.claude/plans/widgets-recipe.md
+    ImplementationStatus: InProgress
+    StatusChecked: "2026-09-29"
+    StatusNote: Umbrella for the widgets recipe effort.
   - name: widgets-legacy
     basename: 260915120000-widgets-legacy
     path: <root>/github.com/acme/widgets/260915120000-widgets-legacy.md

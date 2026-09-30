@@ -1,5 +1,5 @@
 ---
-type: plan
-implementation_status: InProgress
+Type: plan
+ImplementationStatus: InProgress
 
 # Widgets no closing delimiter

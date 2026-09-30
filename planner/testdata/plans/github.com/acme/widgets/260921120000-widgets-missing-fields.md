@@ -1,5 +1,5 @@
 ---
-type: plan
+Type: plan
 ---
 
 # Widgets missing fields

@@ -1,9 +1,9 @@
 ---
-type: plan
-parent: "~/.claude/plans/missing.md"
-implementation_status: InProgress
-status_checked: 2026-09-29
-status_note: "Parent path was deleted."
+Type: plan
+Parent: "~/.claude/plans/missing.md"
+ImplementationStatus: InProgress
+StatusChecked: 2026-09-29
+StatusNote: "Parent path was deleted."
 ---
 
 # Widgets parent path missing

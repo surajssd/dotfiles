@@ -202,7 +202,7 @@ func TestCheckGolden(t *testing.T) {
 
 func TestCheckCleanCorpusReportsNoFindings(t *testing.T) {
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "github.com", "a", "b", "260101000000-ok.md"), "---\ntype: plan\nimplementation_status: Implemented\nstatus_checked: 2026-01-01\nstatus_note: \"Done.\"\n---\n# Ok\n")
+	writeFile(t, filepath.Join(root, "github.com", "a", "b", "260101000000-ok.md"), "---\nType: plan\nImplementationStatus: Implemented\nStatusChecked: 2026-01-01\nStatusNote: \"Done.\"\n---\n# Ok\n")
 	deps, io := testDependencies("", true, 0)
 	if err := run(t, deps, "check", "--root", root); err != nil {
 		t.Fatal(err)
@@ -214,13 +214,13 @@ func TestCheckCleanCorpusReportsNoFindings(t *testing.T) {
 
 func TestCheckExitStatus(t *testing.T) {
 	legacy := "# Legacy\n"
-	broken := "---\ntype: plan\ntype: plan\n---\n"
+	broken := "---\nType: plan\nType: plan\n---\n"
 	cases := []struct {
 		name    string
 		files   map[string]string
 		wantErr string
 	}{
-		{"no findings", map[string]string{"github.com/a/b/260101000000-ok.md": "---\ntype: plan\nimplementation_status: Implemented\nstatus_checked: 2026-01-01\nstatus_note: \"Done.\"\n---\n# Ok\n"}, ""},
+		{"no findings", map[string]string{"github.com/a/b/260101000000-ok.md": "---\nType: plan\nImplementationStatus: Implemented\nStatusChecked: 2026-01-01\nStatusNote: \"Done.\"\n---\n# Ok\n"}, ""},
 		{"advisories only", map[string]string{"github.com/a/b/260101000000-legacy.md": legacy}, ""},
 		{"errors only", map[string]string{"github.com/a/b/260101000000-broken.md": broken}, "check: 1 error, 0 advisories"},
 		{"mixed", map[string]string{"github.com/a/b/260101000000-legacy.md": legacy, "github.com/a/b/260102000000-broken.md": broken}, "check: 1 error, 1 advisory"},

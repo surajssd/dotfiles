@@ -1,30 +1,30 @@
 FILE                                          REPO           SEVERITY   RULE                   DETAIL
 260907120000-gadgets-ambiguous-parent.md      acme/gadgets   error      parent-not-found       2 plans match [[260906120000-shared-name]]: github.com/acme/gadgets/260906120000-shared-name.md, github.com/acme/gizmos/260906120000-shared-name.md
-260910120000-widgets-umbrella.md              acme/widgets   advisory   undumped-reference     parent: ~/.claude/plans/widgets-recipe.md
+260910120000-widgets-umbrella.md              acme/widgets   advisory   undumped-reference     Parent: ~/.claude/plans/widgets-recipe.md
 260915120000-widgets-legacy.md                acme/widgets   advisory   no-front-matter        first line is not ---
 260916120000-widgets-dup-a.md                 acme/widgets   advisory   duplicate-title        "Widgets duplicate title" is also the title of 260917120000-widgets-dup-b.md
 260918120000-widgets-links.md                 acme/widgets   error      dead-link              ../gadgets/260102000000-gone.md#section
 260918120000-widgets-links.md                 acme/widgets   error      dead-link              [[260101000000-missing-plan]]
 260918120000-widgets-links.md                 acme/widgets   advisory   undumped-reference     ~/.claude/plans/widgets-recipe.md
-260919120000-widgets-bad-yaml.md              acme/widgets   error      invalid-front-matter   yaml: unmarshal errors: line 2: mapping key "type" already defined at line 1
+260919120000-widgets-bad-yaml.md              acme/widgets   error      invalid-front-matter   yaml: unmarshal errors: line 2: mapping key "Type" already defined at line 1
 260920120000-widgets-no-close.md              acme/widgets   error      invalid-front-matter   front matter has no closing ---
-260921120000-widgets-missing-fields.md        acme/widgets   error      missing-field          implementation_status
-260921120000-widgets-missing-fields.md        acme/widgets   error      missing-field          status_checked
-260921120000-widgets-missing-fields.md        acme/widgets   error      missing-field          status_note
-260922120000-widgets-unknown-status.md        acme/widgets   error      invalid-date           status_checked "29-09-2026" is not YYYY-MM-DD
-260922120000-widgets-unknown-status.md        acme/widgets   error      unknown-status         implementation_status "done" is not one of NotImplemented, InProgress, PartiallyImplemented, ImplementedUnmerged, Implemented, Superseded
+260921120000-widgets-missing-fields.md        acme/widgets   error      missing-field          ImplementationStatus
+260921120000-widgets-missing-fields.md        acme/widgets   error      missing-field          StatusChecked
+260921120000-widgets-missing-fields.md        acme/widgets   error      missing-field          StatusNote
+260922120000-widgets-unknown-status.md        acme/widgets   error      invalid-date           StatusChecked "29-09-2026" is not YYYY-MM-DD
+260922120000-widgets-unknown-status.md        acme/widgets   error      unknown-status         ImplementationStatus "done" is not one of NotImplemented, InProgress, PartiallyImplemented, ImplementedUnmerged, Implemented, Superseded
 260923120000-widgets-cycle-a.md               acme/widgets   error      parent-cycle           260923120000-widgets-cycle-a -> 260924120000-widgets-cycle-b -> 260923120000-widgets-cycle-a
 260924120000-widgets-cycle-b.md               acme/widgets   error      parent-cycle           260924120000-widgets-cycle-b -> 260923120000-widgets-cycle-a -> 260924120000-widgets-cycle-b
 260925120000-widgets-parent-missing.md        acme/widgets   error      parent-not-found       no plan matches [[260199000000-nope]]
 260926120000-widgets-parent-path-missing.md   acme/widgets   error      parent-not-found       ~/.claude/plans/missing.md does not exist
-260926120000-widgets-parent-path-missing.md   acme/widgets   advisory   undumped-reference     parent: ~/.claude/plans/missing.md
-260929120000-widgets-bare-parent.md           acme/widgets   error      parent-not-found       unrecognised parent form "260910120000-widgets-umbrella" (expected "[[plan]]", a path, or a URL)
-260933120000-widgets-bad-links.md             acme/widgets   error      dead-link              status_note: [[260101000000-missing-plan]]
-260933120000-widgets-bad-links.md             acme/widgets   error      invalid-link           issues: https://github.com/acme/widgets/pull/12 is a pull request URL; put it under pull_requests
-260933120000-widgets-bad-links.md             acme/widgets   error      invalid-link           pull_requests: "not-a-url" is not an http(s) URL
-260933120000-widgets-bad-links.md             acme/widgets   error      invalid-link           pull_requests: https://github.com/acme/widgets/issues/9 is not a GitHub pull request URL
-260933120000-widgets-bad-links.md             acme/widgets   advisory   missing-successor      implementation_status is Superseded but superseded_by is empty
-260933120000-widgets-bad-links.md             acme/widgets   advisory   undumped-reference     status_note: ~/.claude/plans/widgets-recipe.md
+260926120000-widgets-parent-path-missing.md   acme/widgets   advisory   undumped-reference     Parent: ~/.claude/plans/missing.md
+260929120000-widgets-bare-parent.md           acme/widgets   error      parent-not-found       unrecognised Parent form "260910120000-widgets-umbrella" (expected "[[plan]]", a path, or a URL)
+260933120000-widgets-bad-links.md             acme/widgets   error      dead-link              StatusNote: [[260101000000-missing-plan]]
+260933120000-widgets-bad-links.md             acme/widgets   error      invalid-link           Issues: https://github.com/acme/widgets/pull/12 is a pull request URL; put it under PullRequests
+260933120000-widgets-bad-links.md             acme/widgets   error      invalid-link           PullRequests: "not-a-url" is not an http(s) URL
+260933120000-widgets-bad-links.md             acme/widgets   error      invalid-link           PullRequests: https://github.com/acme/widgets/issues/9 is not a GitHub pull request URL
+260933120000-widgets-bad-links.md             acme/widgets   advisory   missing-successor      ImplementationStatus is Superseded but SupersededBy is empty
+260933120000-widgets-bad-links.md             acme/widgets   advisory   undumped-reference     StatusNote: ~/.claude/plans/widgets-recipe.md
 260933120000-widgets-bad-links.md             acme/widgets   advisory   unknown-key            merged_at
 260935120000-widgets-successor-missing.md     acme/widgets   error      successor-not-found    no plan matches [[260199000000-nope]]
 legacy-name.md                                acme/widgets   advisory   no-front-matter        first line is not ---

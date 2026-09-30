@@ -19,9 +19,9 @@ func TestSplitFrontMatter(t *testing.T) {
 		wantErr  bool
 	}{
 		{"none", "# Title\n", "", "# Title\n", false, false},
-		{"plain", "---\ntype: plan\n---\n\n# T\n", "type: plan\n", "\n# T\n", true, false},
-		{"crlf", "---\r\ntype: plan\r\n---\r\n# T\r\n", "type: plan\r\n", "# T\r\n", true, false},
-		{"unclosed", "---\ntype: plan\n# T\n", "", "type: plan\n# T\n", true, true},
+		{"plain", "---\nType: plan\n---\n\n# T\n", "Type: plan\n", "\n# T\n", true, false},
+		{"crlf", "---\r\nType: plan\r\n---\r\n# T\r\n", "Type: plan\r\n", "# T\r\n", true, false},
+		{"unclosed", "---\nType: plan\n# T\n", "", "Type: plan\n# T\n", true, true},
 		{"empty block", "---\n---\nbody\n", "", "body\n", true, false},
 	}
 	for _, tc := range cases {
@@ -129,11 +129,11 @@ func TestSymlinkRootAndPlanReferences(t *testing.T) {
 func TestTreeIncludesCyclesWithInvalidMetadata(t *testing.T) {
 	root := t.TempDir()
 	for name, parent := range map[string]string{"a": "b", "b": "a"} {
-		note := "status_note: Valid.\n"
+		note := "StatusNote: Valid.\n"
 		if name == "b" {
-			note = "status_note: [invalid, type]\n"
+			note = "StatusNote: [invalid, type]\n"
 		}
-		writeFile(t, filepath.Join(root, "260930120000-"+name+".md"), "---\ntype: plan\nparent: \"[[260930120000-"+parent+"]]\"\nimplementation_status: InProgress\nstatus_checked: 2026-09-29\n"+note+"---\n# "+name+"\n")
+		writeFile(t, filepath.Join(root, "260930120000-"+name+".md"), "---\nType: plan\nParent: \"[[260930120000-"+parent+"]]\"\nImplementationStatus: InProgress\nStatusChecked: 2026-09-29\n"+note+"---\n# "+name+"\n")
 	}
 	for _, names := range [][]string{nil, {"a"}, {"b"}} {
 		deps, io := testDependencies("", true, 0)

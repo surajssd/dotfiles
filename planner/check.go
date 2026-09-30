@@ -38,12 +38,12 @@ finding: FILE, REPO, SEVERITY, RULE, and DETAIL, sorted by file, then rule.
 The exit status is 1 when any error finding exists and 0 when there are only
 advisories or no findings.
 
-Front matter keys: type, implementation_status, status_checked, and
-status_note are required; parent, superseded_by, issues, and pull_requests
-are optional. parent and superseded_by hold a "[[wikilink]]", a path, or a
-URL; issues and pull_requests hold lists of URLs.
+Front matter keys: Type, ImplementationStatus, StatusChecked, and
+StatusNote are required; Parent, SupersededBy, Issues, and PullRequests
+are optional. Parent and SupersededBy hold a "[[wikilink]]", a path, or a
+URL; Issues and PullRequests hold lists of URLs.
 
-Recognised implementation_status values:
+Recognised ImplementationStatus values:
 
   NotImplemented, InProgress, PartiallyImplemented, ImplementedUnmerged,
   Implemented, Superseded
@@ -52,26 +52,26 @@ Rules:
 
   no-front-matter       advisory  the first line is not ---
   invalid-front-matter  error     no closing --- or the YAML does not decode
-  missing-field         error     type, implementation_status, status_checked,
-                                  or status_note is absent or empty
+  missing-field         error     Type, ImplementationStatus, StatusChecked,
+                                  or StatusNote is absent or empty
   unknown-key           advisory  a front matter key outside the schema
-  unknown-status        error     implementation_status is not a recognised value
-  invalid-date          error     status_checked is not YYYY-MM-DD
-  invalid-link          error     an issues or pull_requests entry is not an
-                                  http(s) URL, a github.com pull_requests entry
-                                  is not a pull request, or a github.com issues
+  unknown-status        error     ImplementationStatus is not a recognised value
+  invalid-date          error     StatusChecked is not YYYY-MM-DD
+  invalid-link          error     an Issues or PullRequests entry is not an
+                                  http(s) URL, a github.com PullRequests entry
+                                  is not a pull request, or a github.com Issues
                                   entry is a pull request
   parent-not-found      error     a wikilink parent matches zero or several
                                   plans, or a path parent does not exist
   parent-cycle          error     following parent links returns to the plan
-  successor-not-found   error     the same for superseded_by
-  missing-successor     advisory  implementation_status is Superseded but
-                                  superseded_by is empty
-  dead-link             error     a link in the body or in status_note names a
+  successor-not-found   error     the same for SupersededBy
+  missing-successor     advisory  ImplementationStatus is Superseded but
+                                  SupersededBy is empty
+  dead-link             error     a link in the body or in StatusNote names a
                                   plan-style file (twelve digits, a hyphen, a
                                   name) that is not under the root
-  undumped-reference    advisory  parent, superseded_by, or a link in the body
-                                  or in status_note points into .claude/plans/
+  undumped-reference    advisory  Parent, SupersededBy, or a link in the body
+                                  or in StatusNote points into .claude/plans/
   duplicate-title       advisory  two or more plans in one repository folder
                                   share an H1`
 
@@ -162,10 +162,10 @@ type addFunc func(p *plan, rule string, sev severity, detail string)
 
 func checkFields(c *corpus, p *plan, add addFunc) {
 	fields := []struct{ name, value string }{
-		{"type", p.front.Type},
-		{"implementation_status", p.front.ImplementationStatus},
-		{"status_checked", p.front.StatusChecked},
-		{"status_note", p.front.StatusNote},
+		{"Type", p.front.Type},
+		{"ImplementationStatus", p.front.ImplementationStatus},
+		{"StatusChecked", p.front.StatusChecked},
+		{"StatusNote", p.front.StatusNote},
 	}
 	for _, f := range fields {
 		if strings.TrimSpace(f.value) == "" {
@@ -176,17 +176,17 @@ func checkFields(c *corpus, p *plan, add addFunc) {
 		add(p, "unknown-key", advisory, key)
 	}
 	if status := p.front.ImplementationStatus; status != "" && !slices.Contains(statusValues, status) {
-		add(p, "unknown-status", failure, fmt.Sprintf("implementation_status %q is not one of %s", status, strings.Join(statusValues, ", ")))
+		add(p, "unknown-status", failure, fmt.Sprintf("ImplementationStatus %q is not one of %s", status, strings.Join(statusValues, ", ")))
 	}
 	if checked := strings.TrimSpace(p.front.StatusChecked); checked != "" {
 		if _, err := time.Parse("2006-01-02", checked); err != nil {
-			add(p, "invalid-date", failure, fmt.Sprintf("status_checked %q is not YYYY-MM-DD", checked))
+			add(p, "invalid-date", failure, fmt.Sprintf("StatusChecked %q is not YYYY-MM-DD", checked))
 		}
 	}
-	checkReference(c, p, "parent", p.front.Parent, "parent-not-found", add)
-	checkReference(c, p, "superseded_by", p.front.SupersededBy, "successor-not-found", add)
+	checkReference(c, p, "Parent", p.front.Parent, "parent-not-found", add)
+	checkReference(c, p, "SupersededBy", p.front.SupersededBy, "successor-not-found", add)
 	if p.front.ImplementationStatus == "Superseded" && strings.TrimSpace(p.front.SupersededBy) == "" {
-		add(p, "missing-successor", advisory, "implementation_status is Superseded but superseded_by is empty")
+		add(p, "missing-successor", advisory, "ImplementationStatus is Superseded but SupersededBy is empty")
 	}
 	for _, key := range []string{issuesKey, pullRequestsKey} {
 		for _, value := range linksFor(p.front, key) {
@@ -197,7 +197,7 @@ func checkFields(c *corpus, p *plan, add addFunc) {
 	}
 }
 
-// checkReference validates a parent or superseded_by value: a wikilink must
+// checkReference validates a Parent or SupersededBy value: a wikilink must
 // match exactly one plan, a path must exist, a URL is taken as is. The cycle
 // check applies to parent only, because only parent links form the tree.
 func checkReference(c *corpus, p *plan, key, value, rule string, add addFunc) {
@@ -211,7 +211,7 @@ func checkReference(c *corpus, p *plan, key, value, rule string, add addFunc) {
 		matches := c.lookup(reduceLinkTarget(value))
 		switch len(matches) {
 		case 1:
-			if key != "parent" {
+			if key != "Parent" {
 				return
 			}
 			if chain, cycle := parentChain(c, p); cycle {
@@ -246,7 +246,7 @@ func checkReference(c *corpus, p *plan, key, value, rule string, add addFunc) {
 	}
 }
 
-// checkLinks applies the link rules to the body and to status_note. A note
+// checkLinks applies the link rules to the body and to StatusNote. A note
 // finding names its source, because the note is not visible in the body.
 func checkLinks(c *corpus, p *plan, add addFunc) {
 	seen := map[string]bool{}
@@ -267,7 +267,7 @@ func checkLinks(c *corpus, p *plan, add addFunc) {
 		check(link, "")
 	}
 	for _, link := range p.noteLinks {
-		check(link, "status_note: ")
+		check(link, "StatusNote: ")
 	}
 }
 

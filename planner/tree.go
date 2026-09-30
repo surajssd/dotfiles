@@ -407,7 +407,7 @@ func renderTable(table [][]string, width int) string {
 	return out.String()
 }
 
-// checkedText is the CHECKED cell: calendar days since status_checked, with !
+// checkedText is the CHECKED cell: calendar days since StatusChecked, with !
 // after an active plan that has not been checked for more than a week.
 func checkedText(p *plan, now time.Time) string {
 	if !p.valid() {

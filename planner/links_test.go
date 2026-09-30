@@ -39,11 +39,11 @@ func TestLinkProblem(t *testing.T) {
 func TestUpdateFrontMatterReplacesListsAndFlowSequences(t *testing.T) {
 	edit := []fieldEdit{{pullRequestsKey, listLines(pullRequestsKey, []string{"c"})}}
 	cases := []struct{ name, in, want string }{
-		{"column zero items", "---\npull_requests:\n- a\n- b\nnext: x\n---\n", "---\npull_requests:\n  - c\nnext: x\n---\n"},
-		{"flow sequence", "---\npull_requests: [a, b]\nnext: x\n---\n", "---\npull_requests:\n  - c\nnext: x\n---\n"},
-		{"indented items", "---\nnext: x\npull_requests:\n  - a\n---\nbody\n", "---\nnext: x\npull_requests:\n  - c\n---\nbody\n"},
-		{"missing key", "---\nnext: x\n---\n", "---\nnext: x\npull_requests:\n  - c\n---\n"},
-		{"crlf", "---\r\nnext: x\r\n---\r\n", "---\r\nnext: x\r\npull_requests:\r\n  - c\r\n---\r\n"},
+		{"column zero items", "---\nPullRequests:\n- a\n- b\nnext: x\n---\n", "---\nPullRequests:\n  - c\nnext: x\n---\n"},
+		{"flow sequence", "---\nPullRequests: [a, b]\nnext: x\n---\n", "---\nPullRequests:\n  - c\nnext: x\n---\n"},
+		{"indented items", "---\nnext: x\nPullRequests:\n  - a\n---\nbody\n", "---\nnext: x\nPullRequests:\n  - c\n---\nbody\n"},
+		{"missing key", "---\nnext: x\n---\n", "---\nnext: x\nPullRequests:\n  - c\n---\n"},
+		{"crlf", "---\r\nnext: x\r\n---\r\n", "---\r\nnext: x\r\nPullRequests:\r\n  - c\r\n---\r\n"},
 	}
 	for _, tc := range cases {
 		got, err := updateFrontMatter([]byte(tc.in), edit)
@@ -62,7 +62,7 @@ func TestUpdatePRAndIssueAppendAndDedupe(t *testing.T) {
 	if err := run(t, deps, "set", "pr", "--root", root, "widgets-plan", prA, prB, prA); err != nil {
 		t.Fatal(err)
 	}
-	want := strings.Replace(statusFixture, "owner: me\n", "owner: me\npull_requests:\n  - "+prA+"\n  - "+prB+"\n", 1)
+	want := strings.Replace(statusFixture, "owner: me\n", "owner: me\nPullRequests:\n  - "+prA+"\n  - "+prB+"\n", 1)
 	if got := readFile(t, path); got != want {
 		t.Errorf("content:\n%s", got)
 	}
@@ -81,11 +81,11 @@ func TestUpdatePRAndIssueAppendAndDedupe(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := readFile(t, path)
-	if !strings.Contains(got, "pull_requests:\n  - "+prA+"\n  - "+prB+"\nissues:\n  - "+jiraA+"\n  - "+ghIssue+"\n---\n") {
+	if !strings.Contains(got, "PullRequests:\n  - "+prA+"\n  - "+prB+"\nIssues:\n  - "+jiraA+"\n  - "+ghIssue+"\n---\n") {
 		t.Errorf("content:\n%s", got)
 	}
-	if !strings.Contains(got, "status_checked: 2026-09-01\n") {
-		t.Error("status_checked changed")
+	if !strings.Contains(got, "StatusChecked: 2026-09-01\n") {
+		t.Error("StatusChecked changed")
 	}
 	if !strings.HasPrefix(io.stdout.String(), "Issues:\n  "+jiraA+"\n") {
 		t.Errorf("output:\n%s", io.stdout)
@@ -116,7 +116,7 @@ func TestUpdateLinksRejectsBadInput(t *testing.T) {
 
 func TestUpdateStatusSupersededBy(t *testing.T) {
 	root, path := statusRoot(t)
-	writeFile(t, filepath.Join(root, "github.com", "acme", "widgets", "260920120000-successor.md"), "---\ntype: plan\nimplementation_status: InProgress\nstatus_checked: 2026-09-01\nstatus_note: \"New.\"\n---\n# Successor\n")
+	writeFile(t, filepath.Join(root, "github.com", "acme", "widgets", "260920120000-successor.md"), "---\nType: plan\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: \"New.\"\n---\n# Successor\n")
 	deps, _ := testDependencies("", true, 0)
 	err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "--superseded-by", "successor")
 	if err == nil || !strings.Contains(err.Error(), "Superseded") {
@@ -132,14 +132,14 @@ func TestUpdateStatusSupersededBy(t *testing.T) {
 	if err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "Superseded", "--note", "Folded.", "--superseded-by", "successor"); err != nil {
 		t.Fatal(err)
 	}
-	want := "---\ntype: plan\nparent: \"[[260901000000-parent-plan]]\"\nimplementation_status: Superseded\nstatus_checked: 2026-09-29\nstatus_note: \"Folded.\"\nowner: me\nsuperseded_by: \"[[260920120000-successor]]\"\n---\n\n# Title\n\nBody with status_checked: text that must not change.\n"
+	want := "---\nType: plan\nParent: \"[[260901000000-parent-plan]]\"\nImplementationStatus: Superseded\nStatusChecked: 2026-09-29\nStatusNote: \"Folded.\"\nowner: me\nSupersededBy: \"[[260920120000-successor]]\"\n---\n\n# Title\n\nBody with status_checked: text that must not change.\n"
 	if got := readFile(t, path); got != want {
 		t.Errorf("content:\n%s", got)
 	}
 	if err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "--superseded-by", "https://example.com/replacement"); err != nil {
 		t.Fatal(err)
 	}
-	if got := readFile(t, path); !strings.Contains(got, "\nsuperseded_by: \"https://example.com/replacement\"\n---\n") {
+	if got := readFile(t, path); !strings.Contains(got, "\nSupersededBy: \"https://example.com/replacement\"\n---\n") {
 		t.Errorf("content:\n%s", got)
 	}
 }
@@ -179,17 +179,17 @@ func TestNewIssueAndPRFlags(t *testing.T) {
 	if err := run(t, deps, "create", "--root", root, "--issue", jiraA, "--pr", prA, "--pr", prB, "--pr", prA, "linked"); err != nil {
 		t.Fatal(err)
 	}
-	want := "---\ntype: plan\nissues:\n  - " + jiraA + "\npull_requests:\n  - " + prA + "\n  - " + prB + "\nimplementation_status: NotImplemented\nstatus_checked: 2026-09-29\nstatus_note: \"Implementation has not started.\"\n---\n\n"
+	want := "---\nType: plan\nIssues:\n  - " + jiraA + "\nPullRequests:\n  - " + prA + "\n  - " + prB + "\nImplementationStatus: NotImplemented\nStatusChecked: 2026-09-29\nStatusNote: \"Implementation has not started.\"\n---\n\n"
 	if got := readFile(t, strings.TrimSpace(io.stdout.String())); got != want {
 		t.Errorf("content:\n%s", got)
 	}
 
-	piped := "---\ntype: plan\npull_requests:\n  - " + prA + "\nimplementation_status: InProgress\nstatus_checked: 2026-09-01\nstatus_note: \"Mine.\"\n---\n\n# Piped\n"
+	piped := "---\nType: plan\nPullRequests:\n  - " + prA + "\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: \"Mine.\"\n---\n\n# Piped\n"
 	deps, io = testDependencies(piped, false, 0)
 	if err := run(t, deps, "create", "--root", root, "--pr", prB, "--issue", ghIssue, "piped links"); err != nil {
 		t.Fatal(err)
 	}
-	want = "---\ntype: plan\npull_requests:\n  - " + prA + "\n  - " + prB + "\nimplementation_status: InProgress\nstatus_checked: 2026-09-01\nstatus_note: \"Mine.\"\nissues:\n  - " + ghIssue + "\n---\n\n# Piped\n"
+	want = "---\nType: plan\nPullRequests:\n  - " + prA + "\n  - " + prB + "\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: \"Mine.\"\nIssues:\n  - " + ghIssue + "\n---\n\n# Piped\n"
 	if got := readFile(t, strings.TrimSpace(io.stdout.String())); got != want {
 		t.Errorf("content:\n%s", got)
 	}

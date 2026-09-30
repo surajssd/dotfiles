@@ -1,9 +1,9 @@
 ---
-type: plan
-implementation_status: Superseded
-superseded_by: "[[260199000000-nope]]"
-status_checked: 2026-09-29
-status_note: "Successor was renamed."
+Type: plan
+ImplementationStatus: Superseded
+SupersededBy: "[[260199000000-nope]]"
+StatusChecked: 2026-09-29
+StatusNote: "Successor was renamed."
 ---
 
 # Widgets successor missing

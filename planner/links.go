@@ -8,16 +8,16 @@ import (
 )
 
 const (
-	issuesKey       = "issues"
-	pullRequestsKey = "pull_requests"
+	issuesKey       = "Issues"
+	pullRequestsKey = "PullRequests"
 )
 
 var githubItemRE = regexp.MustCompile(`^/[^/]+/[^/]+/(pull|issues)/[0-9]+/?$`)
 
 // linkProblem explains why value does not belong under key, or returns "".
 // Every entry must be an http(s) URL. On github.com the path also has to
-// match the key: a pull request under pull_requests, anything but a pull
-// request under issues. Other hosts are accepted as they are, because a
+// match the key: a pull request under PullRequests, anything but a pull
+// request under Issues. Other hosts are accepted as they are, because a
 // tracker URL has no shape the tool can check.
 func linkProblem(key, value string) string {
 	parsed, err := url.Parse(strings.TrimSpace(value))

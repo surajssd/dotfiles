@@ -55,10 +55,10 @@ var (
 const getHelp = `Print the plans under the root as a table: NAME, REPO, STATUS, CHECKED, and
 TITLE, one row per plan, sorted by repository then filename.
 
-Without --all only active plans (every implementation_status except
+Without --all only active plans (every ImplementationStatus except
 Implemented and Superseded) are shown; --all also lists plans without valid
 front matter, with - in STATUS and CHECKED. CHECKED counts calendar days
-since status_checked; ! marks an active plan older than 7 days. --repo keeps
+since StatusChecked; ! marks an active plan older than 7 days. --repo keeps
 plans whose <org>/<repo> contains the value, ignoring case.
 
 -o wide adds TYPE, PATH (home shown as ~), and NOTE, and never truncates.
@@ -68,8 +68,8 @@ prints one basename per line. --no-headers drops the header row.
 
 With plan names (a path, [[wikilink]], basename, or the short NAME shown in
 the table) only those plans are printed, whatever their status. A URL selects
-every plan that lists it under issues, pull_requests, parent, or
-superseded_by. A name that matches no plan is reported after the others and
+every plan that lists it under Issues, PullRequests, Parent, or
+SupersededBy. A name that matches no plan is reported after the others and
 the exit status is 1.`
 
 const treeHelp = `Print the plans under the root as a table with tree connectors in NAME:
@@ -106,13 +106,13 @@ shown by planner get), a file path, or a URL. A plan under the root is stored
 as the wikilink of its basename; a file outside the root is stored as a path;
 a URL is stored as is.
 
---status sets implementation_status (default NotImplemented; any case, with
-or without hyphens) and needs --note, which sets status_note (default
+--status sets ImplementationStatus (default NotImplemented; any case, with
+or without hyphens) and needs --note, which sets StatusNote (default
 "Implementation has not started."). With piped front matter the flags replace
-those lines and set status_checked to today. An existing file is never
+those lines and set StatusChecked to today. An existing file is never
 overwritten.
 
---issue and --pr, each repeatable, fill the issues and pull_requests lists
+--issue and --pr, each repeatable, fill the Issues and PullRequests lists
 with tracker and pull request URLs; with piped front matter they are merged
 into the lists it already holds. planner set issue and planner set pr
 add more later.`
@@ -135,13 +135,13 @@ func newCommand(deps dependencies) *cobra.Command {
 
 Plans are Markdown files named <YYMMDDHHMMSS>-<name>.md under
 <root>/github.com/<org>/<repo>/ with a YAML front matter block that holds
-type, implementation_status, status_checked, and status_note, and optionally
-parent, superseded_by, issues, and pull_requests. The plan root comes from
+Type, ImplementationStatus, StatusChecked, and StatusNote, and optionally
+Parent, SupersededBy, Issues, and PullRequests. The plan root comes from
 --root or from the root key in ~/.planner.yaml:
 
   root: ~/plans
 
-Active means every implementation_status except Implemented and Superseded.
+Active means every ImplementationStatus except Implemented and Superseded.
 planner completion zsh (or bash, fish, powershell) prints a script that
 completes commands, flags, plan names, repositories, and statuses.`,
 		SilenceErrors: true,
@@ -239,10 +239,10 @@ completes commands, flags, plan names, repositories, and statuses.`,
 		},
 	}
 	create.Flags().StringVar(&newOpts.parent, "parent", "", "parent plan: [[wikilink]], basename, file path, or URL")
-	create.Flags().StringVar(&newOpts.status, "status", "", "initial implementation_status (needs --note)")
-	create.Flags().StringVar(&newOpts.note, "note", "", "initial status_note")
-	create.Flags().StringArrayVar(&newOpts.issues, "issue", nil, "tracker URL for the issues list (repeatable)")
-	create.Flags().StringArrayVar(&newOpts.pullRequests, "pr", nil, "pull request URL for the pull_requests list (repeatable)")
+	create.Flags().StringVar(&newOpts.status, "status", "", "initial ImplementationStatus (needs --note)")
+	create.Flags().StringVar(&newOpts.note, "note", "", "initial StatusNote")
+	create.Flags().StringArrayVar(&newOpts.issues, "issue", nil, "tracker URL for the Issues list (repeatable)")
+	create.Flags().StringArrayVar(&newOpts.pullRequests, "pr", nil, "pull request URL for the PullRequests list (repeatable)")
 	mustCompleteFlag(create, "parent", complete.parents)
 	mustCompleteFlag(create, "status", completeValues(statusValues))
 
@@ -253,7 +253,7 @@ completes commands, flags, plan names, repositories, and statuses.`,
 	}
 	var statusOpts statusOptions
 	status := &cobra.Command{
-		Use:               "status <plan> [<implementation_status>]",
+		Use:               "status <plan> [<ImplementationStatus>]",
 		Short:             "Change a plan's status, checked date, note, and successor",
 		Long:              statusHelp,
 		Args:              cobra.RangeArgs(1, 2),
@@ -267,7 +267,7 @@ completes commands, flags, plan names, repositories, and statuses.`,
 			return runStatus(deps, rootDir, args, statusOpts)
 		},
 	}
-	status.Flags().StringVar(&statusOpts.note, "note", "", "new status_note text")
+	status.Flags().StringVar(&statusOpts.note, "note", "", "new StatusNote text")
 	status.Flags().StringVar(&statusOpts.supersededBy, "superseded-by", "", "plan that replaces this one: [[wikilink]], basename, file path, or URL")
 	mustCompleteFlag(status, "superseded-by", complete.parents)
 	set.AddCommand(status, linksCommand(deps, resolve, complete, "pr", pullRequestsKey), linksCommand(deps, resolve, complete, "issue", issuesKey))

@@ -1,8 +1,8 @@
 ---
-type: plan
-implementation_status: Implemented
-status_checked: 2026-09-15
-status_note: "Umbrella finished; one child is still open."
+Type: plan
+ImplementationStatus: Implemented
+StatusChecked: 2026-09-15
+StatusNote: "Umbrella finished; one child is still open."
 ---
 
 # Widgets done umbrella

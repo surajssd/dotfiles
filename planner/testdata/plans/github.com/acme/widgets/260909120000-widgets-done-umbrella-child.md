@@ -1,9 +1,9 @@
 ---
-type: plan
-parent: "[[260908120000-widgets-done-umbrella]]"
-implementation_status: InProgress
-status_checked: 2026-09-27
-status_note: "Still open under a finished umbrella."
+Type: plan
+Parent: "[[260908120000-widgets-done-umbrella]]"
+ImplementationStatus: InProgress
+StatusChecked: 2026-09-27
+StatusNote: "Still open under a finished umbrella."
 ---
 
 # Widgets done umbrella child

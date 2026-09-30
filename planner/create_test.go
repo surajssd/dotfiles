@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-const generatedHead = "---\ntype: plan\nimplementation_status: NotImplemented\nstatus_checked: 2026-09-29\nstatus_note: \"Implementation has not started.\"\n---\n\n"
+const generatedHead = "---\nType: plan\nImplementationStatus: NotImplemented\nStatusChecked: 2026-09-29\nStatusNote: \"Implementation has not started.\"\n---\n\n"
 
 // initRepo creates a Git repository with one remote and changes into it.
 func initRepo(t *testing.T, remote, url string) string {
@@ -211,7 +211,7 @@ func TestNewRemovesFileAfterInputFailure(t *testing.T) {
 func parentFixture(t *testing.T, root string) string {
 	t.Helper()
 	path := filepath.Join(root, "github.com", "acme", "gadgets", "260901000000-parent-plan.md")
-	writeFile(t, path, "---\ntype: plan\nimplementation_status: InProgress\nstatus_checked: 2026-09-01\nstatus_note: \"Parent.\"\n---\n\n# Parent plan\n")
+	writeFile(t, path, "---\nType: plan\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: \"Parent.\"\n---\n\n# Parent plan\n")
 	return path
 }
 
@@ -235,7 +235,7 @@ func TestNewParentFormsStoreWikilink(t *testing.T) {
 			t.Fatalf("%s: %v", name, err)
 		}
 		got := readFile(t, strings.TrimSpace(io.stdout.String()))
-		want := "---\ntype: plan\nparent: \"[[260901000000-parent-plan]]\"\nimplementation_status"
+		want := "---\nType: plan\nParent: \"[[260901000000-parent-plan]]\"\nImplementationStatus"
 		if !strings.HasPrefix(got, want) {
 			t.Errorf("%s: content starts with:\n%s", name, got[:min(len(got), len(want)+20)])
 		}
@@ -263,7 +263,7 @@ func TestNewExternalParentsAreStoredAsWritten(t *testing.T) {
 			t.Fatalf("%s: %v", ref, err)
 		}
 		got := readFile(t, strings.TrimSpace(io.stdout.String()))
-		if !strings.Contains(got, "\nparent: \""+want+"\"\n") {
+		if !strings.Contains(got, "\nParent: \""+want+"\"\n") {
 			t.Errorf("%s stored as:\n%s", ref, got)
 		}
 	}
@@ -279,7 +279,7 @@ func TestNewRelativeExternalParentIsStoredAbsolute(t *testing.T) {
 	}
 	child := strings.TrimSpace(io.stdout.String())
 	want := filepath.Join(checkout, "docs", "umbrella.md")
-	if !strings.Contains(readFile(t, child), "\nparent: \""+want+"\"\n") {
+	if !strings.Contains(readFile(t, child), "\nParent: \""+want+"\"\n") {
 		t.Errorf("content:\n%s", readFile(t, child))
 	}
 	c, err := loadCorpus(root)
@@ -322,7 +322,7 @@ func TestNewParentValidationHappensBeforeCreation(t *testing.T) {
 func TestNewPreservesPipedFrontMatter(t *testing.T) {
 	initRepo(t, "upstream", "https://github.com/acme/widgets")
 	root := t.TempDir()
-	piped := "---\ntype: plan\nimplementation_status: InProgress\nstatus_checked: 2026-09-01\nstatus_note: \"Mine.\"\n---\n\n# Piped\n"
+	piped := "---\nType: plan\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: \"Mine.\"\n---\n\n# Piped\n"
 	deps, io := testDependencies(piped, false, 0)
 	if err := run(t, deps, "create", "--root", root, "piped plain"); err != nil {
 		t.Fatal(err)
@@ -335,13 +335,13 @@ func TestNewPreservesPipedFrontMatter(t *testing.T) {
 	if err := run(t, deps, "create", "--root", root, "--parent", "https://example.com/x", "piped parent"); err != nil {
 		t.Fatal(err)
 	}
-	want := "---\nparent: \"https://example.com/x\"\ntype: plan\n"
+	want := "---\nParent: \"https://example.com/x\"\nType: plan\n"
 	if got := readFile(t, strings.TrimSpace(io.stdout.String())); !strings.HasPrefix(got, want) {
 		t.Errorf("content:\n%s", got)
 	}
 
 	before := listFiles(t, root)
-	withParent := "---\ntype: plan\nparent: \"[[x]]\"\n---\n"
+	withParent := "---\nType: plan\nParent: \"[[x]]\"\n---\n"
 	deps, _ = testDependencies(withParent, false, 0)
 	err := run(t, deps, "create", "--root", root, "--parent", "https://example.com/x", "piped duplicate")
 	if err == nil || !strings.Contains(err.Error(), "already has a parent") {
@@ -394,7 +394,7 @@ func TestNewStatusAndNoteFlags(t *testing.T) {
 	if err := run(t, deps, "create", "--root", root, "--status", "in-progress", "--note", "Started today.", "flags"); err != nil {
 		t.Fatal(err)
 	}
-	want := "---\ntype: plan\nimplementation_status: InProgress\nstatus_checked: 2026-09-29\nstatus_note: \"Started today.\"\n---\n\n"
+	want := "---\nType: plan\nImplementationStatus: InProgress\nStatusChecked: 2026-09-29\nStatusNote: \"Started today.\"\n---\n\n"
 	if got := readFile(t, strings.TrimSpace(io.stdout.String())); got != want {
 		t.Errorf("content:\n%s", got)
 	}
@@ -403,16 +403,16 @@ func TestNewStatusAndNoteFlags(t *testing.T) {
 	if err := run(t, deps, "create", "--root", root, "--note", "Only a note.", "note only"); err != nil {
 		t.Fatal(err)
 	}
-	if got := readFile(t, strings.TrimSpace(io.stdout.String())); !strings.Contains(got, "implementation_status: NotImplemented\nstatus_checked: 2026-09-29\nstatus_note: \"Only a note.\"\n") {
+	if got := readFile(t, strings.TrimSpace(io.stdout.String())); !strings.Contains(got, "ImplementationStatus: NotImplemented\nStatusChecked: 2026-09-29\nStatusNote: \"Only a note.\"\n") {
 		t.Errorf("content:\n%s", got)
 	}
 
-	piped := "---\ntype: plan\nimplementation_status: NotImplemented\nstatus_checked: 2026-09-01\nstatus_note: \"Old.\"\n---\n\n# Piped\n"
+	piped := "---\nType: plan\nImplementationStatus: NotImplemented\nStatusChecked: 2026-09-01\nStatusNote: \"Old.\"\n---\n\n# Piped\n"
 	deps, io = testDependencies(piped, false, 0)
 	if err := run(t, deps, "create", "--root", root, "--status", "Superseded", "--note", "Replaced.", "--parent", "https://example.com/p", "piped flags"); err != nil {
 		t.Fatal(err)
 	}
-	want = "---\nparent: \"https://example.com/p\"\ntype: plan\nimplementation_status: Superseded\nstatus_checked: 2026-09-29\nstatus_note: \"Replaced.\"\n---\n\n# Piped\n"
+	want = "---\nParent: \"https://example.com/p\"\nType: plan\nImplementationStatus: Superseded\nStatusChecked: 2026-09-29\nStatusNote: \"Replaced.\"\n---\n\n# Piped\n"
 	if got := readFile(t, strings.TrimSpace(io.stdout.String())); got != want {
 		t.Errorf("content:\n%s", got)
 	}

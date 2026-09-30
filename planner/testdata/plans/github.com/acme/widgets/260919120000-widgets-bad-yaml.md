@@ -1,9 +1,9 @@
 ---
-type: plan
-type: design
-implementation_status: InProgress
-status_checked: 2026-09-29
-status_note: "Duplicate key."
+Type: plan
+Type: design
+ImplementationStatus: InProgress
+StatusChecked: 2026-09-29
+StatusNote: "Duplicate key."
 ---
 
 # Widgets bad YAML

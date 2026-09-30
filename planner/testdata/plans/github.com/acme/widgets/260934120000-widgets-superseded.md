@@ -1,9 +1,9 @@
 ---
-type: plan
-implementation_status: Superseded
-status_checked: 2026-09-29
-status_note: "Folded into the umbrella."
-superseded_by: "[[260910120000-widgets-umbrella]]"
+Type: plan
+ImplementationStatus: Superseded
+StatusChecked: 2026-09-29
+StatusNote: "Folded into the umbrella."
+SupersededBy: "[[260910120000-widgets-umbrella]]"
 ---
 
 # Widgets superseded

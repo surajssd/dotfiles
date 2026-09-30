@@ -1,9 +1,9 @@
 ---
-type: plan
-parent: "~/.claude/plans/widgets-recipe.md"
-implementation_status: InProgress
-status_checked: 2026-09-29
-status_note: "Umbrella for the widgets recipe effort."
+Type: plan
+Parent: "~/.claude/plans/widgets-recipe.md"
+ImplementationStatus: InProgress
+StatusChecked: 2026-09-29
+StatusNote: "Umbrella for the widgets recipe effort."
 ---
 
 # Widgets umbrella

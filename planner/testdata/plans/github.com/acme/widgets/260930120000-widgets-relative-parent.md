@@ -1,9 +1,9 @@
 ---
-type: plan
-parent: "../../../../external/umbrella-notes.md"
-implementation_status: InProgress
-status_checked: 2026-09-29
-status_note: "Parent lives outside the root."
+Type: plan
+Parent: "../../../../external/umbrella-notes.md"
+ImplementationStatus: InProgress
+StatusChecked: 2026-09-29
+StatusNote: "Parent lives outside the root."
 ---
 
 # Widgets relative parent

@@ -10,17 +10,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const statusHelp = `Change a plan's front matter in place. status_checked becomes today, the
-second argument replaces implementation_status, --note replaces status_note,
-and --superseded-by sets superseded_by. Give at least one of the three. Every
-other line of the file, including parent, type, the link lists, unknown keys,
+const statusHelp = `Change a plan's front matter in place. StatusChecked becomes today, the
+second argument replaces ImplementationStatus, --note replaces StatusNote,
+and --superseded-by sets SupersededBy. Give at least one of the three. Every
+other line of the file, including Parent, Type, the link lists, unknown keys,
 and the body, is left as it is.
 
 <plan> is a path under the root, a [[wikilink]], a basename, the short name
 shown in the NAME column of the tree, or a URL the plan lists. A name must
 match exactly one plan.
 
-Recognised implementation_status values:
+Recognised ImplementationStatus values:
 
   NotImplemented, InProgress, PartiallyImplemented, ImplementedUnmerged,
   Implemented, Superseded
@@ -36,7 +36,7 @@ A plan without front matter receives a new block when both a status and --note
 are given. On success the plan's table row is printed.`
 
 const linksHelp = `Add URLs to the %s list of a plan's front matter, skipping any that are
-already there. Nothing else in the file changes, status_checked included.
+already there. Nothing else in the file changes, StatusChecked included.
 Removing a URL is a hand edit that planner check validates.
 
 %s
@@ -47,7 +47,7 @@ resulting list is printed.`
 
 var linkRules = map[string]string{
 	pullRequestsKey: "Every URL must be an http(s) URL, and on github.com it must point at a\npull request (/pull/<n>).",
-	issuesKey:       "Every URL must be an http(s) URL: a GitHub issue, a Jira ticket, an Asana\ntask, or any other tracker. A github.com pull request is rejected; it belongs\nunder pull_requests.",
+	issuesKey:       "Every URL must be an http(s) URL: a GitHub issue, a Jira ticket, an Asana\ntask, or any other tracker. A github.com pull request is rejected; it belongs\nunder PullRequests.",
 }
 
 type statusOptions struct {
@@ -85,16 +85,16 @@ func runStatus(deps dependencies, root string, args []string, opts statusOptions
 			target = p.front.ImplementationStatus
 		}
 		if target != "Superseded" {
-			return fmt.Errorf("--superseded-by needs implementation_status Superseded, not %q", target)
+			return fmt.Errorf("--superseded-by needs ImplementationStatus Superseded, not %q", target)
 		}
 		successor, err := canonicalReference(root, opts.supersededBy)
 		if err != nil {
-			return fmt.Errorf("superseded_by: %w", err)
+			return fmt.Errorf("SupersededBy: %w", err)
 		}
 		if successor == "[["+p.basename+"]]" {
 			return errors.New("a plan cannot supersede itself")
 		}
-		edits = append(edits, fieldEdit{"superseded_by", "superseded_by: " + quoteYAML(successor)})
+		edits = append(edits, fieldEdit{"SupersededBy", "SupersededBy: " + quoteYAML(successor)})
 	}
 	data, err := os.ReadFile(p.path)
 	if err != nil {
@@ -121,7 +121,7 @@ func runStatus(deps dependencies, root string, args []string, opts statusOptions
 	return writeOutput(deps.stdout, renderTable(table, 0))
 }
 
-// runLinks appends URLs to the issues or pull_requests list of one plan.
+// runLinks appends URLs to the Issues or PullRequests list of one plan.
 func runLinks(deps dependencies, root, key string, args []string) error {
 	for _, value := range args[1:] {
 		if problem := linkProblem(key, value); problem != "" {
@@ -206,11 +206,11 @@ var errNoFrontMatter = errors.New("the plan has no front matter")
 func statusEdits(status, note string, noteSet bool, today string) []fieldEdit {
 	var edits []fieldEdit
 	if status != "" {
-		edits = append(edits, fieldEdit{"implementation_status", "implementation_status: " + status})
+		edits = append(edits, fieldEdit{"ImplementationStatus", "ImplementationStatus: " + status})
 	}
-	edits = append(edits, fieldEdit{"status_checked", "status_checked: " + today})
+	edits = append(edits, fieldEdit{"StatusChecked", "StatusChecked: " + today})
 	if noteSet {
-		edits = append(edits, fieldEdit{"status_note", "status_note: " + quoteYAML(note)})
+		edits = append(edits, fieldEdit{"StatusNote", "StatusNote: " + quoteYAML(note)})
 	}
 	return edits
 }
@@ -298,11 +298,11 @@ func renderEdit(edit fieldEdit, eol, indent string) string {
 	return indent + strings.ReplaceAll(edit.text, "\n", eol+indent) + eol
 }
 
-// newFrontMatter puts a fresh block holding type: plan and the edits in front
+// newFrontMatter puts a fresh block holding Type: plan and the edits in front
 // of a file that has none, using the file's own line endings.
 func newFrontMatter(data []byte, edits []fieldEdit) []byte {
 	eol := lineEnding(strings.SplitAfter(string(data), "\n"))
-	lines := []string{"---", "type: plan"}
+	lines := []string{"---", "Type: plan"}
 	for _, edit := range edits {
 		lines = append(lines, edit.text)
 	}

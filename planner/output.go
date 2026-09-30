@@ -19,14 +19,14 @@ type planRecord struct {
 	Path                 string   `json:"path" yaml:"path"`
 	Repo                 string   `json:"repo" yaml:"repo"`
 	Title                string   `json:"title" yaml:"title"`
-	Type                 string   `json:"type,omitempty" yaml:"type,omitempty"`
-	Parent               string   `json:"parent,omitempty" yaml:"parent,omitempty"`
-	Issues               []string `json:"issues,omitempty" yaml:"issues,omitempty"`
-	PullRequests         []string `json:"pull_requests,omitempty" yaml:"pull_requests,omitempty"`
-	ImplementationStatus string   `json:"implementation_status,omitempty" yaml:"implementation_status,omitempty"`
-	SupersededBy         string   `json:"superseded_by,omitempty" yaml:"superseded_by,omitempty"`
-	StatusChecked        string   `json:"status_checked,omitempty" yaml:"status_checked,omitempty"`
-	StatusNote           string   `json:"status_note,omitempty" yaml:"status_note,omitempty"`
+	Type                 string   `json:"Type,omitempty" yaml:"Type,omitempty"`
+	Parent               string   `json:"Parent,omitempty" yaml:"Parent,omitempty"`
+	Issues               []string `json:"Issues,omitempty" yaml:"Issues,omitempty"`
+	PullRequests         []string `json:"PullRequests,omitempty" yaml:"PullRequests,omitempty"`
+	ImplementationStatus string   `json:"ImplementationStatus,omitempty" yaml:"ImplementationStatus,omitempty"`
+	SupersededBy         string   `json:"SupersededBy,omitempty" yaml:"SupersededBy,omitempty"`
+	StatusChecked        string   `json:"StatusChecked,omitempty" yaml:"StatusChecked,omitempty"`
+	StatusNote           string   `json:"StatusNote,omitempty" yaml:"StatusNote,omitempty"`
 	FrontMatterError     string   `json:"front_matter_error,omitempty" yaml:"front_matter_error,omitempty"`
 }
 

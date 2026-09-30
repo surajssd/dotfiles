@@ -186,7 +186,7 @@ func generatedFrontMatter(parentValue string, opts createOptions, now time.Time)
 		note = opts.note
 	}
 	var out bytes.Buffer
-	out.WriteString("---\ntype: plan\n")
+	out.WriteString("---\nType: plan\n")
 	if parentValue != "" {
 		out.WriteString(parentLine(parentValue) + "\n")
 	}
@@ -195,12 +195,12 @@ func generatedFrontMatter(parentValue string, opts createOptions, now time.Time)
 			out.WriteString(listLines(key, values) + "\n")
 		}
 	}
-	fmt.Fprintf(&out, "implementation_status: %s\nstatus_checked: %s\nstatus_note: %s\n---\n\n", status, now.Format(dateLayout), quoteYAML(note))
+	fmt.Fprintf(&out, "ImplementationStatus: %s\nStatusChecked: %s\nStatusNote: %s\n---\n\n", status, now.Format(dateLayout), quoteYAML(note))
 	return out.Bytes()
 }
 
 func parentLine(value string) string {
-	return "parent: " + quoteYAML(value)
+	return "Parent: " + quoteYAML(value)
 }
 
 func quoteYAML(value string) string {
@@ -209,7 +209,7 @@ func quoteYAML(value string) string {
 }
 
 // insertParent adds the parent line after the opening --- of a piped front
-// matter block. A block that already carries parent is rejected.
+// matter block. A block that already carries Parent is rejected.
 func insertParent(input []byte, parentValue string) ([]byte, error) {
 	if parentValue == "" {
 		return input, nil
@@ -220,7 +220,7 @@ func insertParent(input []byte, parentValue string) ([]byte, error) {
 		if trimmed == "---" {
 			break
 		}
-		if strings.HasPrefix(trimmed, "parent:") {
+		if strings.HasPrefix(trimmed, "Parent:") {
 			return nil, errors.New("piped front matter already has a parent field")
 		}
 	}
