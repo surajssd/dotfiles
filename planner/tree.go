@@ -64,6 +64,13 @@ func (o listOptions) hidden(p *plan) bool {
 	return o.status == "" && !p.valid() && matchesRepo(p.repo, o.repo)
 }
 
+// inactive reports whether a valid plan is left out only for being
+// Implemented or Superseded, which the note about an empty list counts so it
+// can point at --all.
+func (o listOptions) inactive(p *plan) bool {
+	return !o.all && o.status == "" && p.valid() && !p.active() && matchesRepo(p.repo, o.repo)
+}
+
 func listHeader(opts listOptions) []string {
 	header := []string{"NAME", "REPO", "STATUS", "CHECKED", "TITLE"}
 	if opts.wide() {
@@ -82,15 +89,19 @@ func listWidth(deps dependencies, opts listOptions) int {
 }
 
 // writeList prints the output on stdout and the notes about empty output and
-// skipped plans on stderr. The empty note is skipped when plans were named,
-// because their errors already say what is missing.
-func writeList(deps dependencies, output string, skipped int, noteWhenEmpty bool) error {
+// hidden plans on stderr. The empty note is skipped when plans were named,
+// because their errors already say what is missing; otherwise it also counts
+// the Implemented or Superseded plans the filters passed over.
+func writeList(deps dependencies, output string, skipped, inactive int, noteWhenEmpty bool) error {
 	if err := writeOutput(deps.stdout, output); err != nil {
 		return err
 	}
 	var notes []string
 	if output == "" && noteWhenEmpty {
 		notes = append(notes, "No plans found.")
+		if inactive > 0 {
+			notes = append(notes, fmt.Sprintf("%s hidden (--all shows them)", plural(inactive, "Implemented or Superseded plan", "Implemented or Superseded plans")))
+		}
 	}
 	if skipped > 0 {
 		notes = append(notes, fmt.Sprintf("%s without valid front matter hidden %s", plural(skipped, "plan", "plans"), hiddenHint))
@@ -112,7 +123,7 @@ func runGet(deps dependencies, root string, opts listOptions, names []string) er
 	}
 	var plans []*plan
 	var missing error
-	skipped := 0
+	skipped, inactive := 0, 0
 	if len(names) > 0 {
 		plans, missing = findPlans(c, names)
 	} else {
@@ -122,6 +133,8 @@ func runGet(deps dependencies, root string, opts listOptions, names []string) er
 				plans = append(plans, p)
 			case opts.hidden(p):
 				skipped++
+			case opts.inactive(p):
+				inactive++
 			}
 		}
 		sort.Slice(plans, func(i, j int) bool {
@@ -151,7 +164,7 @@ func runGet(deps dependencies, root string, opts listOptions, names []string) er
 			return err
 		}
 	}
-	if err := writeList(deps, output, skipped, len(names) == 0); err != nil {
+	if err := writeList(deps, output, skipped, inactive, len(names) == 0); err != nil {
 		return err
 	}
 	return missing
@@ -194,7 +207,7 @@ func runTree(deps dependencies, root string, opts listOptions, names []string) e
 		if len(found) > 0 {
 			output = renderForest(roots, opts, deps.now(), listWidth(deps, opts), home)
 		}
-		if err := writeList(deps, output, 0, false); err != nil {
+		if err := writeList(deps, output, 0, 0, false); err != nil {
 			return err
 		}
 		return missing
@@ -202,13 +215,17 @@ func runTree(deps dependencies, root string, opts listOptions, names []string) e
 	for _, n := range roots {
 		markVisible(n, opts)
 	}
-	hidden := 0
+	hidden, inactive := 0, 0
 	for _, n := range all {
-		if !n.visible && opts.hidden(n.plan) {
+		switch {
+		case n.visible:
+		case opts.hidden(n.plan):
 			hidden++
+		case opts.inactive(n.plan):
+			inactive++
 		}
 	}
-	return writeList(deps, renderForest(roots, opts, deps.now(), listWidth(deps, opts), home), hidden, true)
+	return writeList(deps, renderForest(roots, opts, deps.now(), listWidth(deps, opts), home), hidden, inactive, true)
 }
 
 // buildForest links every plan to its parent. External parents (paths and

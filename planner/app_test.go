@@ -170,6 +170,28 @@ func TestRepoFilterIsPartialAndCaseInsensitive(t *testing.T) {
 	}
 }
 
+func TestEmptyListCountsInactivePlans(t *testing.T) {
+	fixtureHome(t)
+	root := fixtureRoot(t)
+	want := "No plans found.\n1 Implemented or Superseded plan hidden (--all shows them)\n"
+	for _, cmd := range []string{"get", "tree"} {
+		deps, io := testDependencies("", true, 0)
+		if err := run(t, deps, cmd, "--root", root, "--repo", "gizmos"); err != nil {
+			t.Fatal(err)
+		}
+		if io.stdout.Len() != 0 || io.stderr.String() != want {
+			t.Errorf("%s --repo gizmos: stdout = %q, stderr = %q", cmd, io.stdout, io.stderr)
+		}
+		deps, io = testDependencies("", true, 0)
+		if err := run(t, deps, cmd, "--root", root, "--repo", "gizmos", "--status", "InProgress"); err != nil {
+			t.Fatal(err)
+		}
+		if io.stdout.Len() != 0 || io.stderr.String() != "No plans found.\n" {
+			t.Errorf("%s --repo gizmos --status InProgress: stdout = %q, stderr = %q", cmd, io.stdout, io.stderr)
+		}
+	}
+}
+
 func TestStatusFilterRejectsUnknownValue(t *testing.T) {
 	fixtureHome(t)
 	root := fixtureRoot(t)
