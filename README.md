@@ -84,6 +84,7 @@ planner check                            # integrity findings; exit 1 on errors
 planner check <plan>                     # the findings of one plan only
 planner get <url>                        # every plan that lists the URL as issue, pull request, parent, or successor
 planner create [--parent <ref>] [--status <status> --note <text>] [--issue <url>]... [--pr <url>]... <name...>   # create a plan for the current repository
+planner log <plan> <title...> [--note <text>] < entry.md   # append "### <today>: <title>" and the piped text under "## Progress log"; sets StatusChecked
 planner set status <plan> [<status>] [--note <text> | --note-file <path>] [--superseded-by <ref>]   # change status, checked date, note, and successor in place; --note-file - reads stdin
 planner set parent <plan> <ref>       # set the parent of a plan: a dumped plan, a file path, or a URL
 planner set pr <plan> <url>...        # add pull request URLs to a plan

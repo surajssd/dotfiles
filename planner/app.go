@@ -140,6 +140,7 @@ func newCommand(deps dependencies) *cobra.Command {
   planner describe <plan>...   every field of a plan, its children, its findings
   planner check [<plan>...]    front matter and link findings; exit 1 on errors
   planner create <name...>     create a plan for the current repository
+  planner log <plan> <title>   append a dated entry to a plan's progress log
   planner set status           change a plan's status, checked date, and note
   planner set parent           set the parent of a plan
   planner set pr|issue         add pull request or tracker URLs to a plan
@@ -272,6 +273,24 @@ completes commands, flags, plan names, repositories, and statuses.`,
 	mustCompleteFlag(create, "parent", complete.parents)
 	mustCompleteFlag(create, "status", completeValues(statusValues))
 
+	var logOpts logOptions
+	logCmd := &cobra.Command{
+		Use:               "log <plan> <title...>",
+		Short:             "Append a dated entry to a plan's progress log",
+		Long:              logHelp,
+		Args:              cobra.MinimumNArgs(2),
+		ValidArgsFunction: complete.planFirst,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			rootDir, err := resolve()
+			if err != nil {
+				return err
+			}
+			logOpts.noteSet = cmd.Flags().Changed("note")
+			return runLog(deps, rootDir, args, logOpts)
+		},
+	}
+	logCmd.Flags().StringVar(&logOpts.note, "note", "", "new StatusNote text, replaced in the same write")
+
 	set := &cobra.Command{
 		Use:   "set",
 		Short: "Update a plan's front matter in place",
@@ -323,7 +342,7 @@ completes commands, flags, plan names, repositories, and statuses.`,
 		},
 	}
 
-	root.AddCommand(get, tree, describe, check, create, set, version)
+	root.AddCommand(get, tree, describe, check, create, logCmd, set, version)
 	return root
 }
 
