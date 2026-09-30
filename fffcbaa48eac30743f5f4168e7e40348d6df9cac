@@ -1,0 +1,26 @@
+## Conversation
+The user asked for a usability review of planner against kubectl conventions and for front matter fields that link plans to PRs and tickets. After the review they said "ok go ahead and implement all of it", approving three stacked commits: output flags and completion (this one), link fields, and the verb renames.
+
+## Actions
+Rewrote app.go (help texts as constants, -o/--output with per-command format lists, --no-headers, completion registration, version subcommand), tree.go (listOptions.output, CHECKED header, additive wide with TYPE PATH NOTE, header-less tables, partial results via findPlans), describe.go (partial results), output.go (planRecord, json/yaml/name rendering), completion.go, version.go, findPlans in parent.go, main.go "error:" prefix. Sourced planner completion in configs/zshrc after the fzf block (oh-my-zsh runs compinit at line 42) and in configs/bashrc after the gh block. Regenerated goldens with go test ./... -update, added six goldens, ran gofmt, go vet, golangci-lint 2.12.2 (0 issues), and exercised a scratch build against the real corpus.
+
+## Errors & Mistakes
+- TestBareCommandPrintsHelpWithoutConfiguration failed only under `go test -update`: run() passed a nil slice to SetArgs, so cobra fell back to os.Args and saw -update. Fixed by passing a non-nil empty slice.
+- The completion test typed "sha" expecting the two shared-name plans, but duplicates are offered by basename, which does not start with "sha". Changed the test to type the timestamp prefix and assert that the bare short name is never offered.
+
+## Dead Ends
+- Considered `-o json` for tree with nested children; rejected because the flat record already carries parent, so tree accepts only -o wide.
+- Considered inserting TYPE right after STATUS; kept strict kubectl semantics where wide only appends columns.
+
+## Hints for Future Agents
+- `tree` validates -o against treeFormats (wide only); `get` against getFormats. Add a format in one place and the completion follows.
+- One named plan with -o json prints a single object; anything else prints {"items": [...]}, mirroring kubectl.
+- With names given and none found, get/tree print nothing and skip the "No plans found." note; the joined errors go through main's "error:" prefix, one line per missing name after the first.
+- cobra's __complete output is testable through run(): completions, then a ":<directive>" line.
+
+## Codebase Discoveries
+- checkedText (was ageText) is shared by the table and describe; describe still labels it Checked.
+- yaml.v3 quotes date-like strings on output ("2026-09-29") but leaves ~/paths bare; both round-trip.
+
+## Open Questions
+- Whether the "error:" prefix should also apply to cobra usage errors differently; today every error gets it.
