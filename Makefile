@@ -3,7 +3,7 @@
 # Symlink installers (delegate to scripts)
 .PHONY: install-configs install-local-bin install-skills install-rules install-planner install-private fetch-external-skills fetch-external-rules
 # Orchestration / maintenance
-.PHONY: install-all update pull-master clone-private help
+.PHONY: install install-all update pull-master clone-private help
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -32,6 +32,8 @@ fetch-external-skills: ## Download external skills (mattpocock, bastos, blader) 
 
 fetch-external-rules: ## Verify vendored rules in rules/ (fetches any fetch-mode entries) — also run by 'make update'
 	./installers/fetch-external-rules.sh
+
+install: install-all ## Alias for install-all
 
 install-all: install-configs install-local-bin install-skills install-rules install-planner ## Install everything
 	$(MAKE) install-private
