@@ -7,6 +7,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime/debug"
+	"slices"
 	"strings"
 	"time"
 
@@ -45,124 +47,47 @@ const configName = ".planner.yaml"
 
 var errNoRoot = errors.New(`no plan root configured: put "root: ~/plans" in ~/` + configName + " or pass --root <dir>")
 
-func newCommand(deps dependencies) *cobra.Command {
-	var rootFlag string
-	root := &cobra.Command{
-		Use:   "planner",
-		Short: "Show, check, and create plans with front matter",
-		Long: `planner manages a folder of Markdown plans with YAML front matter.
+var (
+	getFormats  = []string{"wide", "json", "yaml", "name"}
+	treeFormats = []string{"wide"}
+)
 
-  planner get [<plan>...]      table of active plans, or of the named plans
-  planner tree [<plan>...]     the same as an effort tree, or the named subtrees
-  planner describe <plan>...   every field of a plan, its children, its findings
-  planner check                front matter and link findings; exit 1 on errors
-  planner new <name...>    create a plan for the current repository
-  planner update status    change a plan's status, checked date, and note
-
-Plans are Markdown files named <YYMMDDHHMMSS>-<name>.md under
-<root>/github.com/<org>/<repo>/ with a YAML front matter block that holds
-type, implementation_status, status_checked, status_note, and an optional
-parent. The plan root comes from --root or from the root key in
-~/.planner.yaml:
-
-  root: ~/plans
-
-Active means every implementation_status except Implemented and Superseded.`,
-		SilenceErrors: true,
-		SilenceUsage:  true,
-	}
-	root.SetIn(deps.stdin)
-	root.SetOut(deps.stdout)
-	root.SetErr(deps.stderr)
-	root.PersistentFlags().StringVar(&rootFlag, "root", "", "plan root directory (overrides root in ~/.planner.yaml)")
-
-	var getOpts listOptions
-	get := &cobra.Command{
-		Use:   "get [<plan>...]",
-		Short: "List plans as a table",
-		Long: `Print the plans under the root as a table: NAME, REPO, STATUS, AGE, and
+const getHelp = `Print the plans under the root as a table: NAME, REPO, STATUS, CHECKED, and
 TITLE, one row per plan, sorted by repository then filename.
 
 Without --all only active plans (every implementation_status except
 Implemented and Superseded) are shown; --all also lists plans without valid
-front matter, with - in STATUS and AGE. AGE counts calendar days since
-status_checked; ! marks an active plan older than 7 days. --wide drops REPO,
-adds NOTE and PATH (home shown as ~), and never truncates. --repo keeps plans
-whose <org>/<repo> contains the value, ignoring case.
+front matter, with - in STATUS and CHECKED. CHECKED counts calendar days
+since status_checked; ! marks an active plan older than 7 days. --repo keeps
+plans whose <org>/<repo> contains the value, ignoring case.
+
+-o wide adds TYPE, PATH (home shown as ~), and NOTE, and never truncates.
+-o json and -o yaml print every field of each plan, its path included: one
+named plan is a single object, anything else a list under items. -o name
+prints one basename per line. --no-headers drops the header row.
 
 With plan names (a path, [[wikilink]], basename, or the short NAME shown in
-the table) only those plans are printed, whatever their status.`,
-		Args: cobra.ArbitraryArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			rootDir, err := resolveRoot(rootFlag)
-			if err != nil {
-				return err
-			}
-			return runGet(deps, rootDir, getOpts, args)
-		},
-	}
-	addListFlags(get, &getOpts)
+the table) only those plans are printed, whatever their status. A name that
+matches no plan is reported after the others and the exit status is 1.`
 
-	var treeOpts listOptions
-	tree := &cobra.Command{
-		Use:   "tree [<plan>...]",
-		Short: "Show plans as an effort tree",
-		Long: `Print the plans under the root as a table with tree connectors in NAME:
+const treeHelp = `Print the plans under the root as a table with tree connectors in NAME:
 children sit under their parent plan, and one group row per external parent
 (a path or URL) collects the plans that point at it.
 
 Without --all only active plans are shown, together with the ancestors needed
 to place them. With plan names, each named plan is printed as a root with its
-descendants. The columns and the other flags are those of planner get.`,
-		Args: cobra.ArbitraryArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			rootDir, err := resolveRoot(rootFlag)
-			if err != nil {
-				return err
-			}
-			return runTree(deps, rootDir, treeOpts, args)
-		},
-	}
-	addListFlags(tree, &treeOpts)
+descendants. The columns and the other flags are those of planner get; the
+only output format is -o wide.`
 
-	describe := &cobra.Command{
-		Use:   "describe <plan>...",
-		Short: "Show every field of a plan, its children, and its findings",
-		Long: `Print one block per named plan, kubectl describe style: the name, title,
+const describeHelp = `Print one block per named plan, kubectl describe style: the name, title,
 file (home shown as ~), repository, type, status, checked date and age, parent,
 children, the full status note, and the planner check findings for that plan.
 
 <plan> is a path, a [[wikilink]], a basename, or the short NAME shown by
-planner get.`,
-		Args: cobra.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			rootDir, err := resolveRoot(rootFlag)
-			if err != nil {
-				return err
-			}
-			return runDescribe(deps, rootDir, args)
-		},
-	}
+planner get. A name that matches no plan is reported after the others and the
+exit status is 1.`
 
-	check := &cobra.Command{
-		Use:   "check",
-		Short: "Report front matter and link problems",
-		Long:  checkHelp,
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			rootDir, err := resolveRoot(rootFlag)
-			if err != nil {
-				return err
-			}
-			return runCheck(deps, rootDir)
-		},
-	}
-
-	var newOpts newOptions
-	create := &cobra.Command{
-		Use:   "new [--parent <ref>] [--status <status> --note <text>] <name...>",
-		Short: "Create a plan for the current repository and print its path",
-		Long: `Create <root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md and print its
+const newHelp = `Create <root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md and print its
 absolute path.
 
 The words of <name> are joined with hyphens; a trailing .md is dropped. The
@@ -182,10 +107,121 @@ a URL is stored as is.
 or without hyphens) and needs --note, which sets status_note (default
 "Implementation has not started."). With piped front matter the flags replace
 those lines and set status_checked to today. An existing file is never
-overwritten.`,
-		Args: cobra.ArbitraryArgs,
+overwritten.`
+
+func newCommand(deps dependencies) *cobra.Command {
+	var rootFlag string
+	root := &cobra.Command{
+		Use:   "planner",
+		Short: "Show, check, and create plans with front matter",
+		Long: `planner manages a folder of Markdown plans with YAML front matter.
+
+  planner get [<plan>...]      table of active plans, or of the named plans
+  planner tree [<plan>...]     the same as an effort tree, or the named subtrees
+  planner describe <plan>...   every field of a plan, its children, its findings
+  planner check                front matter and link findings; exit 1 on errors
+  planner new <name...>        create a plan for the current repository
+  planner update status        change a plan's status, checked date, and note
+  planner version              build information of this binary
+
+Plans are Markdown files named <YYMMDDHHMMSS>-<name>.md under
+<root>/github.com/<org>/<repo>/ with a YAML front matter block that holds
+type, implementation_status, status_checked, status_note, and an optional
+parent. The plan root comes from --root or from the root key in
+~/.planner.yaml:
+
+  root: ~/plans
+
+Active means every implementation_status except Implemented and Superseded.
+planner completion zsh (or bash, fish, powershell) prints a script that
+completes commands, flags, plan names, repositories, and statuses.`,
+		SilenceErrors: true,
+		SilenceUsage:  true,
+	}
+	root.SetIn(deps.stdin)
+	root.SetOut(deps.stdout)
+	root.SetErr(deps.stderr)
+	root.PersistentFlags().StringVar(&rootFlag, "root", "", "plan root directory (overrides root in ~/.planner.yaml)")
+	resolve := func() (string, error) { return resolveRoot(rootFlag) }
+	complete := completer{root: resolve}
+
+	var getOpts listOptions
+	get := &cobra.Command{
+		Use:               "get [<plan>...]",
+		Short:             "List plans as a table",
+		Long:              getHelp,
+		Args:              cobra.ArbitraryArgs,
+		ValidArgsFunction: complete.plans,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			rootDir, err := resolveRoot(rootFlag)
+			if err := getOpts.validate(getFormats); err != nil {
+				return err
+			}
+			rootDir, err := resolve()
+			if err != nil {
+				return err
+			}
+			return runGet(deps, rootDir, getOpts, args)
+		},
+	}
+	addListFlags(get, &getOpts, complete, getFormats)
+
+	var treeOpts listOptions
+	tree := &cobra.Command{
+		Use:               "tree [<plan>...]",
+		Short:             "Show plans as an effort tree",
+		Long:              treeHelp,
+		Args:              cobra.ArbitraryArgs,
+		ValidArgsFunction: complete.plans,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := treeOpts.validate(treeFormats); err != nil {
+				return err
+			}
+			rootDir, err := resolve()
+			if err != nil {
+				return err
+			}
+			return runTree(deps, rootDir, treeOpts, args)
+		},
+	}
+	addListFlags(tree, &treeOpts, complete, treeFormats)
+
+	describe := &cobra.Command{
+		Use:               "describe <plan>...",
+		Short:             "Show every field of a plan, its children, and its findings",
+		Long:              describeHelp,
+		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: complete.plans,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			rootDir, err := resolve()
+			if err != nil {
+				return err
+			}
+			return runDescribe(deps, rootDir, args)
+		},
+	}
+
+	check := &cobra.Command{
+		Use:   "check",
+		Short: "Report front matter and link problems",
+		Long:  checkHelp,
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			rootDir, err := resolve()
+			if err != nil {
+				return err
+			}
+			return runCheck(deps, rootDir)
+		},
+	}
+
+	var newOpts newOptions
+	create := &cobra.Command{
+		Use:   "new [--parent <ref>] [--status <status> --note <text>] <name...>",
+		Short: "Create a plan for the current repository and print its path",
+		Long:  newHelp,
+		Args:  cobra.ArbitraryArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			rootDir, err := resolve()
 			if err != nil {
 				return err
 			}
@@ -196,6 +232,8 @@ overwritten.`,
 	create.Flags().StringVar(&newOpts.parent, "parent", "", "parent plan: [[wikilink]], basename, file path, or URL")
 	create.Flags().StringVar(&newOpts.status, "status", "", "initial implementation_status (needs --note)")
 	create.Flags().StringVar(&newOpts.note, "note", "", "initial status_note")
+	mustCompleteFlag(create, "parent", complete.parents)
+	mustCompleteFlag(create, "status", completeValues(statusValues))
 
 	update := &cobra.Command{
 		Use:   "update",
@@ -204,12 +242,13 @@ overwritten.`,
 	}
 	var note string
 	status := &cobra.Command{
-		Use:   "status <plan> [<implementation_status>]",
-		Short: "Change a plan's status, checked date, and note",
-		Long:  statusHelp,
-		Args:  cobra.RangeArgs(1, 2),
+		Use:               "status <plan> [<implementation_status>]",
+		Short:             "Change a plan's status, checked date, and note",
+		Long:              statusHelp,
+		Args:              cobra.RangeArgs(1, 2),
+		ValidArgsFunction: complete.planThenStatus,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			rootDir, err := resolveRoot(rootFlag)
+			rootDir, err := resolve()
 			if err != nil {
 				return err
 			}
@@ -219,15 +258,36 @@ overwritten.`,
 	status.Flags().StringVar(&note, "note", "", "new status_note text")
 	update.AddCommand(status)
 
-	root.AddCommand(get, tree, describe, check, create, update)
+	version := &cobra.Command{
+		Use:   "version",
+		Short: "Print the build information of this binary",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			info, ok := debug.ReadBuildInfo()
+			return writeOutput(deps.stdout, versionText(info, ok))
+		},
+	}
+
+	root.AddCommand(get, tree, describe, check, create, update, version)
 	return root
 }
 
 // addListFlags attaches the flags that planner get and planner tree share.
-func addListFlags(cmd *cobra.Command, opts *listOptions) {
+func addListFlags(cmd *cobra.Command, opts *listOptions, complete completer, formats []string) {
 	cmd.Flags().BoolVar(&opts.all, "all", false, "show Implemented and Superseded plans too")
-	cmd.Flags().BoolVar(&opts.wide, "wide", false, "add NOTE and PATH columns and never truncate")
+	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output format: "+strings.Join(formats, ", "))
+	cmd.Flags().BoolVar(&opts.noHeaders, "no-headers", false, "omit the header row")
 	cmd.Flags().StringVar(&opts.repo, "repo", "", "only plans whose <org>/<repo> contains this text (case-insensitive)")
+	mustCompleteFlag(cmd, "output", completeValues(formats))
+	mustCompleteFlag(cmd, "repo", complete.repos)
+}
+
+// validate rejects an output format the command does not offer.
+func (o listOptions) validate(formats []string) error {
+	if o.output == "" || slices.Contains(formats, o.output) {
+		return nil
+	}
+	return fmt.Errorf("unknown output format %q; use one of %s", o.output, strings.Join(formats, ", "))
 }
 
 // resolveRoot returns the absolute plan root from --root or from ~/.planner.yaml.

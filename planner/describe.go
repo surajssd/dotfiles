@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+// runDescribe prints one block per named plan. A name that resolves to no
+// plan is reported after the blocks of the plans that were found.
 func runDescribe(deps dependencies, root string, names []string) error {
 	c, err := loadCorpus(root)
 	if err != nil {
@@ -21,18 +23,18 @@ func runDescribe(deps dependencies, root string, names []string) error {
 	}
 	findings := checkCorpus(c)
 	home, _ := os.UserHomeDir()
+	plans, missing := findPlans(c, names)
 	var out strings.Builder
-	for i, name := range names {
-		p, err := findPlan(c, name)
-		if err != nil {
-			return err
-		}
+	for i, p := range plans {
 		if i > 0 {
 			out.WriteString("\n\n")
 		}
 		describePlan(&out, p, children[p], findings, home, deps.now())
 	}
-	return writeOutput(deps.stdout, out.String())
+	if err := writeOutput(deps.stdout, out.String()); err != nil {
+		return err
+	}
+	return missing
 }
 
 // describePlan writes one kubectl describe style block: aligned Key: Value
@@ -62,7 +64,7 @@ func describePlan(out *strings.Builder, p *plan, children []*plan, findings []fi
 	field("Status", p.front.ImplementationStatus)
 	checked := ""
 	if strings.TrimSpace(p.front.StatusChecked) != "" {
-		checked = fmt.Sprintf("%s (%s)", strings.TrimSpace(p.front.StatusChecked), ageText(p, now))
+		checked = fmt.Sprintf("%s (%s)", strings.TrimSpace(p.front.StatusChecked), checkedText(p, now))
 	}
 	field("Checked", checked)
 	field("Parent", p.front.Parent)

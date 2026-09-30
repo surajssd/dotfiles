@@ -115,6 +115,10 @@ if command -v gh &>/dev/null; then
     eval "$(gh completion -s bash)"
 fi
 
+if command -v planner &>/dev/null; then
+    source <(planner completion bash)
+fi
+
 # Add krew to the PATH
 export PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 #=================================================================

@@ -1,0 +1,12 @@
+{
+    "name": "widgets-umbrella",
+    "basename": "260910120000-widgets-umbrella",
+    "path": "<root>/github.com/acme/widgets/260910120000-widgets-umbrella.md",
+    "repo": "acme/widgets",
+    "title": "Widgets umbrella",
+    "type": "plan",
+    "parent": "~/.claude/plans/widgets-recipe.md",
+    "implementation_status": "InProgress",
+    "status_checked": "2026-09-29",
+    "status_note": "Umbrella for the widgets recipe effort."
+}

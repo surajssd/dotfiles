@@ -32,8 +32,13 @@ func testDependencies(stdin string, stdinIsTerminal bool, width int) (dependenci
 	}, io
 }
 
+// run executes planner with exactly the given arguments. An empty, non-nil
+// slice keeps cobra from falling back to the test binary's own os.Args.
 func run(t *testing.T, deps dependencies, args ...string) error {
 	t.Helper()
+	if args == nil {
+		args = []string{}
+	}
 	cmd := newCommand(deps)
 	cmd.SetArgs(args)
 	return cmd.Execute()
@@ -98,11 +103,17 @@ func TestListGolden(t *testing.T) {
 	}{
 		{"tree-active.golden", 0, []string{"tree"}, hiddenTree},
 		{"tree-all.golden", 0, []string{"tree", "--all"}, ""},
-		{"tree-wide.golden", 0, []string{"tree", "--wide", "--all"}, ""},
+		{"tree-wide.golden", 0, []string{"tree", "-o", "wide", "--all"}, ""},
 		{"tree-repo.golden", 0, []string{"tree", "--repo", "acme/gadgets", "--all"}, ""},
 		{"tree-narrow.golden", 130, []string{"tree"}, hiddenTree},
 		{"get-active.golden", 0, []string{"get"}, hiddenGet},
-		{"get-all-wide.golden", 0, []string{"get", "--all", "--wide"}, ""},
+		{"get-all-wide.golden", 0, []string{"get", "--all", "-o", "wide"}, ""},
+		{"get-json-single.golden", 0, []string{"get", "-o", "json", "widgets-umbrella"}, ""},
+		{"get-json-list.golden", 0, []string{"get", "-o", "json", "--repo", "gadgets", "--all"}, ""},
+		{"get-yaml.golden", 0, []string{"get", "-o", "yaml", "widgets-umbrella", "widgets-legacy"}, ""},
+		{"get-name.golden", 0, []string{"get", "-o", "name", "--all"}, ""},
+		{"get-no-headers.golden", 0, []string{"get", "--no-headers"}, hiddenGet},
+		{"tree-no-headers.golden", 0, []string{"tree", "--no-headers", "-o", "wide", "widgets-umbrella"}, ""},
 		{"get-repo.golden", 0, []string{"get", "--repo", "GADGETS", "--all"}, ""},
 		{"get-named.golden", 0, []string{"get", "widgets-child-done", "[[260915120000-widgets-legacy]]"}, ""},
 		{"tree-named.golden", 0, []string{"tree", "widgets-umbrella", "widgets-done-umbrella"}, ""},
@@ -148,15 +159,15 @@ func TestRepoFilterIsPartialAndCaseInsensitive(t *testing.T) {
 	}
 }
 
-func TestTreeLongIgnoresTerminalWidth(t *testing.T) {
+func TestWideIgnoresTerminalWidth(t *testing.T) {
 	fixtureHome(t)
 	root := fixtureRoot(t)
 	deps, io := testDependencies("", true, 40)
-	if err := run(t, deps, "tree", "--root", root, "--wide"); err != nil {
+	if err := run(t, deps, "tree", "--root", root, "-o", "wide"); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(io.stdout.String(), ellipsis) {
-		t.Errorf("--wide output was truncated:\n%s", io.stdout)
+		t.Errorf("-o wide output was truncated:\n%s", io.stdout)
 	}
 }
 
@@ -348,5 +359,94 @@ func TestNamedPlansMustResolve(t *testing.T) {
 		if err == nil || io.stdout.Len() != 0 {
 			t.Errorf("%v: error = %v, stdout = %q", args, err, io.stdout)
 		}
+	}
+}
+
+func TestNamedPlansPrintFoundAndReportMissing(t *testing.T) {
+	fixtureHome(t)
+	root := fixtureRoot(t)
+	for _, cmd := range []string{"get", "tree", "describe"} {
+		deps, io := testDependencies("", true, 0)
+		err := run(t, deps, cmd, "--root", root, "widgets-child-done", "nope", "widgets-crlf")
+		if err == nil || !strings.Contains(err.Error(), `"nope"`) {
+			t.Errorf("%s: error = %v", cmd, err)
+		}
+		out := io.stdout.String()
+		if !strings.Contains(out, "widgets-child-done") || !strings.Contains(out, "widgets-crlf") {
+			t.Errorf("%s did not print the plans it found:\n%s", cmd, out)
+		}
+		if io.stderr.Len() != 0 {
+			t.Errorf("%s: stderr = %q", cmd, io.stderr)
+		}
+	}
+	deps, io := testDependencies("", true, 0)
+	err := run(t, deps, "get", "--root", root, "-o", "json", "nope")
+	if err == nil || io.stdout.Len() != 0 {
+		t.Errorf("get -o json nope: error = %v, stdout = %q", err, io.stdout)
+	}
+}
+
+func TestOutputFormatIsValidated(t *testing.T) {
+	fixtureHome(t)
+	root := fixtureRoot(t)
+	for _, args := range [][]string{{"get", "-o", "table"}, {"tree", "-o", "json"}, {"tree", "-o", "name"}} {
+		deps, _ := testDependencies("", true, 0)
+		err := run(t, deps, append(args, "--root", root)...)
+		if err == nil || !strings.Contains(err.Error(), "unknown output format") {
+			t.Errorf("%v: error = %v", args, err)
+		}
+	}
+	deps, io := testDependencies("", true, 0)
+	if err := run(t, deps, "get", "--root", root, "-o", "json", "--repo", "nomatch"); err != nil {
+		t.Fatal(err)
+	}
+	if got := io.stdout.String(); got != "{\n    \"items\": []\n}\n" || io.stderr.Len() != 0 {
+		t.Errorf("empty json list: stdout = %q, stderr = %q", got, io.stderr)
+	}
+}
+
+func TestCompletion(t *testing.T) {
+	fixtureHome(t)
+	root := fixtureRoot(t)
+	cases := []struct {
+		args     []string
+		want     []string
+		unwanted []string
+	}{
+		{[]string{"get", "--root", root, "widgets-u"}, []string{"widgets-umbrella\tWidgets umbrella", "widgets-unknown-status\t"}, []string{"gadgets-cross-child", "widgets-crlf"}},
+		{[]string{"get", "--root", root, "260906"}, []string{"260906120000-shared-name\tShared name in gadgets", "260906120000-shared-name\tShared name in gizmos"}, []string{"\nshared-name\t"}},
+		{[]string{"get", "--root", root, "sha"}, nil, []string{"shared-name"}},
+		{[]string{"describe", "--root", root, "widgets-umbrella", "widgets-"}, []string{"widgets-crlf\t"}, []string{"widgets-umbrella\t"}},
+		{[]string{"update", "status", "--root", root, "widgets-umbrella", "In"}, []string{"InProgress"}, []string{"Implemented", "widgets-"}},
+		{[]string{"get", "--root", root, "--repo", "acme/g"}, []string{"acme/gadgets", "acme/gizmos"}, []string{"acme/widgets"}},
+		{[]string{"get", "--root", root, "-o", ""}, []string{"wide", "json", "yaml", "name"}, nil},
+		{[]string{"tree", "--root", root, "-o", ""}, []string{"wide"}, []string{"json"}},
+		{[]string{"new", "--root", root, "--status", "Sup"}, []string{"Superseded"}, []string{"InProgress"}},
+		{[]string{"new", "--root", root, "--parent", "widgets-um"}, []string{"widgets-umbrella\t"}, nil},
+	}
+	for _, tc := range cases {
+		deps, io := testDependencies("", true, 0)
+		if err := run(t, deps, append([]string{"__complete"}, tc.args...)...); err != nil {
+			t.Fatalf("%v: %v", tc.args, err)
+		}
+		out := io.stdout.String()
+		for _, want := range tc.want {
+			if !strings.Contains(out, want) {
+				t.Errorf("%v: completions lack %q:\n%s", tc.args, want, out)
+			}
+		}
+		for _, unwanted := range tc.unwanted {
+			if strings.Contains(out, unwanted) {
+				t.Errorf("%v: completions include %q:\n%s", tc.args, unwanted, out)
+			}
+		}
+	}
+	t.Setenv("HOME", t.TempDir())
+	deps, io := testDependencies("", true, 0)
+	if err := run(t, deps, "__complete", "get", ""); err != nil {
+		t.Fatal(err)
+	}
+	if got := io.stdout.String(); !strings.HasPrefix(got, ":") {
+		t.Errorf("completion without a root printed %q", got)
 	}
 }

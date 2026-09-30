@@ -1,21 +1,21 @@
-NAME                          REPO           STATUS              AGE    TITLE
-loose-plan                    -              InProgress          28d!   Loose plan
-gadgets-cross-child           acme/gadgets   InProgress          0d     Gadgets cross child
-gadgets-ambiguous-parent      acme/gadgets   InProgress          0d     Gadgets ambiguous parent
-widgets-done-umbrella-child   acme/widgets   InProgress          2d     Widgets done umbrella child
-widgets-umbrella              acme/widgets   InProgress          0d     Widgets umbrella
-widgets-child-active          acme/widgets   NotImplemented      9d!    Widgets child active
-widgets-crlf                  acme/widgets   InProgress          1d     Widgets CRLF plan
-widgets-no-h1                 acme/widgets   NotImplemented      0d     widgets-no-h1
-widgets-links                 acme/widgets   InProgress          0d     Widgets links
-widgets-missing-fields        acme/widgets   -                   ?d     Widgets missing fields
-widgets-unknown-status        acme/widgets   done                ?d     Widgets unknown status
-widgets-cycle-a               acme/widgets   InProgress          0d     Widgets cycle A
-widgets-cycle-b               acme/widgets   InProgress          0d     Widgets cycle B
-widgets-parent-missing        acme/widgets   InProgress          0d     Widgets parent missing
-widgets-parent-path-missing   acme/widgets   InProgress          0d     Widgets parent path missing
-widgets-url-parent            acme/widgets   InProgress          0d     Widgets URL parent
-widgets-design                acme/widgets   InProgress design   0d     Widgets design
-widgets-bare-parent           acme/widgets   InProgress          0d     Widgets bare parent
-widgets-relative-parent       acme/widgets   InProgress          0d     Widgets relative parent
-widgets-child-of-legacy       acme/widgets   InProgress          0d     Widgets child of legacy
+NAME                          REPO           STATUS           CHECKED   TITLE
+loose-plan                    -              InProgress       28d!      Loose plan
+gadgets-cross-child           acme/gadgets   InProgress       0d        Gadgets cross child
+gadgets-ambiguous-parent      acme/gadgets   InProgress       0d        Gadgets ambiguous parent
+widgets-done-umbrella-child   acme/widgets   InProgress       2d        Widgets done umbrella child
+widgets-umbrella              acme/widgets   InProgress       0d        Widgets umbrella
+widgets-child-active          acme/widgets   NotImplemented   9d!       Widgets child active
+widgets-crlf                  acme/widgets   InProgress       1d        Widgets CRLF plan
+widgets-no-h1                 acme/widgets   NotImplemented   0d        widgets-no-h1
+widgets-links                 acme/widgets   InProgress       0d        Widgets links
+widgets-missing-fields        acme/widgets   -                ?d        Widgets missing fields
+widgets-unknown-status        acme/widgets   done             ?d        Widgets unknown status
+widgets-cycle-a               acme/widgets   InProgress       0d        Widgets cycle A
+widgets-cycle-b               acme/widgets   InProgress       0d        Widgets cycle B
+widgets-parent-missing        acme/widgets   InProgress       0d        Widgets parent missing
+widgets-parent-path-missing   acme/widgets   InProgress       0d        Widgets parent path missing
+widgets-url-parent            acme/widgets   InProgress       0d        Widgets URL parent
+widgets-design                acme/widgets   InProgress       0d        Widgets design
+widgets-bare-parent           acme/widgets   InProgress       0d        Widgets bare parent
+widgets-relative-parent       acme/widgets   InProgress       0d        Widgets relative parent
+widgets-child-of-legacy       acme/widgets   InProgress       0d        Widgets child of legacy

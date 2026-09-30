@@ -58,6 +58,10 @@ command -v fzf &>/dev/null && {
 }
 
 #=================================================================
+# planner completion: commands, flags, plan names, repositories, statuses
+command -v planner &>/dev/null && source <(planner completion zsh)
+
+#=================================================================
 # my aliases
 
 # Source all alias files living next to this zshrc.

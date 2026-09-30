@@ -1,3 +1,3 @@
-NAME                 REPO           STATUS        AGE   TITLE
-widgets-child-done   acme/widgets   Implemented   9d    Widgets child done
-widgets-legacy       acme/widgets   -             -     Widgets legacy plan
+NAME                 REPO           STATUS        CHECKED   TITLE
+widgets-child-done   acme/widgets   Implemented   9d        Widgets child done
+widgets-legacy       acme/widgets   -             -         Widgets legacy plan

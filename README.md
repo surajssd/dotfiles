@@ -70,14 +70,17 @@ Installers create **symlinks** (not copies), so changes in this repo are immedia
 ```bash
 planner get                              # table of active plans
 planner get <plan>                       # one plan's row, whatever its status
+planner get -o json <plan>               # every field of one plan as JSON, path included
 planner tree                             # the same plans as an effort tree
 planner tree <plan>                      # the subtree under one plan
 planner describe <plan>                  # every field, children, note, and findings of one plan
-planner get --all --wide                 # every plan, legacy ones included, with NOTE and PATH columns
+planner get --all -o wide                # every plan, legacy ones included, with TYPE, PATH, and NOTE columns
 planner tree --repo cks                  # plans whose <org>/<repo> contains "cks", plus ancestors
 planner check                            # integrity findings; exit 1 on errors
 planner new [--parent <ref>] [--status <status> --note <text>] <name...>   # create a plan for the current repository
 planner update status <plan> [<status>] [--note <text>]   # change status, checked date, and note in place
+planner version                          # build information of the installed binary
+source <(planner completion zsh)         # completion of commands, flags, plan names, repositories, and statuses
 ```
 
 The plan root comes from `~/.planner.yaml`:
@@ -86,7 +89,7 @@ The plan root comes from `~/.planner.yaml`:
 root: ~/plans
 ```
 
-`--root <dir>` overrides the file. `get` and `tree` print the same `kubectl`-style table (`NAME`, `REPO`, `STATUS`, `AGE`, `TITLE`) and share `--all`, `--wide`, and `--repo`; `tree` adds connectors in `NAME`. Both accept plan names (a path, a wikilink, a basename, or the short `NAME` from the table), and `describe` prints one plan's fields as `Key: Value` lines. `--wide` drops `REPO`, adds `NOTE` and `PATH` (home shown as `~`), and never truncates. `--repo` is a case-insensitive substring match. Without `--all` only active plans are listed and a note on stderr counts the plans without valid front matter; `--all` lists every plan, those with `-` in STATUS and AGE. `planner check --help` lists the recognised status values and every rule with its severity.
+`--root <dir>` overrides the file. `get` and `tree` print the same `kubectl`-style table (`NAME`, `REPO`, `STATUS`, `CHECKED`, `TITLE`) and share `--all`, `-o`, `--no-headers`, and `--repo`; `tree` adds connectors in `NAME`. `CHECKED` is the number of days since `status_checked`, with `!` after an active plan older than a week. Both accept plan names (a path, a wikilink, a basename, or the short `NAME` from the table); a name that matches nothing is reported after the rows that were found and the exit status is 1. `describe` prints one plan's fields as `Key: Value` lines. `-o wide` adds `TYPE`, `PATH` (home shown as `~`), and `NOTE`, and never truncates; `-o json` and `-o yaml` print every field of each plan (one named plan as a single object, otherwise a list under `items`); `-o name` prints basenames. `tree` supports only `-o wide`. `--repo` is a case-insensitive substring match. Without `--all` only active plans are listed and a note on stderr counts the plans without valid front matter; `--all` lists every plan, those with `-` in STATUS and CHECKED. `planner check --help` lists the recognised status values and every rule with its severity. `zshrc` and `bashrc` source `planner completion` when the binary is on `PATH`, which completes plan names, repositories, statuses, and output formats.
 
 ## GitHub Codespaces
 

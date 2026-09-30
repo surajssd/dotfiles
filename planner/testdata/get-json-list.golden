@@ -1,0 +1,39 @@
+{
+    "items": [
+        {
+            "name": "gadgets-cross-child",
+            "basename": "260905120000-gadgets-cross-child",
+            "path": "<root>/github.com/acme/gadgets/260905120000-gadgets-cross-child.md",
+            "repo": "acme/gadgets",
+            "title": "Gadgets cross child",
+            "type": "plan",
+            "parent": "[[260910120000-widgets-umbrella]]",
+            "implementation_status": "InProgress",
+            "status_checked": "2026-09-29",
+            "status_note": "A child filed in another repository."
+        },
+        {
+            "name": "shared-name",
+            "basename": "260906120000-shared-name",
+            "path": "<root>/github.com/acme/gadgets/260906120000-shared-name.md",
+            "repo": "acme/gadgets",
+            "title": "Shared name in gadgets",
+            "type": "plan",
+            "implementation_status": "Implemented",
+            "status_checked": "2026-09-10",
+            "status_note": "One of two plans sharing a basename."
+        },
+        {
+            "name": "gadgets-ambiguous-parent",
+            "basename": "260907120000-gadgets-ambiguous-parent",
+            "path": "<root>/github.com/acme/gadgets/260907120000-gadgets-ambiguous-parent.md",
+            "repo": "acme/gadgets",
+            "title": "Gadgets ambiguous parent",
+            "type": "plan",
+            "parent": "[[260906120000-shared-name]]",
+            "implementation_status": "InProgress",
+            "status_checked": "2026-09-29",
+            "status_note": "Parent basename exists twice."
+        }
+    ]
+}

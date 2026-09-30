@@ -64,7 +64,7 @@ func runStatus(deps dependencies, root string, args []string, note string, noteS
 		return err
 	}
 	r := row{node: &node{plan: reloaded}, showRepo: true}
-	table := [][]string{{"NAME", "REPO", "STATUS", "AGE", "TITLE"}, r.cells(listOptions{}, deps.now(), "")}
+	table := [][]string{listHeader(listOptions{}), r.cells(listOptions{}, deps.now(), "")}
 	return writeOutput(deps.stdout, renderTable(table, 0))
 }
 

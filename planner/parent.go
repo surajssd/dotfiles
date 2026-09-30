@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -152,4 +153,21 @@ func findPlan(c *corpus, ref string) (*plan, error) {
 		}
 		return nil, fmt.Errorf("plan reference %q is ambiguous: %s", ref, strings.Join(paths, ", "))
 	}
+}
+
+// findPlans resolves every reference and returns the plans found, in the
+// order given, together with one error per reference that resolved to
+// nothing, so a caller can print what exists and still fail.
+func findPlans(c *corpus, refs []string) ([]*plan, error) {
+	var plans []*plan
+	var errs []error
+	for _, ref := range refs {
+		p, err := findPlan(c, ref)
+		if err != nil {
+			errs = append(errs, err)
+			continue
+		}
+		plans = append(plans, p)
+	}
+	return plans, errors.Join(errs...)
 }

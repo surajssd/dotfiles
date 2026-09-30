@@ -1,0 +1,3 @@
+widgets-umbrella           acme/widgets   InProgress       0d    Widgets umbrella       plan   <root>/github.com/acme/widgets/260910120000-widgets-umbrella.md       Umbrella for the widgets recipe effort.
+├── gadgets-cross-child    acme/gadgets   InProgress       0d    Gadgets cross child    plan   <root>/github.com/acme/gadgets/260905120000-gadgets-cross-child.md    A child filed in another repository.
+└── widgets-child-active                  NotImplemented   9d!   Widgets child active   plan   <root>/github.com/acme/widgets/260912120000-widgets-child-active.md   Waiting on the umbrella decision.

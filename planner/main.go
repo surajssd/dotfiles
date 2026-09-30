@@ -7,7 +7,7 @@ import (
 
 func main() {
 	if err := newCommand(realDependencies()).Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 }

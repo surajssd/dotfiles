@@ -25,10 +25,17 @@ func displayPath(path, home string) string {
 }
 
 type listOptions struct {
-	all  bool
-	wide bool
-	repo string
+	all       bool
+	output    string
+	noHeaders bool
+	repo      string
 }
+
+func (o listOptions) wide() bool { return o.output == "wide" }
+
+// table reports whether the output is one of the two table formats rather
+// than a machine-readable one.
+func (o listOptions) table() bool { return o.output == "" || o.output == "wide" }
 
 // matchesRepo reports whether a repository label passes the --repo filter: an
 // empty filter matches everything, otherwise a case-insensitive substring.
@@ -37,29 +44,31 @@ func matchesRepo(repo, filter string) bool {
 }
 
 func listHeader(opts listOptions) []string {
-	if opts.wide {
-		return []string{"NAME", "STATUS", "AGE", "TITLE", "NOTE", "PATH"}
+	header := []string{"NAME", "REPO", "STATUS", "CHECKED", "TITLE"}
+	if opts.wide() {
+		header = append(header, "TYPE", "PATH", "NOTE")
 	}
-	return []string{"NAME", "REPO", "STATUS", "AGE", "TITLE"}
+	return header
 }
 
 // listWidth returns the terminal width to truncate to, or 0 for no truncation.
 func listWidth(deps dependencies, opts listOptions) int {
 	width, isTerminal := deps.stdoutWidth()
-	if opts.wide || !isTerminal {
+	if opts.wide() || !isTerminal {
 		return 0
 	}
 	return width
 }
 
-// writeList prints the table on stdout and the notes about empty output and
-// skipped plans on stderr.
-func writeList(deps dependencies, table string, skipped int) error {
-	if err := writeOutput(deps.stdout, table); err != nil {
+// writeList prints the output on stdout and the notes about empty output and
+// skipped plans on stderr. The empty note is skipped when plans were named,
+// because their errors already say what is missing.
+func writeList(deps dependencies, output string, skipped int, noteWhenEmpty bool) error {
+	if err := writeOutput(deps.stdout, output); err != nil {
 		return err
 	}
 	var notes []string
-	if table == "" {
+	if output == "" && noteWhenEmpty {
 		notes = append(notes, "No plans found.")
 	}
 	if skipped > 0 {
@@ -71,23 +80,20 @@ func writeList(deps dependencies, table string, skipped int) error {
 	return writeOutput(deps.stderr, strings.Join(notes, "\n")+"\n")
 }
 
-// runGet lists plans as a flat table. Named plans are shown whatever their
-// status, in the order given; otherwise the active filter and --repo apply.
+// runGet lists plans as a flat table or as records. Named plans are shown
+// whatever their status, in the order given, and a name that resolves to no
+// plan is reported after the output; otherwise the active filter and --repo
+// apply.
 func runGet(deps dependencies, root string, opts listOptions, names []string) error {
 	c, err := loadCorpus(root)
 	if err != nil {
 		return err
 	}
 	var plans []*plan
+	var missing error
 	skipped := 0
 	if len(names) > 0 {
-		for _, name := range names {
-			p, err := findPlan(c, name)
-			if err != nil {
-				return err
-			}
-			plans = append(plans, p)
-		}
+		plans, missing = findPlans(c, names)
 	} else {
 		for _, p := range c.plans {
 			switch {
@@ -105,17 +111,30 @@ func runGet(deps dependencies, root string, opts listOptions, names []string) er
 			return plans[i].basename < plans[j].basename
 		})
 	}
-	table := ""
-	if len(plans) > 0 {
-		home, _ := os.UserHomeDir()
-		now := deps.now()
-		cells := [][]string{listHeader(opts)}
-		for _, p := range plans {
-			cells = append(cells, row{node: &node{plan: p}, showRepo: true}.cells(opts, now, home))
+	output := ""
+	switch {
+	case opts.table():
+		if len(plans) > 0 {
+			home, _ := os.UserHomeDir()
+			now := deps.now()
+			var cells [][]string
+			if !opts.noHeaders {
+				cells = append(cells, listHeader(opts))
+			}
+			for _, p := range plans {
+				cells = append(cells, row{node: &node{plan: p}, showRepo: true}.cells(opts, now, home))
+			}
+			output = renderTable(cells, listWidth(deps, opts))
 		}
-		table = renderTable(cells, listWidth(deps, opts))
+	case len(plans) > 0 || len(names) == 0:
+		if output, err = renderRecords(plans, opts.output, len(names) == 1); err != nil {
+			return err
+		}
 	}
-	return writeList(deps, table, skipped)
+	if err := writeList(deps, output, skipped, len(names) == 0); err != nil {
+		return err
+	}
+	return missing
 }
 
 type node struct {
@@ -137,24 +156,28 @@ func runTree(deps dependencies, root string, opts listOptions, names []string) e
 		return err
 	}
 	roots, all := buildForest(c)
+	home, _ := os.UserHomeDir()
 	if len(names) > 0 {
 		byPlan := map[*plan]*node{}
 		for _, n := range all {
 			byPlan[n.plan] = n
 		}
+		found, missing := findPlans(c, names)
 		roots = nil
-		for _, name := range names {
-			p, err := findPlan(c, name)
-			if err != nil {
-				return err
-			}
+		for _, p := range found {
 			n := byPlan[p]
 			markVisible(n, opts)
 			n.visible = true
 			roots = append(roots, n)
 		}
-		home, _ := os.UserHomeDir()
-		return writeList(deps, renderForest(roots, opts, deps.now(), listWidth(deps, opts), home), 0)
+		output := ""
+		if len(found) > 0 {
+			output = renderForest(roots, opts, deps.now(), listWidth(deps, opts), home)
+		}
+		if err := writeList(deps, output, 0, false); err != nil {
+			return err
+		}
+		return missing
 	}
 	for _, n := range roots {
 		markVisible(n, opts)
@@ -165,8 +188,7 @@ func runTree(deps dependencies, root string, opts listOptions, names []string) e
 			hidden++
 		}
 	}
-	home, _ := os.UserHomeDir()
-	return writeList(deps, renderForest(roots, opts, deps.now(), listWidth(deps, opts), home), hidden)
+	return writeList(deps, renderForest(roots, opts, deps.now(), listWidth(deps, opts), home), hidden, true)
 }
 
 // buildForest links every plan to its parent. External parents (paths and
@@ -308,7 +330,10 @@ func renderForest(roots []*node, opts listOptions, now time.Time, width int, hom
 	if len(rows) == 0 {
 		return ""
 	}
-	table := [][]string{listHeader(opts)}
+	var table [][]string
+	if !opts.noHeaders {
+		table = append(table, listHeader(opts))
+	}
 	for _, r := range rows {
 		table = append(table, r.cells(opts, now, home))
 	}
@@ -318,41 +343,41 @@ func renderForest(roots []*node, opts listOptions, now time.Time, width int, hom
 func (r row) cells(opts listOptions, now time.Time, home string) []string {
 	name := r.prefix
 	if r.node.plan == nil {
-		name += r.node.group
-		if opts.wide {
-			return []string{name, externalName, emptyCell, "not a dumped plan", emptyCell, emptyCell}
+		cells := []string{name + r.node.group, emptyCell, externalName, emptyCell, "not a dumped plan"}
+		if opts.wide() {
+			cells = append(cells, emptyCell, emptyCell, emptyCell)
 		}
-		return []string{name, emptyCell, externalName, emptyCell, "not a dumped plan"}
+		return cells
 	}
 	p := r.node.plan
 	name += p.name
 	if r.node.problem != "" {
 		name += " " + r.node.problem
 	}
-	status := statusText(p)
-	if status == "" {
-		status = emptyCell
-	}
-	if opts.wide {
-		note := strings.TrimSpace(p.front.StatusNote)
-		if note == "" {
-			note = emptyCell
-		}
-		return []string{name, status, ageText(p, now), p.title, note, displayPath(p.path, home)}
-	}
 	repo := ""
 	if r.showRepo {
-		repo = p.repo
-		if repo == "" {
-			repo = emptyCell
-		}
+		repo = orDash(p.repo)
 	}
-	return []string{name, repo, status, ageText(p, now), p.title}
+	cells := []string{name, repo, orDash(p.front.ImplementationStatus), checkedText(p, now), p.title}
+	if opts.wide() {
+		cells = append(cells, orDash(p.front.Type), displayPath(p.path, home), orDash(strings.TrimSpace(p.front.StatusNote)))
+	}
+	return cells
+}
+
+func orDash(value string) string {
+	if value == "" {
+		return emptyCell
+	}
+	return value
 }
 
 // renderTable pads every column but the last to its widest cell, kubectl
 // style. When width is positive the last column is cut to fit the terminal.
 func renderTable(table [][]string, width int) string {
+	if len(table) == 0 {
+		return ""
+	}
 	columns := len(table[0])
 	widths := make([]int, columns-1)
 	for _, cells := range table {
@@ -382,15 +407,9 @@ func renderTable(table [][]string, width int) string {
 	return out.String()
 }
 
-func statusText(p *plan) string {
-	status := p.front.ImplementationStatus
-	if p.front.Type != "" && p.front.Type != "plan" {
-		status += " " + p.front.Type
-	}
-	return status
-}
-
-func ageText(p *plan, now time.Time) string {
+// checkedText is the CHECKED cell: calendar days since status_checked, with !
+// after an active plan that has not been checked for more than a week.
+func checkedText(p *plan, now time.Time) string {
 	if !p.valid() {
 		return emptyCell
 	}
