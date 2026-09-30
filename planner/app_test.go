@@ -472,6 +472,7 @@ func TestCompletion(t *testing.T) {
 		{[]string{"tree", "--root", root, "-o", ""}, []string{"wide"}, []string{"json"}},
 		{[]string{"create", "--root", root, "--status", "Sup"}, []string{"Superseded"}, []string{"InProgress"}},
 		{[]string{"create", "--root", root, "--parent", "widgets-um"}, []string{"widgets-umbrella\t"}, nil},
+		{[]string{"set", "parent", "--root", root, "widgets-umbrella", "widgets-u"}, []string{"widgets-unknown-status\t"}, []string{"widgets-umbrella\t"}},
 	}
 	for _, tc := range cases {
 		deps, io := testDependencies("", true, 0)

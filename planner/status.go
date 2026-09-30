@@ -45,6 +45,20 @@ Removing a URL is a hand edit that planner check validates.
 shown by planner get, or a URL the plan already lists. On success the
 resulting list is printed.`
 
+const parentHelp = `Set the Parent of a plan's front matter, replacing the value it already
+has. Nothing else in the file changes, StatusChecked included. Clearing a
+parent is a hand edit that planner check validates.
+
+<ref> takes the forms --parent accepts on planner create: a dumped plan (as
+[[wikilink]], basename, or the short name shown by planner get), a file path,
+or a URL. A plan under the root is stored as the wikilink of its basename, a
+file outside the root as a path, and a URL as is. A plan cannot be its own
+parent, and the new parent cannot be one of the plan's descendants.
+
+<plan> is a path under the root, a [[wikilink]], a basename, the short name
+shown by planner get, or a URL the plan lists. On success the stored Parent
+line is printed.`
+
 var linkRules = map[string]string{
 	pullRequestsKey: "Every URL must be an http(s) URL, and on github.com it must point at a\npull request (/pull/<n>).",
 	issuesKey:       "Every URL must be an http(s) URL: a GitHub issue, a Jira ticket, an Asana\ntask, or any other tracker. A github.com pull request is rejected; it belongs\nunder PullRequests.",
@@ -163,6 +177,66 @@ func runLinks(deps dependencies, root, key string, args []string) error {
 		out.WriteString("  " + value + "\n")
 	}
 	return writeOutput(deps.stdout, out.String())
+}
+
+// runSetParent replaces the Parent of one plan.
+func runSetParent(deps dependencies, root string, args []string) error {
+	c, err := loadCorpus(root)
+	if err != nil {
+		return err
+	}
+	p, err := findPlan(c, args[0])
+	if err != nil {
+		return err
+	}
+	switch {
+	case !p.hasFront:
+		return fmt.Errorf("%s: the plan has no front matter; give it a status and --note with planner set status first", p.relPath)
+	case p.frontErr != nil:
+		return fmt.Errorf("%s: front matter does not decode (%v); fix it before setting its parent", p.relPath, p.frontErr)
+	}
+	value, err := canonicalReference(root, args[1])
+	if err != nil {
+		return err
+	}
+	if value == "[["+p.basename+"]]" {
+		return errors.New("a plan cannot be its own parent")
+	}
+	if chain := parentCycle(c, p, value); chain != nil {
+		return fmt.Errorf("parent would form a cycle: %s", strings.Join(chain, " -> "))
+	}
+	data, err := os.ReadFile(p.path)
+	if err != nil {
+		return err
+	}
+	updated, err := updateFrontMatter(data, []fieldEdit{{"Parent", parentLine(value)}})
+	if err != nil {
+		return fmt.Errorf("%s: %w", p.relPath, err)
+	}
+	if err := writePlanFile(p.path, updated); err != nil {
+		return err
+	}
+	return writeOutput(deps.stdout, "Parent: "+value+"\n")
+}
+
+// parentCycle returns the chain p would close by taking value as its parent:
+// p, the new parent, its ancestors, and p again. It is nil when the value is
+// not a wikilink or the plan is not among the new parent's ancestors.
+func parentCycle(c *corpus, p *plan, value string) []string {
+	if classifyParent(value) != parentWikilink {
+		return nil
+	}
+	matches := c.lookup(reduceLinkTarget(value))
+	if len(matches) != 1 {
+		return nil
+	}
+	chain, _ := parentChain(c, matches[0])
+	for i, basename := range chain {
+		if basename == p.basename {
+			return append([]string{p.basename}, chain[:i+1]...)
+		}
+	}
+	return nil
 }
 
 func writePlanFile(path string, data []byte) error {

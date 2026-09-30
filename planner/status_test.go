@@ -225,6 +225,86 @@ func TestLinkEditsPreserveCommentsAndUnrelatedFields(t *testing.T) {
 	}
 }
 
+const otherFixture = "---\nType: plan\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: \"Other.\"\n---\n\n# Other plan\n"
+
+func TestSetParentStoresWikilinkAndLeavesDateAlone(t *testing.T) {
+	root, path := statusRoot(t)
+	writeFile(t, filepath.Join(root, "github.com", "acme", "gadgets", "260902000000-other-plan.md"), otherFixture)
+	deps, io := testDependencies("", true, 0)
+	if err := run(t, deps, "set", "parent", "--root", root, "widgets-plan", "other-plan"); err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Replace(statusFixture, "Parent: \"[[260901000000-parent-plan]]\"", "Parent: \"[[260902000000-other-plan]]\"", 1)
+	if got := readFile(t, path); got != want {
+		t.Errorf("content:\n%s", got)
+	}
+	if out := io.stdout.String(); out != "Parent: [[260902000000-other-plan]]\n" {
+		t.Errorf("output: %q", out)
+	}
+	deps, io = testDependencies("", true, 0)
+	if err := run(t, deps, "tree", "--root", root); err != nil {
+		t.Fatal(err)
+	}
+	if out := io.stdout.String(); !strings.Contains(out, "other-plan") || !strings.Contains(out, "└── widgets-plan") {
+		t.Errorf("tree does not nest the plan under its new parent:\n%s", out)
+	}
+}
+
+func TestSetParentStoresPathsAndURLsAsGiven(t *testing.T) {
+	root, path := statusRoot(t)
+	outside := filepath.Join(t.TempDir(), "notes.md")
+	writeFile(t, outside, "# Notes\n")
+	for _, ref := range []string{"https://github.com/acme/widgets/issues/1", outside} {
+		deps, _ := testDependencies("", true, 0)
+		if err := run(t, deps, "set", "parent", "--root", root, "widgets-plan", ref); err != nil {
+			t.Fatalf("%s: %v", ref, err)
+		}
+		front, err := decodeFrontMatter([]byte(readFile(t, path)))
+		if err != nil || front.Parent != ref || front.StatusChecked != "2026-09-01" {
+			t.Errorf("%s: front = %+v, error = %v", ref, front, err)
+		}
+	}
+}
+
+func TestSetParentAddsMissingKey(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "github.com", "acme", "widgets", "260910120000-orphan.md")
+	writeFile(t, path, "---\nType: plan\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: \"Orphan.\"\n---\n# Orphan\n")
+	parentFixture(t, root)
+	deps, _ := testDependencies("", true, 0)
+	if err := run(t, deps, "set", "parent", "--root", root, "orphan", "parent-plan"); err != nil {
+		t.Fatal(err)
+	}
+	want := "---\nType: plan\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: \"Orphan.\"\nParent: \"[[260901000000-parent-plan]]\"\n---\n# Orphan\n"
+	if got := readFile(t, path); got != want {
+		t.Errorf("content:\n%s", got)
+	}
+}
+
+func TestSetParentRejectsBadInput(t *testing.T) {
+	root, path := statusRoot(t)
+	parentPath := parentFixture(t, root)
+	parentContent := readFile(t, parentPath)
+	writeFile(t, filepath.Join(root, "github.com", "acme", "widgets", "260912120000-legacy.md"), "# Legacy\n")
+	cases := map[string][]string{
+		"its own parent":  {"widgets-plan", "widgets-plan"},
+		"cycle":           {"parent-plan", "widgets-plan"},
+		"not found":       {"widgets-plan", "nope"},
+		"does not exist":  {"widgets-plan", "/no/such/notes.md"},
+		"no front matter": {"legacy", "widgets-plan"},
+	}
+	for want, args := range cases {
+		deps, _ := testDependencies("", true, 0)
+		err := run(t, deps, append([]string{"set", "parent", "--root", root}, args...)...)
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%v: error = %v, want %q", args, err, want)
+		}
+	}
+	if readFile(t, path) != statusFixture || readFile(t, parentPath) != parentContent {
+		t.Error("a rejected command changed a file")
+	}
+}
+
 func TestNewParentAcceptsShortName(t *testing.T) {
 	initRepo(t, "upstream", "https://github.com/acme/widgets")
 	root := t.TempDir()

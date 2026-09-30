@@ -136,6 +136,7 @@ func newCommand(deps dependencies) *cobra.Command {
   planner check                front matter and link findings; exit 1 on errors
   planner create <name...>     create a plan for the current repository
   planner set status           change a plan's status, checked date, and note
+  planner set parent           set the parent of a plan
   planner set pr|issue         add pull request or tracker URLs to a plan
   planner version              build information of this binary
 
@@ -289,7 +290,21 @@ completes commands, flags, plan names, repositories, and statuses.`,
 	status.Flags().StringVar(&statusOpts.note, "note", "", "new StatusNote text")
 	status.Flags().StringVar(&statusOpts.supersededBy, "superseded-by", "", "plan that replaces this one: [[wikilink]], basename, file path, or URL")
 	mustCompleteFlag(status, "superseded-by", complete.parents)
-	set.AddCommand(status, linksCommand(deps, resolve, complete, "pr", pullRequestsKey), linksCommand(deps, resolve, complete, "issue", issuesKey))
+	parent := &cobra.Command{
+		Use:               "parent <plan> <ref>",
+		Short:             "Set a plan's parent",
+		Long:              parentHelp,
+		Args:              cobra.ExactArgs(2),
+		ValidArgsFunction: complete.planThenParent,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			rootDir, err := resolve()
+			if err != nil {
+				return err
+			}
+			return runSetParent(deps, rootDir, args)
+		},
+	}
+	set.AddCommand(status, parent, linksCommand(deps, resolve, complete, "pr", pullRequestsKey), linksCommand(deps, resolve, complete, "issue", issuesKey))
 
 	version := &cobra.Command{
 		Use:   "version",
