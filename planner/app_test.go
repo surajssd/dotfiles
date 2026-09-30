@@ -116,6 +116,7 @@ func TestListGolden(t *testing.T) {
 		{"tree-status.golden", 0, []string{"tree", "--status", "implemented"}, ""},
 		{"tree-narrow.golden", 130, []string{"tree"}, hiddenTree},
 		{"get-active.golden", 0, []string{"get"}, hiddenGet},
+		{"get-repos.golden", 0, []string{"get", "repos"}, ""},
 		{"get-all-wide.golden", 0, []string{"get", "--all", "-o", "wide"}, ""},
 		{"get-json-single.golden", 0, []string{"get", "-o", "json", "widgets-umbrella"}, ""},
 		{"get-json-list.golden", 0, []string{"get", "-o", "json", "--repo", "gadgets", "--all"}, ""},
@@ -465,6 +466,7 @@ func TestCompletion(t *testing.T) {
 		{[]string{"describe", "--root", root, "widgets-umbrella", "widgets-"}, []string{"widgets-crlf\t"}, []string{"widgets-umbrella\t"}},
 		{[]string{"set", "status", "--root", root, "widgets-umbrella", "In"}, []string{"InProgress"}, []string{"Implemented", "widgets-"}},
 		{[]string{"get", "--root", root, "--repo", "acme/g"}, []string{"acme/gadgets", "acme/gizmos"}, []string{"acme/widgets"}},
+		{[]string{"get", "--root", root, "rep"}, []string{"repos\tList every repository that has plans"}, []string{"widgets-"}},
 		{[]string{"tree", "--root", root, "--status", "Sup"}, []string{"Superseded"}, []string{"InProgress"}},
 		{[]string{"get", "--root", root, "-o", ""}, []string{"wide", "json", "yaml", "name"}, nil},
 		{[]string{"tree", "--root", root, "-o", ""}, []string{"wide"}, []string{"json"}},
@@ -493,7 +495,8 @@ func TestCompletion(t *testing.T) {
 	if err := run(t, deps, "__complete", "get", ""); err != nil {
 		t.Fatal(err)
 	}
-	if got := io.stdout.String(); !strings.HasPrefix(got, ":") {
+	got := io.stdout.String()
+	if rest, ok := strings.CutPrefix(got, "repos\tList every repository that has plans\n"); !ok || !strings.HasPrefix(rest, ":") {
 		t.Errorf("completion without a root printed %q", got)
 	}
 }
@@ -509,11 +512,15 @@ func TestPlanCompletionsResolve(t *testing.T) {
 	if err := run(t, deps, "__complete", "get", "--root", root, ""); err != nil {
 		t.Fatal(err)
 	}
+	getSubcommands := map[string]bool{"repos": true}
 	for _, line := range strings.Split(strings.TrimSpace(io.stdout.String()), "\n") {
 		if strings.HasPrefix(line, ":") {
 			continue
 		}
 		ref, _, _ := strings.Cut(line, "\t")
+		if getSubcommands[ref] {
+			continue
+		}
 		if _, err := findPlan(c, ref); err != nil {
 			t.Errorf("completion %q does not resolve: %v", ref, err)
 		}

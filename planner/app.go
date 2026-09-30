@@ -72,7 +72,10 @@ With plan names (a path, [[wikilink]], basename, or the short NAME shown in
 the table) only those plans are printed, whatever their status. A URL selects
 every plan that lists it under Issues, PullRequests, Parent, or
 SupersededBy. A name that matches no plan is reported after the others and
-the exit status is 1.`
+the exit status is 1.
+
+planner get repos prints every <org>/<repo> that has plans, one per line,
+whatever their status.`
 
 const treeHelp = `Print the plans under the root as a table with tree connectors in NAME:
 children sit under their parent plan, and one group row per external parent
@@ -127,6 +130,7 @@ func newCommand(deps dependencies) *cobra.Command {
 		Long: `planner manages a folder of Markdown plans with YAML front matter.
 
   planner get [<plan>...]      table of active plans, or of the named plans
+  planner get repos            every repository that has plans
   planner tree [<plan>...]     the same as an effort tree, or the named subtrees
   planner describe <plan>...   every field of a plan, its children, its findings
   planner check                front matter and link findings; exit 1 on errors
@@ -175,6 +179,19 @@ completes commands, flags, plan names, repositories, and statuses.`,
 		},
 	}
 	addListFlags(get, &getOpts, complete, getFormats)
+	get.AddCommand(&cobra.Command{
+		Use:   "repos",
+		Short: "List every repository that has plans",
+		Long:  reposHelp,
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			rootDir, err := resolve()
+			if err != nil {
+				return err
+			}
+			return runRepos(deps, rootDir)
+		},
+	})
 
 	var treeOpts listOptions
 	tree := &cobra.Command{

@@ -92,17 +92,7 @@ func (c completer) repos(cmd *cobra.Command, args []string, toComplete string) (
 	if !ok {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	seen := map[string]bool{}
-	var out []string
-	for _, p := range corp.plans {
-		if p.repo == "" || seen[p.repo] || !strings.HasPrefix(p.repo, toComplete) {
-			continue
-		}
-		seen[p.repo] = true
-		out = append(out, p.repo)
-	}
-	sort.Strings(out)
-	return out, cobra.ShellCompDirectiveNoFileComp
+	return completeValues(repoLabels(corp))(cmd, args, toComplete)
 }
 
 // completeValues completes from a fixed list.
