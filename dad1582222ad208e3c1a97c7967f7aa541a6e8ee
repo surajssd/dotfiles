@@ -1,0 +1,21 @@
+## Conversation
+User ran `make install` and saw `cat install.sh >install` / `chmod a+x install` instead of an installation, and asked why. After the explanation they asked for a fix, then asked to commit it.
+
+## Actions
+Read Makefile; confirmed no `install` target. Ran `make -p -f /dev/null` to show GNU make's built-in `%: %.sh` rule (`cat $< >$@` then `chmod a+x $@`). Confirmed the untracked `install` file was byte-identical to `install.sh`. Deleted `install`, added `install: install-all ## Alias for install-all` to the Makefile and `install` to the orchestration `.PHONY` line. Verified with `make -n install` (runs the five installers then `install-private`) and `make help`. Committed only the Makefile with `git commit -s -S`; the working tree also held unrelated uncommitted planner and herdr changes that were left alone.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+Considered disabling built-in rules globally (`MAKEFLAGS += -r` or `.SUFFIXES:`). Not done: the explicit target alone fixes the reported problem, and nothing else at the repo root has a `.sh` twin that a bare `make <name>` could trip on.
+
+## Hints for Future Agents
+The `git-autopush-post-commit` hook pushes master to origin immediately on commit (`✅ autosync: pushed master → origin`). Committing on master in this repo is therefore also a push; do not commit here unless the user wants it public.
+Any file `foo.sh` at the repo root makes `make foo` silently produce an executable copy named `foo` unless an explicit `foo` target exists.
+
+## Codebase Discoveries
+Root `install.sh` exists for GitHub Codespaces, which runs it as the dotfiles entry point; it just calls `make install-all`. README and CLAUDE.md document `make install-all`, not `make install`, so no doc change was needed.
+
+## Open Questions
+None.
