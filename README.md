@@ -76,12 +76,14 @@ planner get -o json <plan>               # every field of one plan as JSON, path
 planner tree                             # the same plans as an effort tree
 planner tree <plan>                      # the subtree under one plan
 planner describe <plan>                  # every field, children, note, and findings of one plan
+planner describe --github <plan>         # the same, with the state gh reports after each pull request URL
 planner get --all -o wide                # every plan, legacy ones included, with TYPE, PATH, and NOTE columns
 planner tree --repo cks                  # plans whose <org>/<repo> contains "cks", plus ancestors
 planner get repos                        # every <org>/<repo> that has plans, one per line
 planner get --status implemented         # plans with that ImplementationStatus (any case, hyphens optional), no --all needed
 planner check                            # integrity findings; exit 1 on errors
 planner check <plan>                     # the findings of one plan only
+planner check --github [<plan>...]       # also warn when StatusNote calls a closed or merged pull request open
 planner get <url>                        # every plan that lists the URL as issue, pull request, parent, or successor
 planner create [--parent <ref>] [--status <status> --note <text>] [--issue <url>]... [--pr <url>]... <name...>   # create a plan for the current repository
 planner log <plan> <title...> [--note <text>] < entry.md   # append "### <today>: <title>" and the piped text under "## Progress log"; sets StatusChecked

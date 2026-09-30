@@ -320,7 +320,7 @@ func TestCheckHelpListsRulesAndStatuses(t *testing.T) {
 		t.Fatal(err)
 	}
 	help := io.stdout.String()
-	for _, want := range append(statusValues, "no-front-matter", "duplicate-title", "invalid-link", "unknown-key", "missing-successor", "successor-not-found", "advisory", "error", "FILE", "SEVERITY") {
+	for _, want := range append(statusValues, "no-front-matter", "duplicate-title", "invalid-link", "unknown-key", "missing-successor", "successor-not-found", "stale-pr-note", "pr-state-unknown", "--github", "advisory", "error", "FILE", "SEVERITY") {
 		if !strings.Contains(help, want) {
 			t.Errorf("check --help lacks %q", want)
 		}

@@ -96,6 +96,11 @@ file (home shown as ~), repository, type, status, checked date and age, parent,
 successor, children, issues, pull requests, the full status note, and the
 planner check findings for that plan.
 
+--github asks gh pr view for the state of every listed pull request and
+prints it after the URL (OPEN, CLOSED, or MERGED, or the reason gh gave
+none), and adds the findings of the GitHub rules of planner check. It needs
+gh on PATH, logged in, and network access.
+
 <plan> is a path, a [[wikilink]], a basename, the short NAME shown by planner
 get, or a URL the plan lists. A name that matches no plan is reported after
 the others and the exit status is 1.`
@@ -139,6 +144,7 @@ func newCommand(deps dependencies) *cobra.Command {
   planner tree [<plan>...]     the same as an effort tree, or the named subtrees
   planner describe <plan>...   every field of a plan, its children, its findings
   planner check [<plan>...]    front matter and link findings; exit 1 on errors
+  planner check --github       also compare StatusNote with GitHub's PR states
   planner create <name...>     create a plan for the current repository
   planner log <plan> <title>   append a dated entry to a plan's progress log
   planner set status           change a plan's status, checked date, and note
@@ -220,8 +226,9 @@ completes commands, flags, plan names, repositories, and statuses.`,
 	}
 	addListFlags(tree, &treeOpts, complete, treeFormats)
 
+	var describeGitHub bool
 	describe := &cobra.Command{
-		Use:               "describe <plan>...",
+		Use:               "describe [--github] <plan>...",
 		Short:             "Show every field of a plan, its children, and its findings",
 		Long:              describeHelp,
 		Args:              cobra.MinimumNArgs(1),
@@ -231,12 +238,14 @@ completes commands, flags, plan names, repositories, and statuses.`,
 			if err != nil {
 				return err
 			}
-			return runDescribe(deps, rootDir, args)
+			return runDescribe(deps, rootDir, args, describeGitHub)
 		},
 	}
+	describe.Flags().BoolVar(&describeGitHub, "github", false, "show the state gh reports for each pull request")
 
+	var checkOpts checkOptions
 	check := &cobra.Command{
-		Use:               "check [<plan>...]",
+		Use:               "check [--github] [<plan>...]",
 		Short:             "Report front matter and link problems",
 		Long:              checkHelp,
 		Args:              cobra.ArbitraryArgs,
@@ -246,9 +255,10 @@ completes commands, flags, plan names, repositories, and statuses.`,
 			if err != nil {
 				return err
 			}
-			return runCheck(deps, rootDir, args)
+			return runCheck(deps, rootDir, args, checkOpts)
 		},
 	}
+	check.Flags().BoolVar(&checkOpts.github, "github", false, "also compare StatusNote with the pull request states gh reports")
 
 	var newOpts createOptions
 	create := &cobra.Command{

@@ -9,7 +9,7 @@ import (
 
 // runDescribe prints one block per named plan. A name that resolves to no
 // plan is reported after the blocks of the plans that were found.
-func runDescribe(deps dependencies, root string, names []string) error {
+func runDescribe(deps dependencies, root string, names []string, github bool) error {
 	c, err := loadCorpus(root)
 	if err != nil {
 		return err
@@ -24,12 +24,17 @@ func runDescribe(deps dependencies, root string, names []string) error {
 	findings := checkCorpus(c)
 	home, _ := os.UserHomeDir()
 	plans, missing := findPlans(c, names)
+	var states map[string]prState
+	if github {
+		states = fetchPRStates(pullRequestURLs(plans))
+		findings = sortFindings(append(findings, githubFindings(plans, states)...))
+	}
 	var out strings.Builder
 	for i, p := range plans {
 		if i > 0 {
 			out.WriteString("\n\n")
 		}
-		describePlan(&out, p, children[p], findings, home, deps.now())
+		describePlan(&out, p, children[p], findings, states, home, deps.now())
 	}
 	if err := writeOutput(deps.stdout, out.String()); err != nil {
 		return err
@@ -38,8 +43,9 @@ func runDescribe(deps dependencies, root string, names []string) error {
 }
 
 // describePlan writes one kubectl describe style block: aligned Key: Value
-// lines, with list values on indented lines below their key.
-func describePlan(out *strings.Builder, p *plan, children []*plan, findings []finding, home string, now time.Time) {
+// lines, with list values on indented lines below their key. With states,
+// each pull request URL is followed by what GitHub reports for it.
+func describePlan(out *strings.Builder, p *plan, children []*plan, findings []finding, states map[string]prState, home string, now time.Time) {
 	field := func(key, value string) {
 		if value == "" {
 			value = emptyCell
@@ -75,7 +81,7 @@ func describePlan(out *strings.Builder, p *plan, children []*plan, findings []fi
 	}
 	list("Children", names)
 	list("Issues", p.front.Issues)
-	list("Pull Requests", p.front.PullRequests)
+	list("Pull Requests", pullRequestLines(p.front.PullRequests, states))
 	field("Note", strings.TrimSpace(p.front.StatusNote))
 	var problems []string
 	for _, f := range findings {
@@ -84,4 +90,22 @@ func describePlan(out *strings.Builder, p *plan, children []*plan, findings []fi
 		}
 	}
 	list("Findings", problems)
+}
+
+// pullRequestLines pads the URLs to one width and appends the state GitHub
+// reports, or returns them as written when no states were fetched.
+func pullRequestLines(urls []string, states map[string]prState) []string {
+	if states == nil {
+		return urls
+	}
+	width := 0
+	for _, url := range urls {
+		width = max(width, len(strings.TrimSpace(url)))
+	}
+	var lines []string
+	for _, url := range urls {
+		url = strings.TrimSpace(url)
+		lines = append(lines, fmt.Sprintf("%-*s  %s", width, url, states[url]))
+	}
+	return lines
 }

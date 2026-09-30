@@ -43,6 +43,10 @@ planner get, or a URL the plan lists) only the findings of those plans are
 shown. A name that matches no plan is reported after the table and the exit
 status is 1.
 
+--github asks gh pr view for the state of every pull request the plans in
+scope list (the active plans, or the named ones) and adds the two rules
+marked below. It needs gh on PATH, logged in, and network access.
+
 Front matter keys: Type, ImplementationStatus, StatusChecked, and
 StatusNote are required; Parent, SupersededBy, Issues, and PullRequests
 are optional. Parent and SupersededBy hold a "[[wikilink]]", a path, or a
@@ -78,7 +82,12 @@ Rules:
   undumped-reference    advisory  Parent, SupersededBy, or a link in the body
                                   or in StatusNote points into .claude/plans/
   duplicate-title       advisory  two or more plans in one repository folder
-                                  share an H1`
+                                  share an H1
+  stale-pr-note         advisory  (--github) a sentence of StatusNote calls a
+                                  listed pull request open, by URL or #<n>,
+                                  while GitHub says CLOSED or MERGED
+  pr-state-unknown      advisory  (--github) gh could not report the state of
+                                  a listed pull request URL`
 
 type severity int
 
@@ -101,20 +110,34 @@ func (s severity) String() string {
 	return "advisory"
 }
 
-func runCheck(deps dependencies, root string, names []string) error {
+type checkOptions struct {
+	github bool
+}
+
+func runCheck(deps dependencies, root string, names []string, opts checkOptions) error {
 	c, err := loadCorpus(root)
 	if err != nil {
 		return err
 	}
 	findings := checkCorpus(c)
+	var scope []*plan
 	var missing error
 	if len(names) > 0 {
-		var plans []*plan
-		plans, missing = findPlans(c, names)
-		if len(plans) == 0 {
+		scope, missing = findPlans(c, names)
+		if len(scope) == 0 {
 			return missing
 		}
-		findings = findingsFor(findings, plans)
+		findings = findingsFor(findings, scope)
+	} else {
+		for _, p := range c.plans {
+			if p.valid() && p.active() {
+				scope = append(scope, p)
+			}
+		}
+	}
+	if opts.github {
+		states := fetchPRStates(pullRequestURLs(scope))
+		findings = sortFindings(append(findings, githubFindings(scope, states)...))
 	}
 	if len(findings) == 0 {
 		if err := writeOutput(deps.stderr, "No findings.\n"); err != nil {
@@ -181,6 +204,11 @@ func checkCorpus(c *corpus) []finding {
 		checkLinks(c, p, add)
 	}
 	checkDuplicateTitles(c, add)
+	return sortFindings(findings)
+}
+
+// sortFindings orders findings by file, then rule, then detail.
+func sortFindings(findings []finding) []finding {
 	sort.Slice(findings, func(i, j int) bool {
 		a, b := findings[i], findings[j]
 		if a.plan.relPath != b.plan.relPath {
