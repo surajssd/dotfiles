@@ -1,0 +1,23 @@
+## Conversation
+Feedback item 1, the one the author ranked first: every progress update was a hand-rolled Python edit that found an anchor heading and inserted text above it, done about eight times across two plans, and it failed once when a file had moved. The suggestion was `planner log <plan> --title ... --body-file entry.md` under a fixed section, date-stamped, refreshing StatusChecked, with set status --note defaulting to the latest entry.
+
+## Actions
+Surveyed the real corpus: 260928140503-split-model-qa-pr-into-stacked-prs.md already had thirteen "### YYYY-MM-DD: title" entries under "## Progress log"; three plans used "## Implementation record". Chose "## Progress log" as the fixed heading. New log.go: runLog joins the title words with spaces, reads the body from stdin only when stdin is not a terminal (the create pattern, so no --body-file flag), bumps StatusChecked through statusEdits/updateFrontMatter, then appendLogEntry inserts the entry at the end of the section before the next level one or two heading, skipping headings inside fences, or creates the section at the end of the file. --note replaces StatusNote in the same write. log_test.go covers an existing section, three end-of-file shapes, fences and case-insensitive heading match, CRLF, --note, and rejections. Built to the scratchpad and ran it against a copy of the real plan root; the entry landed before "## Decisions to make before starting" on the split plan and a new section appeared on the bring-up plan.
+
+## Errors & Mistakes
+None; the tests passed on the first run.
+
+## Dead Ends
+Rejected making set status --note default to the latest entry's first paragraph: a front matter command would have to parse the body. --note on log is the explicit replacement. Considered extracting the fence tracking shared with scanBody into a helper; this is the second use, so it is duplicated.
+
+## Hints for Future Agents
+- Only "## Progress log" (any case) is recognised. Plans using "## Implementation record" get a new Progress log section at the end unless the heading is renamed.
+- appendLogEntry trims trailing blank lines of the section before inserting and re-adds exactly one blank line before the following heading, so repeated runs do not accumulate blank lines.
+- Body line endings are normalised to the file's own (\r\n files stay \r\n).
+- A terminal stdin means a heading-only entry, which is intended for "PR 1 merged" style entries.
+
+## Codebase Discoveries
+splitFrontMatter returns the body as the exact suffix of the file, but log.go recomputes the closing --- index directly (frontMatterEnd) because it needs line indices, not text.
+
+## Open Questions
+Whether the three "Implementation record" plans should be renamed so log appends to them.
