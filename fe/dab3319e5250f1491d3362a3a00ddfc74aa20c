@@ -1,0 +1,27 @@
+## Conversation
+The user asked how a planner user discovers the available statuses and repositories, and proposed a kubectl-style split: planner get plans for the current get, plus planner get statuses and planner get repos. I recommended against renaming the default get (plans are the only real resource, and get [<plan>...] is documented in README.md, CLAUDE.md, and the global instruction file) and against a statuses command (six constants already listed by check --help, completion, and the unknown-status error). I recommended planner get repos as a subcommand of get with the plan-name fall-through kept. The user replied "Add planner get repos then", then "commit it".
+
+## Actions
+Read app.go, completion.go, plans.go (repoLabel), tree.go (writeList, runGet), output.go, app_test.go, the fixture tree, the notes on fffcbaa, 84a7162, and cb0bb06, and cobra v1.10.2 completions.go to confirm that subcommand names and ValidArgsFunction results are merged for the first argument. Added repos.go with reposHelp, repoLabels(*corpus) []string, and runRepos. Replaced the loop in completer.repos with completeValues(repoLabels(corp)). Registered repos under get with cobra.NoArgs, added it to the root Long command list and to getHelp. Added the get-repos.golden case to TestListGolden, a completion case for "rep", and a skip for the subcommand name in TestPlanCompletionsResolve. Generated the golden with go test ./... -update (no other golden changed). Ran gofmt, go vet, golangci-lint (0 issues), go test. Built to the scratchpad and ran get repos, get <plan>, get repos extra, and get --help against the real corpus, then go -C planner install . Updated README.md and CLAUDE.md. Linted the message with the conventional-commits validator, staged only the seven task files, committed with -s -S; the post-commit hook pushed master.
+
+## Errors & Mistakes
+TestCompletion failed once after adding the subcommand: the "completion without a root" assertion expected output starting with ":" but got "repos\tList every repository that has plans\n:4\n". Cobra offers subcommand names whether or not the root resolves, which is correct, so the assertion now strips that one line and checks the directive follows. Also, an early shell command used echo ===== as a separator and zsh treated ===== as an =cmd expansion ("==== not found"); quote separators in zsh.
+
+## Dead Ends
+Considered a top-level planner repos (kubectl api-resources precedent, zero ambiguity) and a full resource-first get. Chose the subcommand because it matches the user's kubectl mental model without breaking get <plan>. Considered a stderr "No repositories found." note when the list is empty; dropped it because there are no filters to hint about, unlike get and tree. Considered deriving the subcommand skip set in TestPlanCompletionsResolve from the cobra tree; a literal map is shorter and fails loudly when a new subcommand is added.
+
+## Hints for Future Agents
+- get has both RunE with cobra.ArbitraryArgs and a subcommand. Cobra runs the subcommand when the first argument matches its name and otherwise falls through to RunE, so a plan whose short name is literally "repos" must be addressed by basename or path.
+- The get -h Usage now shows two lines: "planner get [<plan>...] [flags]" and "planner get [command]".
+- --repo is a substring match, so the labels get repos prints are candidates, not the only accepted values.
+- Loose plans directly under the root have repo "" and are left out of get repos, as they were from completion.
+- configs/herdr/config.toml was modified before this session and is intentionally not committed.
+
+## Codebase Discoveries
+- completeValues(values) is a reusable prefix filter; any fixed list completion should go through it rather than a hand-written loop.
+- TestListGolden copies testdata/plans and testdata/external under a temp HOME and replaces the root with <root> in the output, so a golden for a command that prints only labels needs no path scrubbing.
+- Cobra adds subcommand names to completions only when there are no positional args yet and no local non-persistent flag has been set; --root is persistent so it does not suppress them.
+
+## Open Questions
+- Whether to list the six status values in the --status flag description so planner get -h shows them; suggested, not requested.
+- Whether the global instruction file in the private repo should mention planner get repos; left unchanged because it never mentions --repo either.
