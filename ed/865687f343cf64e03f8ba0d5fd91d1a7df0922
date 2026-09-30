@@ -1,0 +1,23 @@
+## Conversation
+The user forwarded an agent's feedback on planner from a day of use: six items. Item 3 was that planner set had status, pr, and issue but no parent verb, so a split plan showed as a sibling of the plan it belonged to, and the agent instructions forbid hand edits of that front matter. I proposed one commit per item; after I recommended declining three other items the user said "Don't worry about the size, implement all of them", then "can you commit it?".
+
+## Actions
+Read status.go, parent.go, create.go, completion.go, app.go, the tests, and the notes on the last seven planner commits. Added parentHelp, runSetParent, and parentCycle to status.go, reusing canonicalReference and updateFrontMatter. Wired set parent in app.go with cobra.ExactArgs(2). Added completer.planThenParent and made completer.parents pass the positional args through so the plan already named is dropped from the candidates. Four tests in status_test.go plus a completion case in app_test.go. Docs in README.md and CLAUDE.md. gofmt, go vet, go test ./..., golangci-lint run all clean. Committed with hooks disabled so master was not pushed.
+
+## Errors & Mistakes
+The first saved patch of this step was taken with `git diff HEAD -- .` from a `-C ..` invocation and swept in the unrelated configs/herdr/config.toml change; re-saved with explicit paths.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+- updateFrontMatter appends a missing key at the end of the block, so a plan without Parent gets it after StatusNote, unlike create, which writes it after Type. There is no positional insert.
+- canonicalReference already prefixes "parent: " on a plan lookup failure, so runSetParent returns its error unwrapped. A wrapped "Parent: %w" trips staticcheck ST1005 (capitalised error string), as an earlier commit found.
+- parentCycle walks parentChain from the new parent upward and reports the chain if the plan itself appears; a pre-existing cycle among the new parent's ancestors that does not involve the plan is not refused, planner check already reports it.
+- The post-commit hook pushes master. `git -c core.hooksPath=/dev/null commit` keeps a commit local.
+
+## Codebase Discoveries
+completer.parents is shared by create --parent, set status --superseded-by, and now set parent; passing args through is harmless for create (its args are name words) and useful for the other two.
+
+## Open Questions
+Whether Parent should be inserted after Type rather than appended.
