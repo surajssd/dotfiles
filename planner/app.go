@@ -138,7 +138,7 @@ func newCommand(deps dependencies) *cobra.Command {
   planner get repos            every repository that has plans
   planner tree [<plan>...]     the same as an effort tree, or the named subtrees
   planner describe <plan>...   every field of a plan, its children, its findings
-  planner check                front matter and link findings; exit 1 on errors
+  planner check [<plan>...]    front matter and link findings; exit 1 on errors
   planner create <name...>     create a plan for the current repository
   planner set status           change a plan's status, checked date, and note
   planner set parent           set the parent of a plan
@@ -235,16 +235,17 @@ completes commands, flags, plan names, repositories, and statuses.`,
 	}
 
 	check := &cobra.Command{
-		Use:   "check",
-		Short: "Report front matter and link problems",
-		Long:  checkHelp,
-		Args:  cobra.NoArgs,
+		Use:               "check [<plan>...]",
+		Short:             "Report front matter and link problems",
+		Long:              checkHelp,
+		Args:              cobra.ArbitraryArgs,
+		ValidArgsFunction: complete.plans,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			rootDir, err := resolve()
 			if err != nil {
 				return err
 			}
-			return runCheck(deps, rootDir)
+			return runCheck(deps, rootDir, args)
 		},
 	}
 

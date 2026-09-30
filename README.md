@@ -81,6 +81,7 @@ planner tree --repo cks                  # plans whose <org>/<repo> contains "ck
 planner get repos                        # every <org>/<repo> that has plans, one per line
 planner get --status implemented         # plans with that ImplementationStatus (any case, hyphens optional), no --all needed
 planner check                            # integrity findings; exit 1 on errors
+planner check <plan>                     # the findings of one plan only
 planner get <url>                        # every plan that lists the URL as issue, pull request, parent, or successor
 planner create [--parent <ref>] [--status <status> --note <text>] [--issue <url>]... [--pr <url>]... <name...>   # create a plan for the current repository
 planner set status <plan> [<status>] [--note <text>] [--superseded-by <ref>]   # change status, checked date, note, and successor in place

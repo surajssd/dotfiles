@@ -38,6 +38,11 @@ finding: FILE, REPO, SEVERITY, RULE, and DETAIL, sorted by file, then rule.
 The exit status is 1 when any error finding exists and 0 when there are only
 advisories or no findings.
 
+With plan names (a path, a [[wikilink]], a basename, the short NAME shown by
+planner get, or a URL the plan lists) only the findings of those plans are
+shown. A name that matches no plan is reported after the table and the exit
+status is 1.
+
 Front matter keys: Type, ImplementationStatus, StatusChecked, and
 StatusNote are required; Parent, SupersededBy, Issues, and PullRequests
 are optional. Parent and SupersededBy hold a "[[wikilink]]", a path, or a
@@ -96,14 +101,26 @@ func (s severity) String() string {
 	return "advisory"
 }
 
-func runCheck(deps dependencies, root string) error {
+func runCheck(deps dependencies, root string, names []string) error {
 	c, err := loadCorpus(root)
 	if err != nil {
 		return err
 	}
 	findings := checkCorpus(c)
+	var missing error
+	if len(names) > 0 {
+		var plans []*plan
+		plans, missing = findPlans(c, names)
+		if len(plans) == 0 {
+			return missing
+		}
+		findings = findingsFor(findings, plans)
+	}
 	if len(findings) == 0 {
-		return writeOutput(deps.stderr, "No findings.\n")
+		if err := writeOutput(deps.stderr, "No findings.\n"); err != nil {
+			return err
+		}
+		return missing
 	}
 	table := [][]string{{"FILE", "REPO", "SEVERITY", "RULE", "DETAIL"}}
 	errorCount, advisoryCount := 0, 0
@@ -123,9 +140,28 @@ func runCheck(deps dependencies, root string) error {
 		return err
 	}
 	if errorCount > 0 {
-		return fmt.Errorf("check: %s, %s", plural(errorCount, "error", "errors"), plural(advisoryCount, "advisory", "advisories"))
+		summary := fmt.Errorf("check: %s, %s", plural(errorCount, "error", "errors"), plural(advisoryCount, "advisory", "advisories"))
+		if missing != nil {
+			return errors.Join(missing, summary)
+		}
+		return summary
 	}
-	return nil
+	return missing
+}
+
+// findingsFor keeps the findings that belong to the given plans, in order.
+func findingsFor(findings []finding, plans []*plan) []finding {
+	wanted := map[*plan]bool{}
+	for _, p := range plans {
+		wanted[p] = true
+	}
+	var kept []finding
+	for _, f := range findings {
+		if wanted[f.plan] {
+			kept = append(kept, f)
+		}
+	}
+	return kept
 }
 
 func checkCorpus(c *corpus) []finding {

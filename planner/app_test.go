@@ -237,6 +237,39 @@ func TestCheckGolden(t *testing.T) {
 	assertGolden(t, "check.golden", io.stdout.String())
 }
 
+func TestCheckNamedPlans(t *testing.T) {
+	fixtureHome(t)
+	root := fixtureRoot(t)
+	deps, io := testDependencies("", true, 0)
+	err := run(t, deps, "check", "--root", root, "widgets-links", "widgets-umbrella")
+	if err == nil || err.Error() != "check: 2 errors, 2 advisories" {
+		t.Fatalf("error = %v", err)
+	}
+	out := io.stdout.String()
+	if lines := strings.Split(strings.TrimSpace(out), "\n"); len(lines) != 5 {
+		t.Errorf("want a header and four rows:\n%s", out)
+	}
+	for _, unwanted := range []string{"widgets-bad-yaml", "widgets-cycle-a", "legacy-name.md"} {
+		if strings.Contains(out, unwanted) {
+			t.Errorf("findings of an unnamed plan %q were printed:\n%s", unwanted, out)
+		}
+	}
+	deps, io = testDependencies("", true, 0)
+	if err := run(t, deps, "check", "--root", root, "widgets-child-active"); err != nil || io.stdout.Len() != 0 || io.stderr.String() != "No findings.\n" {
+		t.Errorf("clean plan: error = %v, stdout = %q, stderr = %q", err, io.stdout, io.stderr)
+	}
+	deps, io = testDependencies("", true, 0)
+	err = run(t, deps, "check", "--root", root, "nope")
+	if err == nil || !strings.Contains(err.Error(), `"nope"`) || io.stdout.Len() != 0 || io.stderr.Len() != 0 {
+		t.Errorf("unknown plan: error = %v, stdout = %q, stderr = %q", err, io.stdout, io.stderr)
+	}
+	deps, io = testDependencies("", true, 0)
+	err = run(t, deps, "check", "--root", root, "widgets-links", "nope")
+	if err == nil || !strings.Contains(err.Error(), `"nope"`) || !strings.Contains(err.Error(), "check: 2 errors, 1 advisory") || !strings.Contains(io.stdout.String(), "widgets-links") {
+		t.Errorf("found and missing: error = %v, stdout = %q", err, io.stdout)
+	}
+}
+
 func TestCheckCleanCorpusReportsNoFindings(t *testing.T) {
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, "github.com", "a", "b", "260101000000-ok.md"), "---\nType: plan\nImplementationStatus: Implemented\nStatusChecked: 2026-01-01\nStatusNote: \"Done.\"\n---\n# Ok\n")
@@ -486,6 +519,7 @@ func TestCompletion(t *testing.T) {
 		{[]string{"create", "--root", root, "--status", "Sup"}, []string{"Superseded"}, []string{"InProgress"}},
 		{[]string{"create", "--root", root, "--parent", "widgets-um"}, []string{"widgets-umbrella\t"}, nil},
 		{[]string{"set", "parent", "--root", root, "widgets-umbrella", "widgets-u"}, []string{"widgets-unknown-status\t"}, []string{"widgets-umbrella\t"}},
+		{[]string{"check", "--root", root, "widgets-um"}, []string{"widgets-umbrella\tWidgets umbrella"}, nil},
 	}
 	for _, tc := range cases {
 		deps, io := testDependencies("", true, 0)
