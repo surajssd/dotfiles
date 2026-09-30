@@ -1,0 +1,25 @@
+## Conversation
+Second of the three approved commits from the planner review. The user asked for PR links, Jira and Asana links, and "things like that" in the front matter; the review settled on two URL lists plus superseded_by, and the user approved all of it.
+
+## Actions
+Extended frontMatter (Issues, PullRequests, SupersededBy) and plan (unknownKeys, noteLinks) in plans.go, with decodeFrontMatter and scanLinks/lineLinks shared with scanBody. New links.go holds linkProblem, mergeLinks, listLines, linksFor, linkLabel. check.go gained checkReference (parent and superseded_by share it; the cycle check stays parent-only), the invalid-link, unknown-key, successor-not-found, and missing-successor rules, and note scanning in checkLinks. status.go was restructured around fieldEdit slices: updateFrontMatter(data, edits) returns errNoFrontMatter, newFrontMatter builds a block from edits, statusEdits renders the three status lines, runStatus takes statusOptions with supersededBy, runLinks implements update pr and update issue. new.go validates --issue/--pr up front, writes the lists into generated front matter, and merges them into piped front matter through linkEdits. parent.go gained matchPlans (URL lookup) with findPlan/findPlans on top. describe widened to 16 columns and prints Superseded By, Issues, Pull Requests. Four fixture plans, goldens regenerated, links_test.go added. Docs in README.md and CLAUDE.md updated.
+
+## Errors & Mistakes
+- Expected 9 advisories in the check golden but got 8: a bare ~/.claude/plans path in a note is prose, not a link, so undumped-reference did not fire. Changed the fixture note to a Markdown link, which is the intended trigger.
+- gofmt flagged output.go after the struct tag columns changed; fixed with gofmt -w.
+
+## Dead Ends
+- Separate jira/asana keys were rejected during the review because the tool would do nothing different per key; the host in the URL already says which tracker it is.
+- Storing pull_request_status, merge_commit, and merged_at (an existing hand-added set) was rejected: it copies GitHub state that goes stale and gh pr view answers it from the URL.
+
+## Hints for Future Agents
+- updateFrontMatter treats indented lines and lines starting with "- " as continuation of the key being replaced, so block lists at column zero and flow lists both get replaced whole. A key nested in a mapping is never matched because it is indented.
+- update pr/issue never bump status_checked; update status always does. --superseded-by needs the new or current status to be Superseded and refuses a self reference.
+- A URL as a plan reference returns several plans from matchPlans; findPlan (used by update) turns that into an ambiguity error, findPlans (get, tree, describe) prints them all.
+- Link lists are written bare (no quotes); wikilinks in parent and superseded_by stay quoted because [[ starts a YAML sequence.
+
+## Codebase Discoveries
+- The real corpus after this change: 5 missing-successor advisories (the five Superseded plans) and 3 unknown-key advisories on 260928101344-redesign-recipe-publisher-tag-creation.md; the backfill in the vault addresses both.
+
+## Open Questions
+- Whether duplicate URLs inside one list should be an advisory; the writer dedupes, hand edits are not checked.
