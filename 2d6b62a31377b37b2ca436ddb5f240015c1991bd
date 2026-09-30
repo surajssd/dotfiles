@@ -1,0 +1,37 @@
+## Conversation
+The user asked to implement the planner plan dumped in the career-log vault (260929171852-planner-go-cli.md): a Go CLI replacing the ssd dump plan Bash design. After the first pass they iterated in one session on 2026-09-30: kubectl-style table output for the tree and the findings, remove ssd dump plan from the private repo, add a status-update subcommand, CamelCase status values, a command layout of get/tree/describe/check/new/update status, PATH last with ~ for home, substring --repo, --all listing legacy plans, --status/--note on new, get/tree by plan name, describe, and --long renamed to --wide. Then "commit it as first iteration" with a check that nothing CoreWeave-related is in the public diff.
+
+## Actions
+Worktree ~/.herdr/worktrees/dotfiles-planner on branch planner off master ac04732. Wrote planner/ (app.go, plans.go, parent.go, tree.go, check.go, new.go, status.go, describe.go, main.go), tests with a fixture corpus under testdata/plans and golden files, installers/install-planner.sh, Makefile target install-planner wired into install-all, .gitignore, README and CLAUDE.md sections. gofmt, go vet, golangci-lint 2.12.2, go test all pass. Installed with make install-planner into ~/go/bin. Separately and uncommitted: private repo changes (configs/planner.yaml, install.sh symlink to ~/.planner.yaml, ssd dump plan removed, global-claude-config.md wording) and the vault migration (45 plans renamed to YYMMDDHHMMSS-<name>.md via git mv, links rewritten, parent fields, four dead links fixed, statuses CamelCased).
+
+## Errors & Mistakes
+- `git mv -k check.go get.go` silently did nothing on an untracked file and the `|| mv` fallback never ran, so the build broke until a plain mv.
+- A repo-filter test used "dget" as the partial match, which is also a substring of "widgets".
+- After removing ssd dump plan, verifying with `ssd dump plan foo` fell through to the generic dump, which reads stdin; the tool call hung 120s and created a stray archive file in the vault. Killed the process and deleted work-dump/archives/2026/2026-09-Sep-30-11-29-14-plan-foo.sh.
+- First check golden test hard-coded 12 advisories; the fixture has 6.
+- zsh multios made `cmd 2>&1 >/dev/null | head` show stdout, giving a false "footer printed" reading.
+- `go get @latest` for x/term pulled the go directive to 1.26; pinned x/term v0.35.0 and x/sys v0.36.0 to keep go 1.25.
+
+## Dead Ends
+- `get` was the findings command for one iteration (user renamed check to get), then became the flat plan list when the user said get and tree show the same data; findings went back to `check`.
+- The tree first printed a header line plus indented title and note lines per plan; replaced wholesale by the kubectl table.
+
+## Hints for Future Agents
+- Regenerate goldens with `go test ./... -update` from planner/. Tests set HOME to a temp dir, so `~` display paths and the `<root>` substitution in goldens stay stable.
+- errcheck: render tables into strings.Builder and write once with writeOutput; fmt.Fprint to an arbitrary io.Writer is flagged.
+- The tool recognises only the twelve-digit prefix, so dead-link findings on the pre-migration corpus were 0, not the plan's 4.
+- `planner new` prints the absolute path (agents consume it); tables show `~`.
+- Several plan decisions were superseded by the user in-session: exact --repo (now substring), no status subcommand (now update status), hidden legacy plans (now shown with --all), lint-style check output (now a table), lowercase statuses (now CamelCase), --long (now --wide). The vault plan file still documents the originals.
+- The diff is about 3,600 lines against an approved 1,250 to 1,550; the user chose to commit it as one first iteration.
+
+## Codebase Discoveries
+- .git/hooks/post-commit symlinks to local-bin/git-autopush-post-commit and pushes only main/master; commit with -c core.hooksPath=/dev/null anyway.
+- CLAUDE.md claimed install-all stays offline; install-planner downloads Go modules when go is present, so the wording was adjusted.
+- renovate.json already has a gomod rule, so planner/go.mod is picked up without changes.
+- The private ssd generic dump files under work-dump/archives/<year>/, not the 2026-archives path the older code suggested.
+
+## Open Questions
+- `type:` values stay lowercase (plan, manual-test-plan) and print after STATUS; the user has not decided on CamelCase or a TYPE column.
+- Private repo and vault changes are uncommitted; the private master has the auto-push hook and the vault's scripts/commit.sh pulls, commits everything, and pushes.
+- In --wide, PATH follows NOTE, so it starts after notes that run to 900 characters.
+- Whether this branch becomes one PR or is split.
