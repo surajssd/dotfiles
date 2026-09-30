@@ -1,0 +1,25 @@
+## Conversation
+The user pasted output of `planner tree --all` and `planner tree --repo surajssd/dotfilesprivate` and said the repo filter was not working, because the second command printed "No plans found." while the first showed a plan in that repo. I explained that the filter worked and the active filter hid the only plan (Superseded). The user then asked me to fix it, then to commit.
+
+## Actions
+Read tree.go, plans.go, app.go, app_test.go and the golden fixtures. Added `listOptions.inactive(p)` next to `selects` and `hidden` in tree.go; made `writeList` take an `inactive` count and print "N Implemented or Superseded plan(s) hidden (--all shows them)" after "No plans found." when the count is above zero; counted inactive plans in the unnamed branches of `runGet` and `runTree`. Added `TestEmptyListCountsInactivePlans` in app_test.go using the `acme/gizmos` fixture, whose only plan is Implemented. Ran gofmt, go vet, golangci-lint, go test (all clean), `go install .`, and verified the real commands. Committed only planner/tree.go and planner/app_test.go with `git commit -s -S`; the autopush hook pushed to origin.
+
+## Errors & Mistakes
+None in the code. Process: I initially read tree.go while another session was mid-edit on the same file (adding --status), so my first read showed `matchesRepo`-based switch cases that no longer existed by the time I edited. I re-read before editing and built on the new `selects`/`hidden` helpers.
+
+## Dead Ends
+Considered printing the inactive-hidden count on every run, like the invalid-front-matter note. Rejected: every default `planner get` would then print a stderr line about dozens of hidden plans; the confusion only arises when the list is empty, so the hint is limited to that case.
+
+## Hints for Future Agents
+- The `--status` filter landed concurrently as 84a7162 from another session; git status at the start of a session may not reflect what another session is doing in the same working tree. Re-read files right before editing.
+- `inactive()` deliberately returns false under `--all` and `--status`: under --all nothing is hidden for status, and under --status Implemented/Superseded match by themselves, so a hint about --all would mislead.
+- In `runTree`, `all` contains only plan nodes (group nodes for external parents are not in it), so `n.plan` is safe to dereference there.
+- `plural(n, one, many)` formats "%d %s", so the phrase passed must be the whole noun phrase ("Implemented or Superseded plan").
+- The note uses "them" regardless of count, matching the existing `hiddenHint` convention.
+
+## Codebase Discoveries
+- `writeList` is the single place where stderr notes for get and tree are assembled; named-plan invocations pass `noteWhenEmpty=false` because missing names are reported as errors instead.
+- Fixture repo `acme/gizmos` has exactly one plan, `shared-name`, which is Implemented; useful for "everything hidden" cases.
+
+## Open Questions
+None.
