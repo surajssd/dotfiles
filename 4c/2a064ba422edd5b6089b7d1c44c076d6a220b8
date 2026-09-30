@@ -1,0 +1,20 @@
+## Conversation
+Feedback item 6: the JSON output "uses different key casing from the frontmatter", and the agent had to guess between implementation_status and ImplementationStatus. Part of the six-item batch the user approved in full.
+
+## Actions
+Checked output.go: front matter fields already carry their CamelCase names since b4919c8; only the derived fields (name, basename, path, repo, title, front_matter_error) are lowercase, and README line 70 said so. The gap was that `planner get --help` listed no keys. Rewrote the -o json/-o yaml paragraph of getHelp in app.go to name every key, extended the README sentence, and added TestGetHelpListsRecordKeys mirroring TestCheckHelpListsRulesAndStatuses.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+Did not change the casing itself: the mixed scheme was a deliberate decision recorded in the note on b4919c8, and the feedback author's confusion came from the pre-migration snake_case names.
+
+## Hints for Future Agents
+If a key is added to planRecord in output.go, add it to the getHelp paragraph and to the test's wanted strings, or the test will not catch the omission.
+
+## Codebase Discoveries
+None.
+
+## Open Questions
+None.
