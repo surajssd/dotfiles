@@ -1,0 +1,21 @@
+## Conversation
+Third of the three approved commits from the planner review. The review recommended leaving the verbs alone unless the user wanted kubectl parity; the user answered "implement all of it", so the rename ships as its own commit that can be dropped without touching the other two.
+
+## Actions
+git mv new.go create.go and new_test.go create_test.go; sed over *.go for planner new/update in help and errors, runNew/newOptions/newHelp identifiers, the Use strings, the update cobra variable and AddCommand calls; sed over *_test.go for the "new"/"update" argument strings; realigned the root help block; replaced the verbs in README.md and CLAUDE.md. The private repository's configs/global-claude-config.md (symlinked to ~/.claude/CLAUDE.md) was rewritten with the new verbs and the new flags but is uncommitted there because its master branch auto-pushes on commit.
+
+## Errors & Mistakes
+- The sed for test arguments matched `"update",` only; the bare-command test lists `"update"}` without a comma and had to be fixed by hand.
+
+## Dead Ends
+- Keeping `new` and `update` as hidden aliases was rejected: two names for one command, and the tool is a day old.
+
+## Hints for Future Agents
+- No alias exists for the old verbs; any script or instruction that still says planner new or planner update status fails with "unknown command".
+- Drop this commit alone if the rename is unwanted; the first two commits do not depend on it, but the private config edit does.
+
+## Codebase Discoveries
+- None.
+
+## Open Questions
+- None.
