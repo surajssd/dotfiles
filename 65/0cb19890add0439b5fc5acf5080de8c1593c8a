@@ -1,0 +1,23 @@
+## Conversation
+Feedback item 4: a parent plan said "open PR #138" for a day after #138 closed and nothing flagged it; the author asked for each PR's state from gh next to the URL in describe, or a check --github rule warning when a note says "open" about a closed or merged PR. I recommended against it (network in describe, a flag the agent must remember, and a one-line gh loop already answers it) and proposed an instruction change instead; the user approved the full set, so both suggestions are implemented and the instruction change was made too.
+
+## Actions
+New github.go: prState, pullRequestURLs, fetchPRStates (four goroutines, gh pr view <url> --json state, GH_PROMPT_DISABLED=1, ghTimeout), githubFindings with the rules stale-pr-note and pr-state-unknown, and mentionsPullRequest. describe --github pads URLs and appends the state; check --github scopes to active plans or the named ones. checkCorpus sorting moved into sortFindings so appended GitHub findings can be re-sorted. github_test.go uses a fake gh on PATH that switches on the URL argument and prints two stderr lines on failure to prove only the first is kept. Verified against the real corpus with the real gh: describe of the bring-up plan in 1.3 s (#138 CLOSED, #155 MERGED, #156 and #158 OPEN), check --github over the whole active corpus in 2.4 s with no stale notes.
+
+## Errors & Mistakes
+TestGitHubFindingsNumberRules failed once because I wrote the expected findings in the wrong order; findings follow the PullRequests list order, so #2 came before the GitLab URL. Fixed the expectation, not the code.
+
+## Dead Ends
+Considered a non-heuristic rule (ImplementedUnmerged with every PR MERGED) instead of the "open" sentence match; not requested, left out. Considered injecting a PR-state function through dependencies for tests; kept the PATH-based fake gh that create already uses.
+
+## Hints for Future Agents
+- stale-pr-note is a heuristic: sentences split on . ! ? followed by whitespace or end; the word "open" must match \bopen\b (case-insensitive), so "opened" and "reopen" do not fire; a PR is named by its full URL or by #<n> with an exact number match (#1550 is not #155).
+- A number shared by several listed pull requests counts as open while any of them is OPEN or unknown; a literal URL mention is judged on that URL alone.
+- Nothing calls gh without --github; the describe golden is unaffected because states is nil in that path.
+- The note on 7b58c20 explains why states are never stored in the front matter.
+
+## Codebase Discoveries
+cmd.Output() with cmd.Stderr set to a builder still returns stdout and leaves stderr in the builder, which is how the reason line is captured.
+
+## Open Questions
+Whether pr-state-unknown should be an error rather than an advisory when gh is not logged in at all.
