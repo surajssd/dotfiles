@@ -62,6 +62,44 @@ func TestStatusNoteOnly(t *testing.T) {
 	}
 }
 
+func TestStatusNoteFile(t *testing.T) {
+	root, path := statusRoot(t)
+	noteFile := filepath.Join(t.TempDir(), "note.md")
+	writeFile(t, noteFile, "\n\nFirst line.\n\nSecond line.\n\n")
+	want := "First line.\n\nSecond line."
+	deps, _ := testDependencies("", true, 0)
+	if err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "--note-file", noteFile); err != nil {
+		t.Fatal(err)
+	}
+	if front, err := decodeFrontMatter([]byte(readFile(t, path))); err != nil || front.StatusNote != want || front.StatusChecked != "2026-09-29" {
+		t.Errorf("from file: front = %+v, error = %v", front, err)
+	}
+	deps, _ = testDependencies("From stdin.\r\n", false, 0)
+	if err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "Implemented", "--note-file", "-"); err != nil {
+		t.Fatal(err)
+	}
+	if front, err := decodeFrontMatter([]byte(readFile(t, path))); err != nil || front.StatusNote != "From stdin." || front.ImplementationStatus != "Implemented" {
+		t.Errorf("from stdin: front = %+v, error = %v", front, err)
+	}
+	before := readFile(t, path)
+	writeFile(t, filepath.Join(root, "empty.md"), "\n")
+	cases := map[string][]string{
+		"not both":      {"--note", "x", "--note-file", noteFile},
+		"no such file":  {"--note-file", filepath.Join(root, "missing.md")},
+		"holds no text": {"--note-file", filepath.Join(root, "empty.md")},
+	}
+	for want, args := range cases {
+		deps, _ := testDependencies("", true, 0)
+		err := run(t, deps, append([]string{"set", "status", "--root", root, "widgets-plan"}, args...)...)
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%v: error = %v, want %q", args, err, want)
+		}
+	}
+	if readFile(t, path) != before {
+		t.Error("a rejected command changed the file")
+	}
+}
+
 func TestStatusRejectsBadInput(t *testing.T) {
 	root, path := statusRoot(t)
 	writeFile(t, filepath.Join(root, "github.com", "acme", "gadgets", "260911120000-widgets-plan.md"), statusFixture)

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,6 +28,9 @@ Recognised ImplementationStatus values:
 
 The status may be typed in any case, with or without hyphens: in-progress and
 inprogress both mean InProgress.
+
+--note-file reads the note from a file instead, or from stdin when the path
+is -, dropping blank lines at either end. It cannot be combined with --note.
 
 --superseded-by takes the same forms as --parent on planner create (a dumped
 plan, a file path, or a URL) and needs the status, new or current, to be
@@ -67,10 +71,21 @@ var linkRules = map[string]string{
 type statusOptions struct {
 	note         string
 	noteSet      bool
+	noteFile     string
 	supersededBy string
 }
 
 func runStatus(deps dependencies, root string, args []string, opts statusOptions) error {
+	if opts.noteFile != "" {
+		if opts.noteSet {
+			return errors.New("give --note or --note-file, not both")
+		}
+		note, err := readNoteFile(deps, opts.noteFile)
+		if err != nil {
+			return err
+		}
+		opts.note, opts.noteSet = note, true
+	}
 	c, err := loadCorpus(root)
 	if err != nil {
 		return err
@@ -133,6 +148,26 @@ func runStatus(deps dependencies, root string, args []string, opts statusOptions
 	r := row{node: &node{plan: reloaded}, showRepo: true}
 	table := [][]string{listHeader(listOptions{}), r.cells(listOptions{}, deps.now(), "")}
 	return writeOutput(deps.stdout, renderTable(table, 0))
+}
+
+// readNoteFile returns the text of a --note-file, or of stdin for -, without
+// the blank lines at either end.
+func readNoteFile(deps dependencies, path string) (string, error) {
+	var data []byte
+	var err error
+	if path == "-" {
+		data, err = io.ReadAll(deps.stdin)
+	} else {
+		data, err = os.ReadFile(path)
+	}
+	if err != nil {
+		return "", fmt.Errorf("--note-file: %w", err)
+	}
+	note := strings.Trim(string(data), "\r\n")
+	if strings.TrimSpace(note) == "" {
+		return "", fmt.Errorf("--note-file %s holds no text", path)
+	}
+	return note, nil
 }
 
 // runLinks appends URLs to the Issues or PullRequests list of one plan.

@@ -294,6 +294,7 @@ completes commands, flags, plan names, repositories, and statuses.`,
 		},
 	}
 	status.Flags().StringVar(&statusOpts.note, "note", "", "new StatusNote text")
+	status.Flags().StringVar(&statusOpts.noteFile, "note-file", "", "file holding the new StatusNote text; - reads stdin")
 	status.Flags().StringVar(&statusOpts.supersededBy, "superseded-by", "", "plan that replaces this one: [[wikilink]], basename, file path, or URL")
 	mustCompleteFlag(status, "superseded-by", complete.parents)
 	parent := &cobra.Command{
