@@ -1,0 +1,21 @@
+## Conversation
+Feedback item 5: planner check prints advisories for every plan in the root on each run; a filter would keep the signal for the plan just edited. The feedback suggested `--plan <name>`; I used positional names to match get, tree, and describe.
+
+## Actions
+runCheck takes names, resolves them with findPlans, filters with findingsFor, and returns the missing-name error joined with the error summary when both exist. When every name is missing nothing is printed and only the missing error is returned, so "No findings." is not shown for a plan that does not exist. check gained cobra.ArbitraryArgs and plan completion. TestCheckNamedPlans covers a two-plan filter, a clean plan, an unknown name, and a found-plus-missing mix. Docs in README.md, CLAUDE.md, and the check help text.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+- duplicate-title is attached to the first plan of a group only, so `check <second-plan>` (and describe of it) does not show that finding. Pre-existing behaviour, left alone.
+- planner describe already printed a plan's findings before this change; check <plan> adds the exit status and the table form.
+
+## Codebase Discoveries
+errors.Join(nil, err).Error() equals err.Error(), but the code still returns the bare summary when nothing is missing so the error type stays a plain fmt error.
+
+## Open Questions
+Whether duplicate-title should be reported on every plan of the group.
