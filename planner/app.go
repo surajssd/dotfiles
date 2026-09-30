@@ -64,9 +64,14 @@ plans with that ImplementationStatus, typed in any case with or without
 hyphens, and shows an Implemented or Superseded status without --all.
 
 -o wide adds TYPE, PATH (home shown as ~), and NOTE, and never truncates.
--o json and -o yaml print every field of each plan, its path included: one
-named plan is a single object, anything else a list under items. -o name
-prints one basename per line. --no-headers drops the header row.
+-o json and -o yaml print every field of each plan: one named plan is a
+single object, anything else a list under items. The keys derived from the
+file are lowercase: name, basename, path, repo, title, and
+front_matter_error, which appears only when the block is missing or does not
+decode. The front matter keys keep their spelling: Type, Parent, Issues,
+PullRequests, ImplementationStatus, SupersededBy, StatusChecked, and
+StatusNote; an empty one is left out. -o name prints one basename per line.
+--no-headers drops the header row.
 
 With plan names (a path, [[wikilink]], basename, or the short NAME shown in
 the table) only those plans are printed, whatever their status. A URL selects

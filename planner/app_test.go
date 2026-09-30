@@ -294,6 +294,19 @@ func TestCheckHelpListsRulesAndStatuses(t *testing.T) {
 	}
 }
 
+func TestGetHelpListsRecordKeys(t *testing.T) {
+	deps, io := testDependencies("", true, 0)
+	if err := run(t, deps, "get", "--help"); err != nil {
+		t.Fatal(err)
+	}
+	help := io.stdout.String()
+	for _, want := range []string{"name, basename, path, repo, title", "front_matter_error", "Type, Parent, Issues", "ImplementationStatus, SupersededBy, StatusChecked", "StatusNote"} {
+		if !strings.Contains(help, want) {
+			t.Errorf("get --help lacks %q", want)
+		}
+	}
+}
+
 func TestHelpNeedsNoConfiguration(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	deps, io := testDependencies("", true, 0)

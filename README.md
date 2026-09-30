@@ -67,7 +67,7 @@ Installers create **symlinks** (not copies), so changes in this repo are immedia
 
 `planner` keeps a folder of Markdown plans with YAML front matter. Each plan is `<root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md` and starts with a block holding `Type`, `ImplementationStatus`, `StatusChecked`, and `StatusNote`, plus the optional `Parent` and `SupersededBy` (a `[[wikilink]]`, a path, or a URL) and the optional lists `Issues` (GitHub issue, Jira, Asana, or any other tracker URL) and `PullRequests` (pull request URLs).
 
-Front matter keys are case-sensitive and use CamelCase, including in piped input. The `-o json` and `-o yaml` formats use the same spelling for these fields.
+Front matter keys are case-sensitive and use CamelCase, including in piped input. The `-o json` and `-o yaml` formats use the same spelling for these fields and add the lowercase keys `name`, `basename`, `path`, `repo`, `title`, and, for a plan whose block is missing or broken, `front_matter_error`; `planner get --help` lists them.
 
 ```bash
 planner get                              # table of active plans
