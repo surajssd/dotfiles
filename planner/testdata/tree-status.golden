@@ -1,0 +1,10 @@
+NAME                                REPO           STATUS        CHECKED   TITLE
+~/.claude/plans/widgets-recipe.md   -              External      -         not a dumped plan
+└── widgets-umbrella                acme/widgets   InProgress    0d        Widgets umbrella
+    ├── widgets-child-done                         Implemented   9d        Widgets child done
+    └── widgets-links-fields                       Implemented   9d        Widgets links fields
+shared-name                         acme/gadgets   Implemented   19d       Shared name in gadgets
+shared-name                         acme/gizmos    Implemented   19d       Shared name in gizmos
+widgets-done-umbrella               acme/widgets   Implemented   14d       Widgets done umbrella
+widgets-dup-a                       acme/widgets   Implemented   19d       Widgets duplicate title
+widgets-dup-b                       acme/widgets   Implemented   19d       Widgets duplicate title

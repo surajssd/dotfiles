@@ -59,7 +59,9 @@ Without --all only active plans (every ImplementationStatus except
 Implemented and Superseded) are shown; --all also lists plans without valid
 front matter, with - in STATUS and CHECKED. CHECKED counts calendar days
 since StatusChecked; ! marks an active plan older than 7 days. --repo keeps
-plans whose <org>/<repo> contains the value, ignoring case.
+plans whose <org>/<repo> contains the value, ignoring case. --status keeps
+plans with that ImplementationStatus, typed in any case with or without
+hyphens, and shows an Implemented or Superseded status without --all.
 
 -o wide adds TYPE, PATH (home shown as ~), and NOTE, and never truncates.
 -o json and -o yaml print every field of each plan, its path included: one
@@ -311,16 +313,27 @@ func addListFlags(cmd *cobra.Command, opts *listOptions, complete completer, for
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output format: "+strings.Join(formats, ", "))
 	cmd.Flags().BoolVar(&opts.noHeaders, "no-headers", false, "omit the header row")
 	cmd.Flags().StringVar(&opts.repo, "repo", "", "only plans whose <org>/<repo> contains this text (case-insensitive)")
+	cmd.Flags().StringVar(&opts.status, "status", "", "only plans with this ImplementationStatus (any case, with or without hyphens)")
 	mustCompleteFlag(cmd, "output", completeValues(formats))
 	mustCompleteFlag(cmd, "repo", complete.repos)
+	mustCompleteFlag(cmd, "status", completeValues(statusValues))
 }
 
-// validate rejects an output format the command does not offer.
-func (o listOptions) validate(formats []string) error {
-	if o.output == "" || slices.Contains(formats, o.output) {
+// validate rejects an output format the command does not offer and a status
+// it does not recognise, and stores the recognised spelling of the status.
+func (o *listOptions) validate(formats []string) error {
+	if o.output != "" && !slices.Contains(formats, o.output) {
+		return fmt.Errorf("unknown output format %q; use one of %s", o.output, strings.Join(formats, ", "))
+	}
+	if o.status == "" {
 		return nil
 	}
-	return fmt.Errorf("unknown output format %q; use one of %s", o.output, strings.Join(formats, ", "))
+	status, ok := canonicalStatus(o.status)
+	if !ok {
+		return fmt.Errorf("unknown status %q; use one of %s", o.status, strings.Join(statusValues, ", "))
+	}
+	o.status = status
+	return nil
 }
 
 // resolveRoot returns the absolute plan root from --root or from ~/.planner.yaml.

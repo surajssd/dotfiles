@@ -113,6 +113,7 @@ func TestListGolden(t *testing.T) {
 		{"tree-all.golden", 0, []string{"tree", "--all"}, ""},
 		{"tree-wide.golden", 0, []string{"tree", "-o", "wide", "--all"}, ""},
 		{"tree-repo.golden", 0, []string{"tree", "--repo", "acme/gadgets", "--all"}, ""},
+		{"tree-status.golden", 0, []string{"tree", "--status", "implemented"}, ""},
 		{"tree-narrow.golden", 130, []string{"tree"}, hiddenTree},
 		{"get-active.golden", 0, []string{"get"}, hiddenGet},
 		{"get-all-wide.golden", 0, []string{"get", "--all", "-o", "wide"}, ""},
@@ -123,6 +124,7 @@ func TestListGolden(t *testing.T) {
 		{"get-no-headers.golden", 0, []string{"get", "--no-headers"}, hiddenGet},
 		{"tree-no-headers.golden", 0, []string{"tree", "--no-headers", "-o", "wide", "widgets-umbrella"}, ""},
 		{"get-repo.golden", 0, []string{"get", "--repo", "GADGETS", "--all"}, ""},
+		{"get-status.golden", 0, []string{"get", "--status", "not-implemented"}, ""},
 		{"get-named.golden", 0, []string{"get", "widgets-child-done", "[[260915120000-widgets-legacy]]"}, ""},
 		{"tree-named.golden", 0, []string{"tree", "widgets-umbrella", "widgets-done-umbrella"}, ""},
 		{"tree-named-all.golden", 0, []string{"tree", "widgets-umbrella", "--all"}, ""},
@@ -164,6 +166,18 @@ func TestRepoFilterIsPartialAndCaseInsensitive(t *testing.T) {
 		}
 		if io.stdout.Len() != 0 || io.stderr.String() != "No plans found.\n" {
 			t.Errorf("%s --repo nomatch: stdout = %q, stderr = %q", cmd, io.stdout, io.stderr)
+		}
+	}
+}
+
+func TestStatusFilterRejectsUnknownValue(t *testing.T) {
+	fixtureHome(t)
+	root := fixtureRoot(t)
+	for _, cmd := range []string{"get", "tree"} {
+		deps, _ := testDependencies("", true, 0)
+		err := run(t, deps, cmd, "--root", root, "--status", "done")
+		if err == nil || !strings.Contains(err.Error(), `unknown status "done"`) {
+			t.Errorf("%s --status done: error = %v", cmd, err)
 		}
 	}
 }
@@ -429,6 +443,7 @@ func TestCompletion(t *testing.T) {
 		{[]string{"describe", "--root", root, "widgets-umbrella", "widgets-"}, []string{"widgets-crlf\t"}, []string{"widgets-umbrella\t"}},
 		{[]string{"set", "status", "--root", root, "widgets-umbrella", "In"}, []string{"InProgress"}, []string{"Implemented", "widgets-"}},
 		{[]string{"get", "--root", root, "--repo", "acme/g"}, []string{"acme/gadgets", "acme/gizmos"}, []string{"acme/widgets"}},
+		{[]string{"tree", "--root", root, "--status", "Sup"}, []string{"Superseded"}, []string{"InProgress"}},
 		{[]string{"get", "--root", root, "-o", ""}, []string{"wide", "json", "yaml", "name"}, nil},
 		{[]string{"tree", "--root", root, "-o", ""}, []string{"wide"}, []string{"json"}},
 		{[]string{"create", "--root", root, "--status", "Sup"}, []string{"Superseded"}, []string{"InProgress"}},

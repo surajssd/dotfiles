@@ -29,6 +29,7 @@ type listOptions struct {
 	output    string
 	noHeaders bool
 	repo      string
+	status    string
 }
 
 func (o listOptions) wide() bool { return o.output == "wide" }
@@ -41,6 +42,26 @@ func (o listOptions) table() bool { return o.output == "" || o.output == "wide" 
 // empty filter matches everything, otherwise a case-insensitive substring.
 func matchesRepo(repo, filter string) bool {
 	return filter == "" || strings.Contains(strings.ToLower(repo), strings.ToLower(filter))
+}
+
+// selects reports whether the --all, --repo, and --status filters keep a
+// plan. --status names the plans to show by itself, so an Implemented or
+// Superseded status matches without --all.
+func (o listOptions) selects(p *plan) bool {
+	if !matchesRepo(p.repo, o.repo) {
+		return false
+	}
+	if o.status != "" {
+		return p.valid() && p.front.ImplementationStatus == o.status
+	}
+	return o.all || (p.valid() && p.active())
+}
+
+// hidden reports whether a plan is left out only for lacking valid front
+// matter, which is what the note about --all counts. Under --status no such
+// plan can match, so the note does not apply.
+func (o listOptions) hidden(p *plan) bool {
+	return o.status == "" && !p.valid() && matchesRepo(p.repo, o.repo)
 }
 
 func listHeader(opts listOptions) []string {
@@ -82,8 +103,8 @@ func writeList(deps dependencies, output string, skipped int, noteWhenEmpty bool
 
 // runGet lists plans as a flat table or as records. Named plans are shown
 // whatever their status, in the order given, and a name that resolves to no
-// plan is reported after the output; otherwise the active filter and --repo
-// apply.
+// plan is reported after the output; otherwise the --all, --repo, and
+// --status filters apply.
 func runGet(deps dependencies, root string, opts listOptions, names []string) error {
 	c, err := loadCorpus(root)
 	if err != nil {
@@ -97,10 +118,9 @@ func runGet(deps dependencies, root string, opts listOptions, names []string) er
 	} else {
 		for _, p := range c.plans {
 			switch {
-			case !matchesRepo(p.repo, opts.repo):
-			case opts.all || (p.valid() && p.active()):
+			case opts.selects(p):
 				plans = append(plans, p)
-			case !p.valid():
+			case opts.hidden(p):
 				skipped++
 			}
 		}
@@ -184,7 +204,7 @@ func runTree(deps dependencies, root string, opts listOptions, names []string) e
 	}
 	hidden := 0
 	for _, n := range all {
-		if !n.visible && !n.plan.valid() && matchesRepo(n.plan.repo, opts.repo) {
+		if !n.visible && opts.hidden(n.plan) {
 			hidden++
 		}
 	}
@@ -278,7 +298,7 @@ func markVisible(n *node, opts listOptions) bool {
 	}
 	self := false
 	if n.plan != nil {
-		self = (opts.all || (n.plan.valid() && n.plan.active())) && matchesRepo(n.plan.repo, opts.repo)
+		self = opts.selects(n.plan)
 	}
 	n.visible = self || childVisible
 	return n.visible

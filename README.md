@@ -78,6 +78,7 @@ planner tree <plan>                      # the subtree under one plan
 planner describe <plan>                  # every field, children, note, and findings of one plan
 planner get --all -o wide                # every plan, legacy ones included, with TYPE, PATH, and NOTE columns
 planner tree --repo cks                  # plans whose <org>/<repo> contains "cks", plus ancestors
+planner get --status implemented         # plans with that ImplementationStatus (any case, hyphens optional), no --all needed
 planner check                            # integrity findings; exit 1 on errors
 planner get <url>                        # every plan that lists the URL as issue, pull request, parent, or successor
 planner create [--parent <ref>] [--status <status> --note <text>] [--issue <url>]... [--pr <url>]... <name...>   # create a plan for the current repository
