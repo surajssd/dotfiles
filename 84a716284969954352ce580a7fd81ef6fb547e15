@@ -1,0 +1,20 @@
+## Conversation
+The user asked for a way to filter planner tree on the STATUS column, since only --repo existed. The request was widened to planner get as well, because tree's help promises the same flags as get and both share addListFlags. After review the user asked to commit.
+
+## Actions
+Read tree.go, app.go, completion.go, plans.go, check.go, the test table in app_test.go, the fixture corpus, and the two --repo golden files. Added a status field to listOptions and two methods on it: selects, which holds the --all, --repo, and --status logic once for runGet and markVisible, and hidden, which decides whether an invalid plan counts toward the "N plans without valid front matter hidden" note. Registered --status in addListFlags with completion from statusValues, and made listOptions.validate a pointer receiver so it can store the spelling canonicalStatus returns. Added tree-status.golden (lowercase value) and get-status.golden (hyphenated value), a rejection test for an unknown value on both commands, and a completion case. Regenerated goldens with go test -update. Ran gofmt, go vet, go test, golangci-lint (0 issues). Updated README.md and CLAUDE.md. Built to the scratchpad and ran against the real corpus, then make install-planner. Linted the message with the conventional-commits validator, staged only the seven task files, committed with -s -S; the post-commit hook pushed master.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+Considered making --status repeatable (StringArray) for "InProgress or PartiallyImplemented". Dropped as speculative; a single value keeps the predicate and help one line each.
+
+## Hints for Future Agents
+--status deliberately overrides the active-only default: without that, --status Implemented would print nothing unless --all was also given. The hidden-plans note is suppressed under --status because its hint "(--all shows them)" would be false there. --status accepts only the six recognised values, so --status done is rejected even though the fixture has a plan whose ImplementationStatus is literally "done"; planner check is the tool for that. Named plans ignore --status, as they already ignored --repo. configs/herdr/config.toml was modified before this session and was intentionally left out of the commit.
+
+## Codebase Discoveries
+runGet and markVisible duplicated the visibility predicate; selects now owns it. In the tree, an ancestor that fails the filter still renders (with its REPO cell) so a matching descendant has a place, so tree-status.golden shows the InProgress widgets-umbrella above its Implemented children.
+
+## Open Questions
+None.
