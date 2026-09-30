@@ -1,0 +1,20 @@
+## Conversation
+Feedback item 2: to drop one clause from a 600-character note the agent had to resend the whole text; the feedback asked for --note-file or for planner log to drive the note. I argued a file does not remove the retyping and the real fix is a short note plus a body log; the user approved the full set anyway, so both exist: this flag and --note on planner log.
+
+## Actions
+Added noteFile to statusOptions and readNoteFile in status.go: reads a file or stdin for "-", trims blank lines at both ends, rejects an empty file, and rejects the combination with --note. Flag registered in app.go. TestStatusNoteFile covers file, stdin with CRLF, both flags, a missing file, and an empty file, and asserts the plan is unchanged after each rejection. Help text, README, and CLAUDE.md updated.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+Did not add --note-file to create or log: both read stdin for the body, so "-" would be ambiguous there.
+
+## Hints for Future Agents
+The trim is strings.Trim(text, "\r\n"), so internal blank lines and trailing spaces inside the note are preserved; only leading and trailing newlines go.
+
+## Codebase Discoveries
+None.
+
+## Open Questions
+None.
