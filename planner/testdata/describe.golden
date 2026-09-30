@@ -1,0 +1,46 @@
+Name:     widgets-umbrella
+Title:    Widgets umbrella
+File:     <root>/github.com/acme/widgets/260910120000-widgets-umbrella.md
+Repo:     acme/widgets
+Type:     plan
+Status:   InProgress
+Checked:  2026-09-29 (0d)
+Parent:   ~/.claude/plans/widgets-recipe.md
+Children:
+  gadgets-cross-child
+  widgets-child-done
+  widgets-child-active
+Note:     Umbrella for the widgets recipe effort.
+Findings:
+  advisory  undumped-reference    parent: ~/.claude/plans/widgets-recipe.md
+
+
+Name:     widgets-legacy
+Title:    Widgets legacy plan
+File:     <root>/github.com/acme/widgets/260915120000-widgets-legacy.md
+Repo:     acme/widgets
+Type:     -
+Status:   -
+Checked:  -
+Parent:   -
+Children:
+  widgets-child-of-legacy
+Note:     -
+Findings:
+  advisory  no-front-matter       first line is not ---
+
+
+Name:     widgets-links
+Title:    Widgets links
+File:     <root>/github.com/acme/widgets/260918120000-widgets-links.md
+Repo:     acme/widgets
+Type:     plan
+Status:   InProgress
+Checked:  2026-09-29 (0d)
+Parent:   -
+Children: -
+Note:     Exercises every link rule.
+Findings:
+  error     dead-link             ../gadgets/260102000000-gone.md#section
+  error     dead-link             [[260101000000-missing-plan]]
+  advisory  undumped-reference    ~/.claude/plans/widgets-recipe.md

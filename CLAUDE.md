@@ -19,6 +19,7 @@ Both repositories mirror the same structure:
 - `local-bin/` - Custom utility scripts
 - `skills/` - Agent skills in `SKILL.md` format (symlinked to `~/.claude/skills/` and `~/.agents/skills/`)
 - `rules/` - Agent rule `.md` files (symlinked to `~/.claude/rules/`)
+- `planner/` - Go module for the `planner` command (public repo only, installed with `go install`)
 - `installers/` - Installation automation scripts (public repo only)
 - `containers/` - Container image builds, e.g. `openclaw` (public repo only, not installed)
 
@@ -41,6 +42,9 @@ make install-skills
 
 # Install only agent rules to ~/.claude/rules
 make install-rules
+
+# Build and install the planner Go command (skipped when go is absent)
+make install-planner
 
 # Download external skills (mattpocock, bastos, blader) into skills/ — also run by 'make update'
 make fetch-external-skills
@@ -67,6 +71,7 @@ make clone-private
   - Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`, herdr config to `~/.config/herdr/config.toml`
 - **Skills**: Symlinked from `skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI)
 - **Rules**: Symlinked from `rules/` to `~/.claude/rules/` (Claude Code's global rules path)
+- **Planner**: Built from `planner/` by `installers/install-planner.sh` with `go -C planner install .` into `$(go env GOPATH)/bin`. When `go` is absent the installer prints an `ℹ️` line and skips; when present, the build may download Go modules or a toolchain and a build failure fails `make install-all`
 - **Private files**: Installed by the private repository's own entry point when the optional clone exists
 
 ## Shell Script Conventions
@@ -85,7 +90,7 @@ All shell scripts must follow these standards:
 
 ### Symlink-Based Installation
 
-Installers normally create symlinks so that `git pull` immediately updates active configs and scripts. Public installers use absolute paths via `realpath` or `pwd`. The `install-all` target invokes the optional private installer once, without exposing private installation details to the public component installers. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
+Installers normally create symlinks so that `git pull` immediately updates active configs and scripts; `planner` is the exception, a compiled Go command that needs `make install-planner` after a pull. Public installers use absolute paths via `realpath` or `pwd`. The `install-all` target invokes the optional private installer once, without exposing private installation details to the public component installers. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
 
 ### OS-Specific Config Handling
 
@@ -144,7 +149,7 @@ Some skills are vendored (copied) from upstream repos rather than authored here.
 - **`fetch`**: clone the upstream repo, copy the skill directory flat into `skills/<name>/` (dropping any category nesting, excluding repo infrastructure like `.git`/`.github`/`.claude-plugin`), and merge `license: MIT` + `metadata.author` into its `SKILL.md` (idempotent and merge-aware — safe for upstreams that already carry some of these keys). The `grilling`, `domain-modeling`, and `grill-with-docs` skills are vendored this way from [`mattpocock/skills`](https://github.com/mattpocock/skills); `humanizer` is vendored from [`blader/humanizer`](https://github.com/blader/humanizer) (its `SKILL.md` lives at the repo root, so `subpath` is `.`).
 - **`preserve`**: the skill is already vendored and locally customised, so the script verifies it exists and reports its source but never overwrites it. `conventional-commits` (from [`bastos/skills`](https://github.com/bastos/skills)) uses this mode — it carries local edits (a macOS clipboard section and a `README.md`) that must not be clobbered.
 
-Fetched skills are committed to the repo. Run `make fetch-external-skills` to refresh them; the script prints the upstream commit SHA(s), which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs stay offline), but `make update` does run it — after `pull-master` and before `install-all` — so a full update also refreshes the vendored skills. `install-skills.sh` then symlinks the vendored directories like any other local skill.
+Fetched skills are committed to the repo. Run `make fetch-external-skills` to refresh them; the script prints the upstream commit SHA(s), which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs never fetch skills; the only network use in `install-all` is the Go module download of `install-planner`, and only when Go is present), but `make update` does run it — after `pull-master` and before `install-all` — so a full update also refreshes the vendored skills. `install-skills.sh` then symlinks the vendored directories like any other local skill.
 
 ## Adding Agent Rules
 
@@ -157,9 +162,22 @@ Some rules are vendored (copied) from upstream repos. `installers/fetch-external
 - **`fetch`**: clone the upstream repo, copy the rule `.md` into `rules/<name>` verbatim (no frontmatter or attribution is injected — rules are plain markdown). No rule currently uses this mode.
 - **`preserve`**: the rule is already vendored and either locally customised or no longer available upstream; the script verifies it exists and reports its source but never overwrites it. The `simple`, `comments`, `commit-notes`, `simplified-technical-english`, and `subtractive-engineering` rules use this mode. They were vendored from [`abatilo/vimrc`](https://github.com/abatilo/vimrc) at `d4e1614`, and upstream later deleted its `rules/` directory in favour of a single `AGENTS.md`, so the files are frozen at that version.
 
-Fetched rules are committed to the repo. Run `make fetch-external-rules` to refresh them; the script prints the upstream commit SHA, which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs stay offline), but `make update` does run it — after `fetch-external-skills` and before `install-all` — so a full update also refreshes the vendored rules. `install-rules.sh` then symlinks the vendored files like any other local rule.
+Fetched rules are committed to the repo. Run `make fetch-external-rules` to refresh them; the script prints the upstream commit SHA, which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (same offline reasoning as the skills fetch), but `make update` does run it — after `fetch-external-skills` and before `install-all` — so a full update also refreshes the vendored rules. `install-rules.sh` then symlinks the vendored files like any other local rule.
 
 Attribution for vendored rules is recorded in a hand-maintained `rules/README.md` (not generated by the fetch script). When the registry changes, update that README alongside the fetch. `install-rules.sh` skips `README.md` (listed in its `RULES_SKIP` array) so it is never symlinked into `~/.claude/rules/`.
+
+## Planner
+
+`planner/` is a flat `package main` Go module (`github.com/surajssd/dotfiles/planner`, `go 1.25`) built on `cobra`, `yaml.v3`, and `x/term`. It manages a folder of Markdown plans with YAML front matter (`type`, `implementation_status`, `status_checked`, `status_note`, optional `parent`), filed as `<root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md`:
+
+- `planner get [--all] [--wide] [--repo <text>] [<plan>...]` prints active plans as a `kubectl`-style table, or every plan with `--all`, including plans without valid front matter (shown with `-` for STATUS and AGE); `planner tree` prints the same plans with the same flags as an effort tree. Named plans are always shown; `tree <plan>` prints that plan's subtree. `planner describe <plan>...` prints one block per plan with its fields, children, full note, and check findings. Plan names are a path, a wikilink, a basename, or the short `NAME` from the table. `--wide` adds `NOTE` and `PATH` (home shown as `~`); `--repo` is a case-insensitive substring match on `<org>/<repo>`. A bare `planner` prints help.
+- `planner check` prints a table of findings (`FILE`, `REPO`, `SEVERITY`, `RULE`, `DETAIL`) and exits 1 when an error-severity rule fires. `planner check --help` lists the status values and the ten rules.
+- `planner new [--parent <ref>] [--status <status> --note <text>] <name...>` creates a plan for the current Git checkout and prints its path. `--status` needs `--note`; with piped front matter the two flags rewrite those lines.
+- `planner update status <plan> [<implementation_status>] [--note <text>]` rewrites only the status lines of a plan's front matter, sets `status_checked` to today, and adds a block to a plan that has none when both a status and a note are given. `<plan>` is a path, a wikilink, a basename, or the short name from the tree.
+
+The plan root comes from `~/.planner.yaml` (`root: ~/plans`); `--root <dir>` overrides it. The repository does not ship that file.
+
+Go conventions: run `gofmt`, `go vet ./...`, `golangci-lint run`, and `go test ./...` from `planner/`. Tests compare against golden files under `planner/testdata/`; regenerate them with `go test ./... -update` after an intentional output change. Renovate's existing `gomod` rule covers `planner/go.mod`.
 
 ## Important Notes
 

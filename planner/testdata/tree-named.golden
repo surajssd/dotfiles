@@ -1,0 +1,6 @@
+NAME                              REPO           STATUS           AGE   TITLE
+widgets-umbrella                  acme/widgets   InProgress       0d    Widgets umbrella
+├── gadgets-cross-child           acme/gadgets   InProgress       0d    Gadgets cross child
+└── widgets-child-active                         NotImplemented   9d!   Widgets child active
+widgets-done-umbrella             acme/widgets   Implemented      14d   Widgets done umbrella
+└── widgets-done-umbrella-child                  InProgress       2d    Widgets done umbrella child

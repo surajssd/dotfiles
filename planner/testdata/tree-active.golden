@@ -1,0 +1,27 @@
+NAME                                                                        REPO           STATUS              AGE    TITLE
+../../../../external/umbrella-notes.md                                      -              External            -      not a dumped plan
+└── widgets-relative-parent                                                 acme/widgets   InProgress          0d     Widgets relative parent
+https://github.com/acme/widgets/issues/7                                    -              External            -      not a dumped plan
+└── widgets-url-parent                                                      acme/widgets   InProgress          0d     Widgets URL parent
+~/.claude/plans/missing.md                                                  -              External            -      not a dumped plan
+└── widgets-parent-path-missing                                             acme/widgets   InProgress          0d     Widgets parent path missing
+~/.claude/plans/widgets-recipe.md                                           -              External            -      not a dumped plan
+└── widgets-umbrella                                                        acme/widgets   InProgress          0d     Widgets umbrella
+    ├── gadgets-cross-child                                                 acme/gadgets   InProgress          0d     Gadgets cross child
+    └── widgets-child-active                                                               NotImplemented      9d!    Widgets child active
+loose-plan                                                                  -              InProgress          28d!   Loose plan
+gadgets-ambiguous-parent (parent not found: [[260906120000-shared-name]])   acme/gadgets   InProgress          0d     Gadgets ambiguous parent
+widgets-done-umbrella                                                       acme/widgets   Implemented         14d    Widgets done umbrella
+└── widgets-done-umbrella-child                                                            InProgress          2d     Widgets done umbrella child
+widgets-crlf                                                                acme/widgets   InProgress          1d     Widgets CRLF plan
+widgets-no-h1                                                               acme/widgets   NotImplemented      0d     widgets-no-h1
+widgets-legacy                                                              acme/widgets   -                   -      Widgets legacy plan
+└── widgets-child-of-legacy                                                                InProgress          0d     Widgets child of legacy
+widgets-links                                                               acme/widgets   InProgress          0d     Widgets links
+widgets-missing-fields                                                      acme/widgets   -                   ?d     Widgets missing fields
+widgets-unknown-status                                                      acme/widgets   done                ?d     Widgets unknown status
+widgets-cycle-a (parent cycle)                                              acme/widgets   InProgress          0d     Widgets cycle A
+widgets-cycle-b (parent cycle)                                              acme/widgets   InProgress          0d     Widgets cycle B
+widgets-parent-missing (parent not found: [[260199000000-nope]])            acme/widgets   InProgress          0d     Widgets parent missing
+widgets-design                                                              acme/widgets   InProgress design   0d     Widgets design
+widgets-bare-parent (parent not found: 260910120000-widgets-umbrella)       acme/widgets   InProgress          0d     Widgets bare parent

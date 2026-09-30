@@ -1,0 +1,6 @@
+NAME                                                                        REPO           STATUS        AGE   TITLE
+~/.claude/plans/widgets-recipe.md                                           -              External      -     not a dumped plan
+└── widgets-umbrella                                                        acme/widgets   InProgress    0d    Widgets umbrella
+    └── gadgets-cross-child                                                 acme/gadgets   InProgress    0d    Gadgets cross child
+shared-name                                                                 acme/gadgets   Implemented   19d   Shared name in gadgets
+gadgets-ambiguous-parent (parent not found: [[260906120000-shared-name]])   acme/gadgets   InProgress    0d    Gadgets ambiguous parent

@@ -1,0 +1,31 @@
+NAME                          STATUS              AGE    TITLE                          NOTE                                          PATH
+loose-plan                    InProgress          28d!   Loose plan                     Loose plan directly under the root.           <root>/260901090000-loose-plan.md
+gadgets-cross-child           InProgress          0d     Gadgets cross child            A child filed in another repository.          <root>/github.com/acme/gadgets/260905120000-gadgets-cross-child.md
+shared-name                   Implemented         19d    Shared name in gadgets         One of two plans sharing a basename.          <root>/github.com/acme/gadgets/260906120000-shared-name.md
+gadgets-ambiguous-parent      InProgress          0d     Gadgets ambiguous parent       Parent basename exists twice.                 <root>/github.com/acme/gadgets/260907120000-gadgets-ambiguous-parent.md
+shared-name                   Implemented         19d    Shared name in gizmos          The other plan sharing a basename.            <root>/github.com/acme/gizmos/260906120000-shared-name.md
+widgets-done-umbrella         Implemented         14d    Widgets done umbrella          Umbrella finished; one child is still open.   <root>/github.com/acme/widgets/260908120000-widgets-done-umbrella.md
+widgets-done-umbrella-child   InProgress          2d     Widgets done umbrella child    Still open under a finished umbrella.         <root>/github.com/acme/widgets/260909120000-widgets-done-umbrella-child.md
+widgets-umbrella              InProgress          0d     Widgets umbrella               Umbrella for the widgets recipe effort.       <root>/github.com/acme/widgets/260910120000-widgets-umbrella.md
+widgets-child-done            Implemented         9d     Widgets child done             Merged in PR #1.                              <root>/github.com/acme/widgets/260911120000-widgets-child-done.md
+widgets-child-active          NotImplemented      9d!    Widgets child active           Waiting on the umbrella decision.             <root>/github.com/acme/widgets/260912120000-widgets-child-active.md
+widgets-crlf                  InProgress          1d     Widgets CRLF plan              Written on Windows.                           <root>/github.com/acme/widgets/260913120000-widgets-crlf.md
+widgets-no-h1                 NotImplemented      0d     widgets-no-h1                  No heading in this file.                      <root>/github.com/acme/widgets/260914120000-widgets-no-h1.md
+widgets-legacy                -                   -      Widgets legacy plan            -                                             <root>/github.com/acme/widgets/260915120000-widgets-legacy.md
+widgets-dup-a                 Implemented         19d    Widgets duplicate title        First of two plans with one title.            <root>/github.com/acme/widgets/260916120000-widgets-dup-a.md
+widgets-dup-b                 Implemented         19d    Widgets duplicate title        Second of two plans with one title.           <root>/github.com/acme/widgets/260917120000-widgets-dup-b.md
+widgets-links                 InProgress          0d     Widgets links                  Exercises every link rule.                    <root>/github.com/acme/widgets/260918120000-widgets-links.md
+widgets-bad-yaml              -                   -      Widgets bad YAML               -                                             <root>/github.com/acme/widgets/260919120000-widgets-bad-yaml.md
+widgets-no-close              -                   -      Widgets no closing delimiter   -                                             <root>/github.com/acme/widgets/260920120000-widgets-no-close.md
+widgets-missing-fields        -                   ?d     Widgets missing fields         -                                             <root>/github.com/acme/widgets/260921120000-widgets-missing-fields.md
+widgets-unknown-status        done                ?d     Widgets unknown status         Status and date are both wrong.               <root>/github.com/acme/widgets/260922120000-widgets-unknown-status.md
+widgets-cycle-a               InProgress          0d     Widgets cycle A                First half of a cycle.                        <root>/github.com/acme/widgets/260923120000-widgets-cycle-a.md
+widgets-cycle-b               InProgress          0d     Widgets cycle B                Second half of a cycle.                       <root>/github.com/acme/widgets/260924120000-widgets-cycle-b.md
+widgets-parent-missing        InProgress          0d     Widgets parent missing         Parent was renamed.                           <root>/github.com/acme/widgets/260925120000-widgets-parent-missing.md
+widgets-parent-path-missing   InProgress          0d     Widgets parent path missing    Parent path was deleted.                      <root>/github.com/acme/widgets/260926120000-widgets-parent-path-missing.md
+widgets-url-parent            InProgress          0d     Widgets URL parent             Tracked by an issue.                          <root>/github.com/acme/widgets/260927120000-widgets-url-parent.md
+widgets-design                InProgress design   0d     Widgets design                 A design document rather than a plan.         <root>/github.com/acme/widgets/260928120000-widgets-design.md
+widgets-bare-parent           InProgress          0d     Widgets bare parent            Parent written without brackets.              <root>/github.com/acme/widgets/260929120000-widgets-bare-parent.md
+widgets-relative-parent       InProgress          0d     Widgets relative parent        Parent lives outside the root.                <root>/github.com/acme/widgets/260930120000-widgets-relative-parent.md
+widgets-child-of-legacy       InProgress          0d     Widgets child of legacy        Parent has no front matter.                   <root>/github.com/acme/widgets/260931120000-widgets-child-of-legacy.md
+legacy-name                   -                   -      Legacy name                    -                                             <root>/github.com/acme/widgets/legacy-name.md
