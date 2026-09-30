@@ -112,12 +112,25 @@ func parentChain(c *corpus, p *plan) (chain []string, cycle bool) {
 	}
 }
 
-// findPlan resolves a plan reference against the corpus: a path under the
-// root, a [[wikilink]], a basename, or the short name the tree prints. A name
-// must match exactly one plan.
-func findPlan(c *corpus, ref string) (*plan, error) {
-	isPath := classifyParent(ref) == parentPath ||
-		(classifyParent(ref) != parentWikilink && strings.ContainsRune(ref, os.PathSeparator))
+// matchPlans resolves a plan reference against the corpus. A path under the
+// root, a [[wikilink]], a basename, or the short name the tree prints must
+// match exactly one plan. A URL selects every plan whose front matter lists
+// it as parent, successor, issue, or pull request.
+func matchPlans(c *corpus, ref string) ([]*plan, error) {
+	kind := classifyParent(ref)
+	if kind == parentURL {
+		var matches []*plan
+		for _, p := range c.plans {
+			if p.valid() && p.linksTo(ref) {
+				matches = append(matches, p)
+			}
+		}
+		if len(matches) == 0 {
+			return nil, fmt.Errorf("plan not found: no plan under %s links to %s", c.root, ref)
+		}
+		return matches, nil
+	}
+	isPath := kind == parentPath || (kind != parentWikilink && strings.ContainsRune(ref, os.PathSeparator))
 	if isPath {
 		expanded, err := expandHome(ref)
 		if err != nil {
@@ -128,7 +141,7 @@ func findPlan(c *corpus, ref string) (*plan, error) {
 			return nil, err
 		}
 		if p, ok := c.byPath[absolute]; ok {
-			return p, nil
+			return []*plan{p}, nil
 		}
 		return nil, fmt.Errorf("plan not found: %s is not a plan under %s", absolute, c.root)
 	}
@@ -143,16 +156,32 @@ func findPlan(c *corpus, ref string) (*plan, error) {
 	}
 	switch len(matches) {
 	case 1:
-		return matches[0], nil
+		return matches, nil
 	case 0:
 		return nil, fmt.Errorf("plan not found: no plan under %s matches %q", c.root, ref)
 	default:
-		var paths []string
-		for _, m := range matches {
-			paths = append(paths, m.relPath)
-		}
-		return nil, fmt.Errorf("plan reference %q is ambiguous: %s", ref, strings.Join(paths, ", "))
+		return nil, ambiguousReference(ref, matches)
 	}
+}
+
+func ambiguousReference(ref string, matches []*plan) error {
+	var paths []string
+	for _, m := range matches {
+		paths = append(paths, m.relPath)
+	}
+	return fmt.Errorf("plan reference %q is ambiguous: %s", ref, strings.Join(paths, ", "))
+}
+
+// findPlan resolves a reference that must name exactly one plan.
+func findPlan(c *corpus, ref string) (*plan, error) {
+	matches, err := matchPlans(c, ref)
+	if err != nil {
+		return nil, err
+	}
+	if len(matches) > 1 {
+		return nil, ambiguousReference(ref, matches)
+	}
+	return matches[0], nil
 }
 
 // findPlans resolves every reference and returns the plans found, in the
@@ -162,12 +191,12 @@ func findPlans(c *corpus, refs []string) ([]*plan, error) {
 	var plans []*plan
 	var errs []error
 	for _, ref := range refs {
-		p, err := findPlan(c, ref)
+		matches, err := matchPlans(c, ref)
 		if err != nil {
 			errs = append(errs, err)
 			continue
 		}
-		plans = append(plans, p)
+		plans = append(plans, matches...)
 	}
 	return plans, errors.Join(errs...)
 }

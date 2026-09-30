@@ -23,10 +23,20 @@ const (
 )
 
 type newOptions struct {
-	parent  string
-	status  string
-	note    string
-	noteSet bool
+	parent       string
+	status       string
+	note         string
+	noteSet      bool
+	issues       []string
+	pullRequests []string
+}
+
+// links returns the URLs given for one list key.
+func (o newOptions) links(key string) []string {
+	if key == pullRequestsKey {
+		return o.pullRequests
+	}
+	return o.issues
 }
 
 func runNew(deps dependencies, root string, args []string, opts newOptions) error {
@@ -44,13 +54,20 @@ func runNew(deps dependencies, root string, args []string, opts newOptions) erro
 		}
 		opts.status = status
 	}
+	for _, key := range []string{issuesKey, pullRequestsKey} {
+		for _, value := range opts.links(key) {
+			if problem := linkProblem(key, value); problem != "" {
+				return errors.New(problem)
+			}
+		}
+	}
 	repo, err := resolveRepo(deps)
 	if err != nil {
 		return err
 	}
 	parentValue := ""
 	if opts.parent != "" {
-		parentValue, err = canonicalParent(root, opts.parent)
+		parentValue, err = canonicalReference(root, opts.parent)
 		if err != nil {
 			return err
 		}
@@ -126,10 +143,38 @@ func planContent(deps dependencies, parentValue string, opts newOptions, now tim
 	if err != nil {
 		return nil, err
 	}
-	if opts.status == "" && !opts.noteSet {
+	edits, err := linkEdits(content, opts)
+	if err != nil {
+		return nil, err
+	}
+	if opts.status != "" || opts.noteSet {
+		edits = append(edits, statusEdits(opts.status, opts.note, opts.noteSet, now.Format(dateLayout))...)
+	}
+	if len(edits) == 0 {
 		return content, nil
 	}
-	return updateFrontMatter(content, opts.status, opts.note, opts.noteSet, now.Format(dateLayout))
+	return updateFrontMatter(content, edits)
+}
+
+// linkEdits merges the --issue and --pr values into the lists a piped front
+// matter block already holds.
+func linkEdits(content []byte, opts newOptions) ([]fieldEdit, error) {
+	if len(opts.issues)+len(opts.pullRequests) == 0 {
+		return nil, nil
+	}
+	existing, err := decodeFrontMatter(content)
+	if err != nil {
+		return nil, fmt.Errorf("piped front matter: %w", err)
+	}
+	var edits []fieldEdit
+	for _, key := range []string{issuesKey, pullRequestsKey} {
+		if len(opts.links(key)) == 0 {
+			continue
+		}
+		merged := mergeLinks(linksFor(existing, key), opts.links(key))
+		edits = append(edits, fieldEdit{key, listLines(key, merged)})
+	}
+	return edits, nil
 }
 
 func generatedFrontMatter(parentValue string, opts newOptions, now time.Time) []byte {
@@ -144,6 +189,11 @@ func generatedFrontMatter(parentValue string, opts newOptions, now time.Time) []
 	out.WriteString("---\ntype: plan\n")
 	if parentValue != "" {
 		out.WriteString(parentLine(parentValue) + "\n")
+	}
+	for _, key := range []string{issuesKey, pullRequestsKey} {
+		if values := mergeLinks(nil, opts.links(key)); len(values) > 0 {
+			out.WriteString(listLines(key, values) + "\n")
+		}
 	}
 	fmt.Fprintf(&out, "implementation_status: %s\nstatus_checked: %s\nstatus_note: %s\n---\n\n", status, now.Format(dateLayout), quoteYAML(note))
 	return out.Bytes()
@@ -186,8 +236,10 @@ func insertParent(input []byte, parentValue string) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-// canonicalParent validates a --parent argument and returns the value to store.
-func canonicalParent(root, ref string) (string, error) {
+// canonicalReference validates a --parent or --superseded-by argument and
+// returns the value to store: the wikilink of a plan under the root, a path
+// as written or made absolute, or a URL as is.
+func canonicalReference(root, ref string) (string, error) {
 	kind := classifyParent(ref)
 	if kind == parentURL {
 		return ref, nil

@@ -1,0 +1,3 @@
+NAME                   REPO           STATUS        CHECKED   TITLE
+widgets-links-fields   acme/widgets   Implemented   9d        Widgets links fields
+widgets-bad-links      acme/widgets   Superseded    0d        Widgets bad links

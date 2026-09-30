@@ -44,7 +44,7 @@ func describePlan(out *strings.Builder, p *plan, children []*plan, findings []fi
 		if value == "" {
 			value = emptyCell
 		}
-		fmt.Fprintf(out, "%-10s%s\n", key+":", value)
+		fmt.Fprintf(out, "%-16s%s\n", key+":", value)
 	}
 	list := func(key string, items []string) {
 		if len(items) == 0 {
@@ -68,11 +68,14 @@ func describePlan(out *strings.Builder, p *plan, children []*plan, findings []fi
 	}
 	field("Checked", checked)
 	field("Parent", p.front.Parent)
+	field("Superseded By", p.front.SupersededBy)
 	var names []string
 	for _, child := range children {
 		names = append(names, child.name)
 	}
 	list("Children", names)
+	list("Issues", p.front.Issues)
+	list("Pull Requests", p.front.PullRequests)
 	field("Note", strings.TrimSpace(p.front.StatusNote))
 	var problems []string
 	for _, f := range findings {

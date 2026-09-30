@@ -19,4 +19,12 @@ FILE                                          REPO           SEVERITY   RULE    
 260926120000-widgets-parent-path-missing.md   acme/widgets   error      parent-not-found       ~/.claude/plans/missing.md does not exist
 260926120000-widgets-parent-path-missing.md   acme/widgets   advisory   undumped-reference     parent: ~/.claude/plans/missing.md
 260929120000-widgets-bare-parent.md           acme/widgets   error      parent-not-found       unrecognised parent form "260910120000-widgets-umbrella" (expected "[[plan]]", a path, or a URL)
+260933120000-widgets-bad-links.md             acme/widgets   error      dead-link              status_note: [[260101000000-missing-plan]]
+260933120000-widgets-bad-links.md             acme/widgets   error      invalid-link           issues: https://github.com/acme/widgets/pull/12 is a pull request URL; put it under pull_requests
+260933120000-widgets-bad-links.md             acme/widgets   error      invalid-link           pull_requests: "not-a-url" is not an http(s) URL
+260933120000-widgets-bad-links.md             acme/widgets   error      invalid-link           pull_requests: https://github.com/acme/widgets/issues/9 is not a GitHub pull request URL
+260933120000-widgets-bad-links.md             acme/widgets   advisory   missing-successor      implementation_status is Superseded but superseded_by is empty
+260933120000-widgets-bad-links.md             acme/widgets   advisory   undumped-reference     status_note: ~/.claude/plans/widgets-recipe.md
+260933120000-widgets-bad-links.md             acme/widgets   advisory   unknown-key            merged_at
+260935120000-widgets-successor-missing.md     acme/widgets   error      successor-not-found    no plan matches [[260199000000-nope]]
 legacy-name.md                                acme/widgets   advisory   no-front-matter        first line is not ---

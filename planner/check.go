@@ -38,6 +38,11 @@ finding: FILE, REPO, SEVERITY, RULE, and DETAIL, sorted by file, then rule.
 The exit status is 1 when any error finding exists and 0 when there are only
 advisories or no findings.
 
+Front matter keys: type, implementation_status, status_checked, and
+status_note are required; parent, superseded_by, issues, and pull_requests
+are optional. parent and superseded_by hold a "[[wikilink]]", a path, or a
+URL; issues and pull_requests hold lists of URLs.
+
 Recognised implementation_status values:
 
   NotImplemented, InProgress, PartiallyImplemented, ImplementedUnmerged,
@@ -49,16 +54,24 @@ Rules:
   invalid-front-matter  error     no closing --- or the YAML does not decode
   missing-field         error     type, implementation_status, status_checked,
                                   or status_note is absent or empty
+  unknown-key           advisory  a front matter key outside the schema
   unknown-status        error     implementation_status is not a recognised value
   invalid-date          error     status_checked is not YYYY-MM-DD
+  invalid-link          error     an issues or pull_requests entry is not an
+                                  http(s) URL, a github.com pull_requests entry
+                                  is not a pull request, or a github.com issues
+                                  entry is a pull request
   parent-not-found      error     a wikilink parent matches zero or several
                                   plans, or a path parent does not exist
   parent-cycle          error     following parent links returns to the plan
-  dead-link             error     a body link names a plan-style file (twelve
-                                  digits, a hyphen, a name) that is not under
-                                  the root
-  undumped-reference    advisory  the parent or a body link points into
-                                  .claude/plans/
+  successor-not-found   error     the same for superseded_by
+  missing-successor     advisory  implementation_status is Superseded but
+                                  superseded_by is empty
+  dead-link             error     a link in the body or in status_note names a
+                                  plan-style file (twelve digits, a hyphen, a
+                                  name) that is not under the root
+  undumped-reference    advisory  parent, superseded_by, or a link in the body
+                                  or in status_note points into .claude/plans/
   duplicate-title       advisory  two or more plans in one repository folder
                                   share an H1`
 
@@ -159,6 +172,9 @@ func checkFields(c *corpus, p *plan, add addFunc) {
 			add(p, "missing-field", failure, f.name)
 		}
 	}
+	for _, key := range p.unknownKeys {
+		add(p, "unknown-key", advisory, key)
+	}
 	if status := p.front.ImplementationStatus; status != "" && !slices.Contains(statusValues, status) {
 		add(p, "unknown-status", failure, fmt.Sprintf("implementation_status %q is not one of %s", status, strings.Join(statusValues, ", ")))
 	}
@@ -167,13 +183,26 @@ func checkFields(c *corpus, p *plan, add addFunc) {
 			add(p, "invalid-date", failure, fmt.Sprintf("status_checked %q is not YYYY-MM-DD", checked))
 		}
 	}
-	checkParent(c, p, add)
+	checkReference(c, p, "parent", p.front.Parent, "parent-not-found", add)
+	checkReference(c, p, "superseded_by", p.front.SupersededBy, "successor-not-found", add)
+	if p.front.ImplementationStatus == "Superseded" && strings.TrimSpace(p.front.SupersededBy) == "" {
+		add(p, "missing-successor", advisory, "implementation_status is Superseded but superseded_by is empty")
+	}
+	for _, key := range []string{issuesKey, pullRequestsKey} {
+		for _, value := range linksFor(p.front, key) {
+			if problem := linkProblem(key, value); problem != "" {
+				add(p, "invalid-link", failure, problem)
+			}
+		}
+	}
 }
 
-func checkParent(c *corpus, p *plan, add addFunc) {
-	value := p.front.Parent
+// checkReference validates a parent or superseded_by value: a wikilink must
+// match exactly one plan, a path must exist, a URL is taken as is. The cycle
+// check applies to parent only, because only parent links form the tree.
+func checkReference(c *corpus, p *plan, key, value, rule string, add addFunc) {
 	if isUndumpedReference(value) {
-		add(p, "undumped-reference", advisory, "parent: "+value)
+		add(p, "undumped-reference", advisory, key+": "+value)
 	}
 	switch classifyParent(value) {
 	case parentNone, parentURL:
@@ -182,52 +211,63 @@ func checkParent(c *corpus, p *plan, add addFunc) {
 		matches := c.lookup(reduceLinkTarget(value))
 		switch len(matches) {
 		case 1:
+			if key != "parent" {
+				return
+			}
 			if chain, cycle := parentChain(c, p); cycle {
 				add(p, "parent-cycle", failure, strings.Join(chain, " -> "))
 			}
 		case 0:
-			add(p, "parent-not-found", failure, fmt.Sprintf("no plan matches %s", value))
+			add(p, rule, failure, fmt.Sprintf("no plan matches %s", value))
 		default:
 			var paths []string
 			for _, m := range matches {
 				paths = append(paths, m.relPath)
 			}
-			add(p, "parent-not-found", failure, fmt.Sprintf("%d plans match %s: %s", len(matches), value, strings.Join(paths, ", ")))
+			add(p, rule, failure, fmt.Sprintf("%d plans match %s: %s", len(matches), value, strings.Join(paths, ", ")))
 		}
 	case parentPath:
 		resolved, err := expandParentPath(value, filepath.Dir(p.path))
 		if err != nil {
-			add(p, "parent-not-found", failure, fmt.Sprintf("%s: %v", value, err))
+			add(p, rule, failure, fmt.Sprintf("%s: %v", value, err))
 			return
 		}
 		_, err = os.Stat(resolved)
 		switch {
 		case errors.Is(err, fs.ErrNotExist) && strings.HasPrefix(value, "."):
-			add(p, "parent-not-found", failure, fmt.Sprintf("%s does not exist (resolved to %s)", value, resolved))
+			add(p, rule, failure, fmt.Sprintf("%s does not exist (resolved to %s)", value, resolved))
 		case errors.Is(err, fs.ErrNotExist):
-			add(p, "parent-not-found", failure, fmt.Sprintf("%s does not exist", value))
+			add(p, rule, failure, fmt.Sprintf("%s does not exist", value))
 		case err != nil:
-			add(p, "parent-not-found", failure, fmt.Sprintf("%s: %v", value, err))
+			add(p, rule, failure, fmt.Sprintf("%s: %v", value, err))
 		}
 	default:
-		add(p, "parent-not-found", failure, fmt.Sprintf("unrecognised parent form %q (expected \"[[plan]]\", a path, or a URL)", value))
+		add(p, rule, failure, fmt.Sprintf("unrecognised %s form %q (expected \"[[plan]]\", a path, or a URL)", key, value))
 	}
 }
 
+// checkLinks applies the link rules to the body and to status_note. A note
+// finding names its source, because the note is not visible in the body.
 func checkLinks(c *corpus, p *plan, add addFunc) {
 	seen := map[string]bool{}
-	for _, link := range p.links {
+	check := func(link, source string) {
 		if seen[link] {
-			continue
+			return
 		}
 		seen[link] = true
 		if isUndumpedReference(link) {
-			add(p, "undumped-reference", advisory, link)
+			add(p, "undumped-reference", advisory, source+link)
 		}
 		basename := reduceLinkTarget(link)
 		if isPlanStyle(basename) && len(c.lookup(basename)) == 0 {
-			add(p, "dead-link", failure, link)
+			add(p, "dead-link", failure, source+link)
 		}
+	}
+	for _, link := range p.links {
+		check(link, "")
+	}
+	for _, link := range p.noteLinks {
+		check(link, "status_note: ")
 	}
 }
 

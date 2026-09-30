@@ -69,6 +69,14 @@ func (c completer) planThenStatus(cmd *cobra.Command, args []string, toComplete 
 	return nil, cobra.ShellCompDirectiveNoFileComp
 }
 
+// planFirst completes a plan for the first argument and nothing after it.
+func (c completer) planFirst(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if len(args) == 0 {
+		return c.plans(cmd, args, toComplete)
+	}
+	return nil, cobra.ShellCompDirectiveNoFileComp
+}
+
 // parents offers plans and lets the shell add files, since a parent may be a
 // path outside the root.
 func (c completer) parents(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

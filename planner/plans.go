@@ -15,25 +15,43 @@ import (
 )
 
 type frontMatter struct {
-	Type                 string `yaml:"type"`
-	Parent               string `yaml:"parent"`
-	ImplementationStatus string `yaml:"implementation_status"`
-	StatusChecked        string `yaml:"status_checked"`
-	StatusNote           string `yaml:"status_note"`
+	Type                 string   `yaml:"type"`
+	Parent               string   `yaml:"parent"`
+	Issues               []string `yaml:"issues"`
+	PullRequests         []string `yaml:"pull_requests"`
+	ImplementationStatus string   `yaml:"implementation_status"`
+	SupersededBy         string   `yaml:"superseded_by"`
+	StatusChecked        string   `yaml:"status_checked"`
+	StatusNote           string   `yaml:"status_note"`
+}
+
+// knownKeys are the front matter keys the schema defines; check reports every
+// other key as an advisory.
+var knownKeys = map[string]bool{
+	"type":                  true,
+	"parent":                true,
+	"issues":                true,
+	"pull_requests":         true,
+	"implementation_status": true,
+	"superseded_by":         true,
+	"status_checked":        true,
+	"status_note":           true,
 }
 
 type plan struct {
-	path     string
-	relPath  string
-	repo     string
-	basename string
-	name     string
-	title    string
-	hasTitle bool
-	front    frontMatter
-	hasFront bool
-	frontErr error
-	links    []string
+	path        string
+	relPath     string
+	repo        string
+	basename    string
+	name        string
+	title       string
+	hasTitle    bool
+	front       frontMatter
+	hasFront    bool
+	frontErr    error
+	unknownKeys []string
+	links       []string
+	noteLinks   []string
 }
 
 // valid reports whether the plan has a front matter block that decoded.
@@ -44,6 +62,21 @@ func (p *plan) valid() bool {
 func (p *plan) active() bool {
 	status := p.front.ImplementationStatus
 	return status != "Implemented" && status != "Superseded"
+}
+
+// linksTo reports whether the front matter names the URL as parent,
+// successor, issue, or pull request.
+func (p *plan) linksTo(url string) bool {
+	url = strings.TrimSpace(url)
+	values := []string{p.front.Parent, p.front.SupersededBy}
+	values = append(values, p.front.Issues...)
+	values = append(values, p.front.PullRequests...)
+	for _, value := range values {
+		if strings.TrimSpace(value) == url {
+			return true
+		}
+	}
+	return false
 }
 
 type corpus struct {
@@ -138,6 +171,9 @@ func loadPlan(root, filePath string) (*plan, error) {
 	if hasFront && frontErr == nil {
 		if err := yaml.Unmarshal([]byte(block), &p.front); err != nil {
 			p.frontErr = err
+		} else {
+			p.unknownKeys = unknownFrontMatterKeys(block)
+			p.noteLinks = scanLinks(p.front.StatusNote)
 		}
 	}
 	p.title, p.hasTitle, p.links = scanBody(body)
@@ -145,6 +181,37 @@ func loadPlan(root, filePath string) (*plan, error) {
 		p.title = p.name
 	}
 	return p, nil
+}
+
+// decodeFrontMatter reads the front matter block at the start of a file.
+func decodeFrontMatter(data []byte) (frontMatter, error) {
+	var front frontMatter
+	block, _, hasFront, err := splitFrontMatter(string(data))
+	if err != nil {
+		return front, err
+	}
+	if !hasFront {
+		return front, errNoFrontMatter
+	}
+	err = yaml.Unmarshal([]byte(block), &front)
+	return front, err
+}
+
+// unknownFrontMatterKeys lists the top-level keys of a decoded block that the
+// schema does not define, sorted.
+func unknownFrontMatterKeys(block string) []string {
+	var fields map[string]any
+	if err := yaml.Unmarshal([]byte(block), &fields); err != nil {
+		return nil
+	}
+	var unknown []string
+	for key := range fields {
+		if !knownKeys[key] {
+			unknown = append(unknown, key)
+		}
+	}
+	sort.Strings(unknown)
+	return unknown
 }
 
 func repoLabel(dir string) string {
@@ -203,15 +270,31 @@ func scanBody(body string) (title string, hasTitle bool, links []string) {
 				title, hasTitle = m[1], true
 			}
 		}
-		stripped := codeSpanRE.ReplaceAllString(line, "")
-		for _, m := range mdLinkRE.FindAllStringSubmatch(stripped, -1) {
-			links = append(links, m[1])
-		}
-		for _, m := range wikilinkRE.FindAllStringSubmatch(stripped, -1) {
-			if strings.TrimSpace(m[1]) != "" {
-				links = append(links, "[["+m[1]+"]]")
-			}
-		}
+		links = append(links, lineLinks(line)...)
 	}
 	return title, hasTitle, links
+}
+
+// scanLinks returns the link targets in text that has no fenced blocks, such
+// as a status note.
+func scanLinks(text string) []string {
+	var links []string
+	for _, line := range strings.Split(text, "\n") {
+		links = append(links, lineLinks(line)...)
+	}
+	return links
+}
+
+func lineLinks(line string) []string {
+	var links []string
+	stripped := codeSpanRE.ReplaceAllString(line, "")
+	for _, m := range mdLinkRE.FindAllStringSubmatch(stripped, -1) {
+		links = append(links, m[1])
+	}
+	for _, m := range wikilinkRE.FindAllStringSubmatch(stripped, -1) {
+		if strings.TrimSpace(m[1]) != "" {
+			links = append(links, "[["+m[1]+"]]")
+		}
+	}
+	return links
 }

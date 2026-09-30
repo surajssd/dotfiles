@@ -9,7 +9,8 @@ https://github.com/acme/widgets/issues/7                                    -   
 └── widgets-umbrella                                                        acme/widgets   InProgress       0d        Widgets umbrella
     ├── gadgets-cross-child                                                 acme/gadgets   InProgress       0d        Gadgets cross child
     ├── widgets-child-done                                                                 Implemented      9d        Widgets child done
-    └── widgets-child-active                                                               NotImplemented   9d!       Widgets child active
+    ├── widgets-child-active                                                               NotImplemented   9d!       Widgets child active
+    └── widgets-links-fields                                                               Implemented      9d        Widgets links fields
 loose-plan                                                                  -              InProgress       28d!      Loose plan
 shared-name                                                                 acme/gadgets   Implemented      19d       Shared name in gadgets
 gadgets-ambiguous-parent (parent not found: [[260906120000-shared-name]])   acme/gadgets   InProgress       0d        Gadgets ambiguous parent
@@ -32,4 +33,7 @@ widgets-cycle-b (parent cycle)                                              acme
 widgets-parent-missing (parent not found: [[260199000000-nope]])            acme/widgets   InProgress       0d        Widgets parent missing
 widgets-design                                                              acme/widgets   InProgress       0d        Widgets design
 widgets-bare-parent (parent not found: 260910120000-widgets-umbrella)       acme/widgets   InProgress       0d        Widgets bare parent
+widgets-bad-links                                                           acme/widgets   Superseded       0d        Widgets bad links
+widgets-superseded                                                          acme/widgets   Superseded       0d        Widgets superseded
+widgets-successor-missing                                                   acme/widgets   Superseded       0d        Widgets successor missing
 legacy-name                                                                 acme/widgets   -                -         Legacy name

@@ -65,7 +65,7 @@ Installers create **symlinks** (not copies), so changes in this repo are immedia
 
 ## Planner
 
-`planner` keeps a folder of Markdown plans with YAML front matter. Each plan is `<root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md` and starts with a block holding `type`, `implementation_status`, `status_checked`, `status_note`, and an optional `parent`.
+`planner` keeps a folder of Markdown plans with YAML front matter. Each plan is `<root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md` and starts with a block holding `type`, `implementation_status`, `status_checked`, and `status_note`, plus the optional `parent` and `superseded_by` (a `[[wikilink]]`, a path, or a URL) and the optional lists `issues` (GitHub issue, Jira, Asana, or any other tracker URL) and `pull_requests` (pull request URLs).
 
 ```bash
 planner get                              # table of active plans
@@ -77,8 +77,11 @@ planner describe <plan>                  # every field, children, note, and find
 planner get --all -o wide                # every plan, legacy ones included, with TYPE, PATH, and NOTE columns
 planner tree --repo cks                  # plans whose <org>/<repo> contains "cks", plus ancestors
 planner check                            # integrity findings; exit 1 on errors
-planner new [--parent <ref>] [--status <status> --note <text>] <name...>   # create a plan for the current repository
-planner update status <plan> [<status>] [--note <text>]   # change status, checked date, and note in place
+planner get <url>                        # every plan that lists the URL as issue, pull request, parent, or successor
+planner new [--parent <ref>] [--status <status> --note <text>] [--issue <url>]... [--pr <url>]... <name...>   # create a plan for the current repository
+planner update status <plan> [<status>] [--note <text>] [--superseded-by <ref>]   # change status, checked date, note, and successor in place
+planner update pr <plan> <url>...        # add pull request URLs to a plan
+planner update issue <plan> <url>...     # add tracker URLs to a plan
 planner version                          # build information of the installed binary
 source <(planner completion zsh)         # completion of commands, flags, plan names, repositories, and statuses
 ```
@@ -89,7 +92,7 @@ The plan root comes from `~/.planner.yaml`:
 root: ~/plans
 ```
 
-`--root <dir>` overrides the file. `get` and `tree` print the same `kubectl`-style table (`NAME`, `REPO`, `STATUS`, `CHECKED`, `TITLE`) and share `--all`, `-o`, `--no-headers`, and `--repo`; `tree` adds connectors in `NAME`. `CHECKED` is the number of days since `status_checked`, with `!` after an active plan older than a week. Both accept plan names (a path, a wikilink, a basename, or the short `NAME` from the table); a name that matches nothing is reported after the rows that were found and the exit status is 1. `describe` prints one plan's fields as `Key: Value` lines. `-o wide` adds `TYPE`, `PATH` (home shown as `~`), and `NOTE`, and never truncates; `-o json` and `-o yaml` print every field of each plan (one named plan as a single object, otherwise a list under `items`); `-o name` prints basenames. `tree` supports only `-o wide`. `--repo` is a case-insensitive substring match. Without `--all` only active plans are listed and a note on stderr counts the plans without valid front matter; `--all` lists every plan, those with `-` in STATUS and CHECKED. `planner check --help` lists the recognised status values and every rule with its severity. `zshrc` and `bashrc` source `planner completion` when the binary is on `PATH`, which completes plan names, repositories, statuses, and output formats.
+`--root <dir>` overrides the file. `get` and `tree` print the same `kubectl`-style table (`NAME`, `REPO`, `STATUS`, `CHECKED`, `TITLE`) and share `--all`, `-o`, `--no-headers`, and `--repo`; `tree` adds connectors in `NAME`. `CHECKED` is the number of days since `status_checked`, with `!` after an active plan older than a week. Both accept plan names (a path, a wikilink, a basename, or the short `NAME` from the table); a name that matches nothing is reported after the rows that were found and the exit status is 1. `describe` prints one plan's fields as `Key: Value` lines. `-o wide` adds `TYPE`, `PATH` (home shown as `~`), and `NOTE`, and never truncates; `-o json` and `-o yaml` print every field of each plan (one named plan as a single object, otherwise a list under `items`); `-o name` prints basenames. `tree` supports only `-o wide`. `--repo` is a case-insensitive substring match. Without `--all` only active plans are listed and a note on stderr counts the plans without valid front matter; `--all` lists every plan, those with `-` in STATUS and CHECKED. `planner check --help` lists the front matter keys, the recognised status values, and every rule with its severity; the link rules require `http(s)` URLs, a pull request path for `github.com` entries under `pull_requests`, a `superseded_by` on every `Superseded` plan, and no keys outside the schema. `zshrc` and `bashrc` source `planner completion` when the binary is on `PATH`, which completes plan names, repositories, statuses, and output formats.
 
 ## GitHub Codespaces
 

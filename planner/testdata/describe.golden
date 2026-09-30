@@ -1,46 +1,92 @@
-Name:     widgets-umbrella
-Title:    Widgets umbrella
-File:     <root>/github.com/acme/widgets/260910120000-widgets-umbrella.md
-Repo:     acme/widgets
-Type:     plan
-Status:   InProgress
-Checked:  2026-09-29 (0d)
-Parent:   ~/.claude/plans/widgets-recipe.md
+Name:           widgets-umbrella
+Title:          Widgets umbrella
+File:           <root>/github.com/acme/widgets/260910120000-widgets-umbrella.md
+Repo:           acme/widgets
+Type:           plan
+Status:         InProgress
+Checked:        2026-09-29 (0d)
+Parent:         ~/.claude/plans/widgets-recipe.md
+Superseded By:  -
 Children:
   gadgets-cross-child
   widgets-child-done
   widgets-child-active
-Note:     Umbrella for the widgets recipe effort.
+  widgets-links-fields
+Issues:         -
+Pull Requests:  -
+Note:           Umbrella for the widgets recipe effort.
 Findings:
   advisory  undumped-reference    parent: ~/.claude/plans/widgets-recipe.md
 
 
-Name:     widgets-legacy
-Title:    Widgets legacy plan
-File:     <root>/github.com/acme/widgets/260915120000-widgets-legacy.md
-Repo:     acme/widgets
-Type:     -
-Status:   -
-Checked:  -
-Parent:   -
+Name:           widgets-legacy
+Title:          Widgets legacy plan
+File:           <root>/github.com/acme/widgets/260915120000-widgets-legacy.md
+Repo:           acme/widgets
+Type:           -
+Status:         -
+Checked:        -
+Parent:         -
+Superseded By:  -
 Children:
   widgets-child-of-legacy
-Note:     -
+Issues:         -
+Pull Requests:  -
+Note:           -
 Findings:
   advisory  no-front-matter       first line is not ---
 
 
-Name:     widgets-links
-Title:    Widgets links
-File:     <root>/github.com/acme/widgets/260918120000-widgets-links.md
-Repo:     acme/widgets
-Type:     plan
-Status:   InProgress
-Checked:  2026-09-29 (0d)
-Parent:   -
-Children: -
-Note:     Exercises every link rule.
+Name:           widgets-links
+Title:          Widgets links
+File:           <root>/github.com/acme/widgets/260918120000-widgets-links.md
+Repo:           acme/widgets
+Type:           plan
+Status:         InProgress
+Checked:        2026-09-29 (0d)
+Parent:         -
+Superseded By:  -
+Children:       -
+Issues:         -
+Pull Requests:  -
+Note:           Exercises every link rule.
 Findings:
   error     dead-link             ../gadgets/260102000000-gone.md#section
   error     dead-link             [[260101000000-missing-plan]]
   advisory  undumped-reference    ~/.claude/plans/widgets-recipe.md
+
+
+Name:           widgets-links-fields
+Title:          Widgets links fields
+File:           <root>/github.com/acme/widgets/260932120000-widgets-links-fields.md
+Repo:           acme/widgets
+Type:           plan
+Status:         Implemented
+Checked:        2026-09-20 (9d)
+Parent:         [[260910120000-widgets-umbrella]]
+Superseded By:  -
+Children:       -
+Issues:
+  https://acme.atlassian.net/browse/WID-1
+  https://github.com/acme/widgets/issues/9
+Pull Requests:
+  https://github.com/acme/widgets/pull/12
+  https://github.com/acme/gadgets/pull/3
+Note:           Merged in PR #12 and gadgets PR #3.
+Findings:       -
+
+
+Name:           widgets-superseded
+Title:          Widgets superseded
+File:           <root>/github.com/acme/widgets/260934120000-widgets-superseded.md
+Repo:           acme/widgets
+Type:           plan
+Status:         Superseded
+Checked:        2026-09-29 (0d)
+Parent:         -
+Superseded By:  [[260910120000-widgets-umbrella]]
+Children:       -
+Issues:         -
+Pull Requests:  -
+Note:           Folded into the umbrella.
+Findings:       -

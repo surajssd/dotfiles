@@ -118,7 +118,8 @@ func TestListGolden(t *testing.T) {
 		{"get-named.golden", 0, []string{"get", "widgets-child-done", "[[260915120000-widgets-legacy]]"}, ""},
 		{"tree-named.golden", 0, []string{"tree", "widgets-umbrella", "widgets-done-umbrella"}, ""},
 		{"tree-named-all.golden", 0, []string{"tree", "widgets-umbrella", "--all"}, ""},
-		{"describe.golden", 0, []string{"describe", "widgets-umbrella", "widgets-legacy", "260918120000-widgets-links"}, ""},
+		{"describe.golden", 0, []string{"describe", "widgets-umbrella", "widgets-legacy", "260918120000-widgets-links", "widgets-links-fields", "widgets-superseded"}, ""},
+		{"get-url.golden", 0, []string{"get", "https://acme.atlassian.net/browse/WID-1"}, ""},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -185,7 +186,7 @@ func TestCheckGolden(t *testing.T) {
 	root := fixtureRoot(t)
 	deps, io := testDependencies("", true, 0)
 	err := run(t, deps, "check", "--root", root)
-	if err == nil || err.Error() != "check: 15 errors, 6 advisories" {
+	if err == nil || err.Error() != "check: 20 errors, 9 advisories" {
 		t.Fatalf("error = %v", err)
 	}
 	assertGolden(t, "check.golden", io.stdout.String())
@@ -241,7 +242,7 @@ func TestCheckHelpListsRulesAndStatuses(t *testing.T) {
 		t.Fatal(err)
 	}
 	help := io.stdout.String()
-	for _, want := range append(statusValues, "no-front-matter", "duplicate-title", "advisory", "error", "FILE", "SEVERITY") {
+	for _, want := range append(statusValues, "no-front-matter", "duplicate-title", "invalid-link", "unknown-key", "missing-successor", "successor-not-found", "advisory", "error", "FILE", "SEVERITY") {
 		if !strings.Contains(help, want) {
 			t.Errorf("check --help lacks %q", want)
 		}

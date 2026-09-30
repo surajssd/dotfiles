@@ -14,17 +14,20 @@ import (
 // front matter fields are absent when the block is missing or does not
 // decode, and front_matter_error says why.
 type planRecord struct {
-	Name                 string `json:"name" yaml:"name"`
-	Basename             string `json:"basename" yaml:"basename"`
-	Path                 string `json:"path" yaml:"path"`
-	Repo                 string `json:"repo" yaml:"repo"`
-	Title                string `json:"title" yaml:"title"`
-	Type                 string `json:"type,omitempty" yaml:"type,omitempty"`
-	Parent               string `json:"parent,omitempty" yaml:"parent,omitempty"`
-	ImplementationStatus string `json:"implementation_status,omitempty" yaml:"implementation_status,omitempty"`
-	StatusChecked        string `json:"status_checked,omitempty" yaml:"status_checked,omitempty"`
-	StatusNote           string `json:"status_note,omitempty" yaml:"status_note,omitempty"`
-	FrontMatterError     string `json:"front_matter_error,omitempty" yaml:"front_matter_error,omitempty"`
+	Name                 string   `json:"name" yaml:"name"`
+	Basename             string   `json:"basename" yaml:"basename"`
+	Path                 string   `json:"path" yaml:"path"`
+	Repo                 string   `json:"repo" yaml:"repo"`
+	Title                string   `json:"title" yaml:"title"`
+	Type                 string   `json:"type,omitempty" yaml:"type,omitempty"`
+	Parent               string   `json:"parent,omitempty" yaml:"parent,omitempty"`
+	Issues               []string `json:"issues,omitempty" yaml:"issues,omitempty"`
+	PullRequests         []string `json:"pull_requests,omitempty" yaml:"pull_requests,omitempty"`
+	ImplementationStatus string   `json:"implementation_status,omitempty" yaml:"implementation_status,omitempty"`
+	SupersededBy         string   `json:"superseded_by,omitempty" yaml:"superseded_by,omitempty"`
+	StatusChecked        string   `json:"status_checked,omitempty" yaml:"status_checked,omitempty"`
+	StatusNote           string   `json:"status_note,omitempty" yaml:"status_note,omitempty"`
+	FrontMatterError     string   `json:"front_matter_error,omitempty" yaml:"front_matter_error,omitempty"`
 }
 
 type planList struct {
@@ -41,7 +44,10 @@ func newPlanRecord(p *plan) planRecord {
 	default:
 		r.Type = p.front.Type
 		r.Parent = p.front.Parent
+		r.Issues = p.front.Issues
+		r.PullRequests = p.front.PullRequests
 		r.ImplementationStatus = p.front.ImplementationStatus
+		r.SupersededBy = p.front.SupersededBy
 		r.StatusChecked = p.front.StatusChecked
 		r.StatusNote = p.front.StatusNote
 	}

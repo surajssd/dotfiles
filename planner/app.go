@@ -67,8 +67,10 @@ named plan is a single object, anything else a list under items. -o name
 prints one basename per line. --no-headers drops the header row.
 
 With plan names (a path, [[wikilink]], basename, or the short NAME shown in
-the table) only those plans are printed, whatever their status. A name that
-matches no plan is reported after the others and the exit status is 1.`
+the table) only those plans are printed, whatever their status. A URL selects
+every plan that lists it under issues, pull_requests, parent, or
+superseded_by. A name that matches no plan is reported after the others and
+the exit status is 1.`
 
 const treeHelp = `Print the plans under the root as a table with tree connectors in NAME:
 children sit under their parent plan, and one group row per external parent
@@ -81,11 +83,12 @@ only output format is -o wide.`
 
 const describeHelp = `Print one block per named plan, kubectl describe style: the name, title,
 file (home shown as ~), repository, type, status, checked date and age, parent,
-children, the full status note, and the planner check findings for that plan.
+successor, children, issues, pull requests, the full status note, and the
+planner check findings for that plan.
 
-<plan> is a path, a [[wikilink]], a basename, or the short NAME shown by
-planner get. A name that matches no plan is reported after the others and the
-exit status is 1.`
+<plan> is a path, a [[wikilink]], a basename, the short NAME shown by planner
+get, or a URL the plan lists. A name that matches no plan is reported after
+the others and the exit status is 1.`
 
 const newHelp = `Create <root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md and print its
 absolute path.
@@ -107,7 +110,12 @@ a URL is stored as is.
 or without hyphens) and needs --note, which sets status_note (default
 "Implementation has not started."). With piped front matter the flags replace
 those lines and set status_checked to today. An existing file is never
-overwritten.`
+overwritten.
+
+--issue and --pr, each repeatable, fill the issues and pull_requests lists
+with tracker and pull request URLs; with piped front matter they are merged
+into the lists it already holds. planner update issue and planner update pr
+add more later.`
 
 func newCommand(deps dependencies) *cobra.Command {
 	var rootFlag string
@@ -122,13 +130,14 @@ func newCommand(deps dependencies) *cobra.Command {
   planner check                front matter and link findings; exit 1 on errors
   planner new <name...>        create a plan for the current repository
   planner update status        change a plan's status, checked date, and note
+  planner update pr|issue      add pull request or tracker URLs to a plan
   planner version              build information of this binary
 
 Plans are Markdown files named <YYMMDDHHMMSS>-<name>.md under
 <root>/github.com/<org>/<repo>/ with a YAML front matter block that holds
-type, implementation_status, status_checked, status_note, and an optional
-parent. The plan root comes from --root or from the root key in
-~/.planner.yaml:
+type, implementation_status, status_checked, and status_note, and optionally
+parent, superseded_by, issues, and pull_requests. The plan root comes from
+--root or from the root key in ~/.planner.yaml:
 
   root: ~/plans
 
@@ -232,6 +241,8 @@ completes commands, flags, plan names, repositories, and statuses.`,
 	create.Flags().StringVar(&newOpts.parent, "parent", "", "parent plan: [[wikilink]], basename, file path, or URL")
 	create.Flags().StringVar(&newOpts.status, "status", "", "initial implementation_status (needs --note)")
 	create.Flags().StringVar(&newOpts.note, "note", "", "initial status_note")
+	create.Flags().StringArrayVar(&newOpts.issues, "issue", nil, "tracker URL for the issues list (repeatable)")
+	create.Flags().StringArrayVar(&newOpts.pullRequests, "pr", nil, "pull request URL for the pull_requests list (repeatable)")
 	mustCompleteFlag(create, "parent", complete.parents)
 	mustCompleteFlag(create, "status", completeValues(statusValues))
 
@@ -240,10 +251,10 @@ completes commands, flags, plan names, repositories, and statuses.`,
 		Short: "Update a plan's front matter in place",
 		Args:  cobra.NoArgs,
 	}
-	var note string
+	var statusOpts statusOptions
 	status := &cobra.Command{
 		Use:               "status <plan> [<implementation_status>]",
-		Short:             "Change a plan's status, checked date, and note",
+		Short:             "Change a plan's status, checked date, note, and successor",
 		Long:              statusHelp,
 		Args:              cobra.RangeArgs(1, 2),
 		ValidArgsFunction: complete.planThenStatus,
@@ -252,11 +263,14 @@ completes commands, flags, plan names, repositories, and statuses.`,
 			if err != nil {
 				return err
 			}
-			return runStatus(deps, rootDir, args, note, cmd.Flags().Changed("note"))
+			statusOpts.noteSet = cmd.Flags().Changed("note")
+			return runStatus(deps, rootDir, args, statusOpts)
 		},
 	}
-	status.Flags().StringVar(&note, "note", "", "new status_note text")
-	update.AddCommand(status)
+	status.Flags().StringVar(&statusOpts.note, "note", "", "new status_note text")
+	status.Flags().StringVar(&statusOpts.supersededBy, "superseded-by", "", "plan that replaces this one: [[wikilink]], basename, file path, or URL")
+	mustCompleteFlag(status, "superseded-by", complete.parents)
+	update.AddCommand(status, linksCommand(deps, resolve, complete, "pr", pullRequestsKey), linksCommand(deps, resolve, complete, "issue", issuesKey))
 
 	version := &cobra.Command{
 		Use:   "version",
@@ -270,6 +284,25 @@ completes commands, flags, plan names, repositories, and statuses.`,
 
 	root.AddCommand(get, tree, describe, check, create, update, version)
 	return root
+}
+
+// linksCommand builds planner update pr and planner update issue, which differ
+// only in the list they append to.
+func linksCommand(deps dependencies, resolve func() (string, error), complete completer, name, key string) *cobra.Command {
+	return &cobra.Command{
+		Use:               name + " <plan> <url>...",
+		Short:             "Add URLs to a plan's " + key + " list",
+		Long:              fmt.Sprintf(linksHelp, key, linkRules[key]),
+		Args:              cobra.MinimumNArgs(2),
+		ValidArgsFunction: complete.planFirst,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			rootDir, err := resolve()
+			if err != nil {
+				return err
+			}
+			return runLinks(deps, rootDir, key, args)
+		},
+	}
 }
 
 // addListFlags attaches the flags that planner get and planner tree share.
