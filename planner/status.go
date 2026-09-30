@@ -25,7 +25,7 @@ Recognised implementation_status values:
 The status may be typed in any case, with or without hyphens: in-progress and
 inprogress both mean InProgress.
 
---superseded-by takes the same forms as --parent on planner new (a dumped
+--superseded-by takes the same forms as --parent on planner create (a dumped
 plan, a file path, or a URL) and needs the status, new or current, to be
 Superseded.
 
@@ -135,7 +135,7 @@ func runLinks(deps dependencies, root, key string, args []string) error {
 	}
 	switch {
 	case !p.hasFront:
-		return fmt.Errorf("%s: the plan has no front matter; give it a status and --note with planner update status first", p.relPath)
+		return fmt.Errorf("%s: the plan has no front matter; give it a status and --note with planner set status first", p.relPath)
 	case p.frontErr != nil:
 		return fmt.Errorf("%s: front matter does not decode (%v); fix it before adding links", p.relPath, p.frontErr)
 	}

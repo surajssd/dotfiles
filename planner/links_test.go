@@ -59,7 +59,7 @@ func TestUpdateFrontMatterReplacesListsAndFlowSequences(t *testing.T) {
 func TestUpdatePRAndIssueAppendAndDedupe(t *testing.T) {
 	root, path := statusRoot(t)
 	deps, io := testDependencies("", true, 0)
-	if err := run(t, deps, "update", "pr", "--root", root, "widgets-plan", prA, prB, prA); err != nil {
+	if err := run(t, deps, "set", "pr", "--root", root, "widgets-plan", prA, prB, prA); err != nil {
 		t.Fatal(err)
 	}
 	want := strings.Replace(statusFixture, "owner: me\n", "owner: me\npull_requests:\n  - "+prA+"\n  - "+prB+"\n", 1)
@@ -70,14 +70,14 @@ func TestUpdatePRAndIssueAppendAndDedupe(t *testing.T) {
 		t.Errorf("output:\n%s", out)
 	}
 	deps, _ = testDependencies("", true, 0)
-	if err := run(t, deps, "update", "pr", "--root", root, "widgets-plan", prB); err != nil {
+	if err := run(t, deps, "set", "pr", "--root", root, "widgets-plan", prB); err != nil {
 		t.Fatal(err)
 	}
 	if got := readFile(t, path); got != want {
 		t.Errorf("a repeated URL changed the file:\n%s", got)
 	}
 	deps, io = testDependencies("", true, 0)
-	if err := run(t, deps, "update", "issue", "--root", root, "widgets-plan", jiraA, ghIssue); err != nil {
+	if err := run(t, deps, "set", "issue", "--root", root, "widgets-plan", jiraA, ghIssue); err != nil {
 		t.Fatal(err)
 	}
 	got := readFile(t, path)
@@ -104,7 +104,7 @@ func TestUpdateLinksRejectsBadInput(t *testing.T) {
 	}
 	for want, args := range cases {
 		deps, _ := testDependencies("", true, 0)
-		err := run(t, deps, append([]string{"update", args[0], "--root", root}, args[1:]...)...)
+		err := run(t, deps, append([]string{"set", args[0], "--root", root}, args[1:]...)...)
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%v: error = %v, want %q", args, err, want)
 		}
@@ -118,25 +118,25 @@ func TestUpdateStatusSupersededBy(t *testing.T) {
 	root, path := statusRoot(t)
 	writeFile(t, filepath.Join(root, "github.com", "acme", "widgets", "260920120000-successor.md"), "---\ntype: plan\nimplementation_status: InProgress\nstatus_checked: 2026-09-01\nstatus_note: \"New.\"\n---\n# Successor\n")
 	deps, _ := testDependencies("", true, 0)
-	err := run(t, deps, "update", "status", "--root", root, "widgets-plan", "--superseded-by", "successor")
+	err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "--superseded-by", "successor")
 	if err == nil || !strings.Contains(err.Error(), "Superseded") {
 		t.Fatalf("InProgress plan accepted a successor: %v", err)
 	}
-	err = run(t, deps, "update", "status", "--root", root, "widgets-plan", "Superseded", "--superseded-by", "widgets-plan")
+	err = run(t, deps, "set", "status", "--root", root, "widgets-plan", "Superseded", "--superseded-by", "widgets-plan")
 	if err == nil || !strings.Contains(err.Error(), "itself") {
 		t.Fatalf("self reference: %v", err)
 	}
 	if readFile(t, path) != statusFixture {
 		t.Fatal("a rejected command changed the file")
 	}
-	if err := run(t, deps, "update", "status", "--root", root, "widgets-plan", "Superseded", "--note", "Folded.", "--superseded-by", "successor"); err != nil {
+	if err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "Superseded", "--note", "Folded.", "--superseded-by", "successor"); err != nil {
 		t.Fatal(err)
 	}
 	want := "---\ntype: plan\nparent: \"[[260901000000-parent-plan]]\"\nimplementation_status: Superseded\nstatus_checked: 2026-09-29\nstatus_note: \"Folded.\"\nowner: me\nsuperseded_by: \"[[260920120000-successor]]\"\n---\n\n# Title\n\nBody with status_checked: text that must not change.\n"
 	if got := readFile(t, path); got != want {
 		t.Errorf("content:\n%s", got)
 	}
-	if err := run(t, deps, "update", "status", "--root", root, "widgets-plan", "--superseded-by", "https://example.com/replacement"); err != nil {
+	if err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "--superseded-by", "https://example.com/replacement"); err != nil {
 		t.Fatal(err)
 	}
 	if got := readFile(t, path); !strings.Contains(got, "\nsuperseded_by: \"https://example.com/replacement\"\n---\n") {
@@ -162,7 +162,7 @@ func TestPlansAreFoundByURL(t *testing.T) {
 		t.Errorf("a URL parent was not matched:\n%s", io.stdout)
 	}
 	deps, _ = testDependencies("", true, 0)
-	err := run(t, deps, "update", "pr", "--root", root, "https://acme.atlassian.net/browse/WID-1", prA)
+	err := run(t, deps, "set", "pr", "--root", root, "https://acme.atlassian.net/browse/WID-1", prA)
 	if err == nil || !strings.Contains(err.Error(), "ambiguous") {
 		t.Errorf("two plans list WID-1: error = %v", err)
 	}
@@ -176,7 +176,7 @@ func TestNewIssueAndPRFlags(t *testing.T) {
 	initRepo(t, "upstream", "https://github.com/acme/widgets")
 	root := t.TempDir()
 	deps, io := testDependencies("", true, 0)
-	if err := run(t, deps, "new", "--root", root, "--issue", jiraA, "--pr", prA, "--pr", prB, "--pr", prA, "linked"); err != nil {
+	if err := run(t, deps, "create", "--root", root, "--issue", jiraA, "--pr", prA, "--pr", prB, "--pr", prA, "linked"); err != nil {
 		t.Fatal(err)
 	}
 	want := "---\ntype: plan\nissues:\n  - " + jiraA + "\npull_requests:\n  - " + prA + "\n  - " + prB + "\nimplementation_status: NotImplemented\nstatus_checked: 2026-09-29\nstatus_note: \"Implementation has not started.\"\n---\n\n"
@@ -186,7 +186,7 @@ func TestNewIssueAndPRFlags(t *testing.T) {
 
 	piped := "---\ntype: plan\npull_requests:\n  - " + prA + "\nimplementation_status: InProgress\nstatus_checked: 2026-09-01\nstatus_note: \"Mine.\"\n---\n\n# Piped\n"
 	deps, io = testDependencies(piped, false, 0)
-	if err := run(t, deps, "new", "--root", root, "--pr", prB, "--issue", ghIssue, "piped links"); err != nil {
+	if err := run(t, deps, "create", "--root", root, "--pr", prB, "--issue", ghIssue, "piped links"); err != nil {
 		t.Fatal(err)
 	}
 	want = "---\ntype: plan\npull_requests:\n  - " + prA + "\n  - " + prB + "\nimplementation_status: InProgress\nstatus_checked: 2026-09-01\nstatus_note: \"Mine.\"\nissues:\n  - " + ghIssue + "\n---\n\n# Piped\n"
@@ -196,7 +196,7 @@ func TestNewIssueAndPRFlags(t *testing.T) {
 
 	before := listFiles(t, root)
 	deps, _ = testDependencies("", true, 0)
-	err := run(t, deps, "new", "--root", root, "--pr", ghIssue, "rejected")
+	err := run(t, deps, "create", "--root", root, "--pr", ghIssue, "rejected")
 	if err == nil || !strings.Contains(err.Error(), "pull request") {
 		t.Fatalf("error = %v", err)
 	}

@@ -22,7 +22,7 @@ const (
 	ghTimeout       = 10 * time.Second
 )
 
-type newOptions struct {
+type createOptions struct {
 	parent       string
 	status       string
 	note         string
@@ -32,14 +32,14 @@ type newOptions struct {
 }
 
 // links returns the URLs given for one list key.
-func (o newOptions) links(key string) []string {
+func (o createOptions) links(key string) []string {
 	if key == pullRequestsKey {
 		return o.pullRequests
 	}
 	return o.issues
 }
 
-func runNew(deps dependencies, root string, args []string, opts newOptions) error {
+func runCreate(deps dependencies, root string, args []string, opts createOptions) error {
 	name, err := planName(args)
 	if err != nil {
 		return err
@@ -127,7 +127,7 @@ func planName(args []string) (string, error) {
 	return name, nil
 }
 
-func planContent(deps dependencies, parentValue string, opts newOptions, now time.Time) ([]byte, error) {
+func planContent(deps dependencies, parentValue string, opts createOptions, now time.Time) ([]byte, error) {
 	if deps.stdinIsTerminal() {
 		return generatedFrontMatter(parentValue, opts, now), nil
 	}
@@ -158,7 +158,7 @@ func planContent(deps dependencies, parentValue string, opts newOptions, now tim
 
 // linkEdits merges the --issue and --pr values into the lists a piped front
 // matter block already holds.
-func linkEdits(content []byte, opts newOptions) ([]fieldEdit, error) {
+func linkEdits(content []byte, opts createOptions) ([]fieldEdit, error) {
 	if len(opts.issues)+len(opts.pullRequests) == 0 {
 		return nil, nil
 	}
@@ -177,7 +177,7 @@ func linkEdits(content []byte, opts newOptions) ([]fieldEdit, error) {
 	return edits, nil
 }
 
-func generatedFrontMatter(parentValue string, opts newOptions, now time.Time) []byte {
+func generatedFrontMatter(parentValue string, opts createOptions, now time.Time) []byte {
 	status, note := "NotImplemented", "Implementation has not started."
 	if opts.status != "" {
 		status = opts.status
@@ -321,7 +321,7 @@ func githubRepoFromURL(url string) (string, bool) {
 func resolveRepo(deps dependencies) (string, error) {
 	inside, err := exec.Command("git", "rev-parse", "--is-inside-work-tree").Output()
 	if err != nil || strings.TrimSpace(string(inside)) != "true" {
-		return "", errors.New("run planner new from a Git checkout or worktree")
+		return "", errors.New("run planner create from a Git checkout or worktree")
 	}
 	if url, err := exec.Command("git", "remote", "get-url", "upstream").Output(); err == nil {
 		if repo, ok := githubRepoFromURL(string(url)); ok {

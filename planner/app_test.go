@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-var update = flag.Bool("update", false, "rewrite golden files")
+var update = flag.Bool("set", false, "rewrite golden files")
 
 var fixedNow = time.Date(2026, time.September, 29, 12, 0, 0, 0, time.Local)
 
@@ -273,7 +273,7 @@ func TestBareCommandPrintsHelpWithoutConfiguration(t *testing.T) {
 	if err := run(t, deps); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"Available Commands", "tree", "get", "new", "update"} {
+	for _, want := range []string{"Available Commands", "tree", "get", "create", "set"} {
 		if !strings.Contains(io.stdout.String(), want) {
 			t.Errorf("help lacks %q:\n%s", want, io.stdout)
 		}
@@ -418,12 +418,12 @@ func TestCompletion(t *testing.T) {
 		{[]string{"get", "--root", root, "260906"}, []string{"260906120000-shared-name\tShared name in gadgets", "260906120000-shared-name\tShared name in gizmos"}, []string{"\nshared-name\t"}},
 		{[]string{"get", "--root", root, "sha"}, nil, []string{"shared-name"}},
 		{[]string{"describe", "--root", root, "widgets-umbrella", "widgets-"}, []string{"widgets-crlf\t"}, []string{"widgets-umbrella\t"}},
-		{[]string{"update", "status", "--root", root, "widgets-umbrella", "In"}, []string{"InProgress"}, []string{"Implemented", "widgets-"}},
+		{[]string{"set", "status", "--root", root, "widgets-umbrella", "In"}, []string{"InProgress"}, []string{"Implemented", "widgets-"}},
 		{[]string{"get", "--root", root, "--repo", "acme/g"}, []string{"acme/gadgets", "acme/gizmos"}, []string{"acme/widgets"}},
 		{[]string{"get", "--root", root, "-o", ""}, []string{"wide", "json", "yaml", "name"}, nil},
 		{[]string{"tree", "--root", root, "-o", ""}, []string{"wide"}, []string{"json"}},
-		{[]string{"new", "--root", root, "--status", "Sup"}, []string{"Superseded"}, []string{"InProgress"}},
-		{[]string{"new", "--root", root, "--parent", "widgets-um"}, []string{"widgets-umbrella\t"}, nil},
+		{[]string{"create", "--root", root, "--status", "Sup"}, []string{"Superseded"}, []string{"InProgress"}},
+		{[]string{"create", "--root", root, "--parent", "widgets-um"}, []string{"widgets-umbrella\t"}, nil},
 	}
 	for _, tc := range cases {
 		deps, io := testDependencies("", true, 0)

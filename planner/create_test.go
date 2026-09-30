@@ -70,7 +70,7 @@ func TestNewUsesUpstreamAndPipedBody(t *testing.T) {
 	initRepo(t, "upstream", "git@github.com:acme/widgets.git")
 	root := t.TempDir()
 	deps, io := testDependencies("# My plan\n\nBody.\n", false, 0)
-	if err := run(t, deps, "new", "--root", root, "my", "plan words.md"); err != nil {
+	if err := run(t, deps, "create", "--root", root, "my", "plan words.md"); err != nil {
 		t.Fatal(err)
 	}
 	want := filepath.Join(root, "github.com", "acme", "widgets", "260929120000-my-plan-words.md")
@@ -89,7 +89,7 @@ func TestNewTerminalStdinWritesFrontMatterOnly(t *testing.T) {
 	initRepo(t, "upstream", "https://github.com/acme/widgets")
 	root := t.TempDir()
 	deps, _ := testDependencies("must not be read", true, 0)
-	if err := run(t, deps, "new", "--root", root, "empty"); err != nil {
+	if err := run(t, deps, "create", "--root", root, "empty"); err != nil {
 		t.Fatal(err)
 	}
 	got := readFile(t, filepath.Join(root, "github.com", "acme", "widgets", "260929120000-empty.md"))
@@ -103,7 +103,7 @@ func TestNewMapsForkToParentThroughGh(t *testing.T) {
 	fakeGh(t, `{"isFork":true,"parent":{"owner":{"login":"acme"},"name":"widgets"},"nameWithOwner":"fork/widgets"}`)
 	root := t.TempDir()
 	deps, io := testDependencies("", true, 0)
-	if err := run(t, deps, "new", "--root", root, "forked"); err != nil {
+	if err := run(t, deps, "create", "--root", root, "forked"); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(io.stdout.String(), filepath.Join("github.com", "acme", "widgets")) {
@@ -116,7 +116,7 @@ func TestNewFallsBackToOriginWithWarning(t *testing.T) {
 	fakeGh(t, "")
 	root := t.TempDir()
 	deps, io := testDependencies("", true, 0)
-	if err := run(t, deps, "new", "--root", root, "fallback"); err != nil {
+	if err := run(t, deps, "create", "--root", root, "fallback"); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(io.stdout.String(), filepath.Join("github.com", "fork", "widgets")) {
@@ -130,7 +130,7 @@ func TestNewFallsBackToOriginWithWarning(t *testing.T) {
 func TestNewOutsideGitFails(t *testing.T) {
 	t.Chdir(t.TempDir())
 	deps, _ := testDependencies("", true, 0)
-	err := run(t, deps, "new", "--root", t.TempDir(), "nowhere")
+	err := run(t, deps, "create", "--root", t.TempDir(), "nowhere")
 	if err == nil || !strings.Contains(err.Error(), "Git checkout") {
 		t.Fatalf("error = %v", err)
 	}
@@ -142,7 +142,7 @@ func TestNewReadsRootFromConfig(t *testing.T) {
 	writeFile(t, filepath.Join(home, configName), "root: ~/plans\n")
 	initRepo(t, "upstream", "https://github.com/acme/widgets")
 	deps, io := testDependencies("", true, 0)
-	if err := run(t, deps, "new", "configured"); err != nil {
+	if err := run(t, deps, "create", "configured"); err != nil {
 		t.Fatal(err)
 	}
 	want := filepath.Join(home, "plans", "github.com", "acme", "widgets", "260929120000-configured.md")
@@ -165,7 +165,7 @@ func TestNewCollisionKeepsFileAndSkipsStdin(t *testing.T) {
 	writeFile(t, existing, "original\n")
 	deps, _ := testDependencies("", false, 0)
 	deps.stdin = failingReader{t}
-	err := run(t, deps, "new", "--root", root, "taken")
+	err := run(t, deps, "create", "--root", root, "taken")
 	if err == nil || !strings.Contains(err.Error(), "already exists") {
 		t.Fatalf("error = %v", err)
 	}
@@ -179,7 +179,7 @@ func TestNewRejectsBadNames(t *testing.T) {
 	root := t.TempDir()
 	for _, args := range [][]string{{}, {""}, {"  "}, {"."}, {".."}, {"a/b"}, {`a\b`}, {".md"}} {
 		deps, _ := testDependencies("", true, 0)
-		if err := run(t, deps, append([]string{"new", "--root", root}, args...)...); err == nil {
+		if err := run(t, deps, append([]string{"create", "--root", root}, args...)...); err == nil {
 			t.Errorf("args %q were accepted", args)
 		}
 	}
@@ -197,7 +197,7 @@ func TestNewRemovesFileAfterInputFailure(t *testing.T) {
 	root := t.TempDir()
 	deps, _ := testDependencies("", false, 0)
 	deps.stdin = errReader{}
-	err := run(t, deps, "new", "--root", root, "broken")
+	err := run(t, deps, "create", "--root", root, "broken")
 	if err == nil || !strings.Contains(err.Error(), "stdin broke") {
 		t.Fatalf("error = %v", err)
 	}
@@ -231,7 +231,7 @@ func TestNewParentFormsStoreWikilink(t *testing.T) {
 	}
 	for name, ref := range refs {
 		deps, io := testDependencies("# Child\n", false, 0)
-		if err := run(t, deps, "new", "--root", root, "--parent", ref, "child", name); err != nil {
+		if err := run(t, deps, "create", "--root", root, "--parent", ref, "child", name); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
 		got := readFile(t, strings.TrimSpace(io.stdout.String()))
@@ -259,7 +259,7 @@ func TestNewExternalParentsAreStoredAsWritten(t *testing.T) {
 	for ref, want := range cases {
 		i++
 		deps, io := testDependencies("", true, 0)
-		if err := run(t, deps, "new", "--root", root, "--parent", ref, "external", string(rune('a'+i))); err != nil {
+		if err := run(t, deps, "create", "--root", root, "--parent", ref, "external", string(rune('a'+i))); err != nil {
 			t.Fatalf("%s: %v", ref, err)
 		}
 		got := readFile(t, strings.TrimSpace(io.stdout.String()))
@@ -274,7 +274,7 @@ func TestNewRelativeExternalParentIsStoredAbsolute(t *testing.T) {
 	writeFile(t, filepath.Join(checkout, "docs", "umbrella.md"), "# Umbrella\n")
 	root := t.TempDir()
 	deps, io := testDependencies("", true, 0)
-	if err := run(t, deps, "new", "--root", root, "--parent", "./docs/umbrella.md", "relative"); err != nil {
+	if err := run(t, deps, "create", "--root", root, "--parent", "./docs/umbrella.md", "relative"); err != nil {
 		t.Fatal(err)
 	}
 	child := strings.TrimSpace(io.stdout.String())
@@ -308,7 +308,7 @@ func TestNewParentValidationHappensBeforeCreation(t *testing.T) {
 	for ref, want := range cases {
 		deps, _ := testDependencies("", false, 0)
 		deps.stdin = failingReader{t}
-		err := run(t, deps, "new", "--root", root, "--parent", ref, "child")
+		err := run(t, deps, "create", "--root", root, "--parent", ref, "child")
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: error = %v, want %q", ref, err, want)
 		}
@@ -323,7 +323,7 @@ func TestNewPreservesPipedFrontMatter(t *testing.T) {
 	root := t.TempDir()
 	piped := "---\ntype: plan\nimplementation_status: InProgress\nstatus_checked: 2026-09-01\nstatus_note: \"Mine.\"\n---\n\n# Piped\n"
 	deps, io := testDependencies(piped, false, 0)
-	if err := run(t, deps, "new", "--root", root, "piped plain"); err != nil {
+	if err := run(t, deps, "create", "--root", root, "piped plain"); err != nil {
 		t.Fatal(err)
 	}
 	if got := readFile(t, strings.TrimSpace(io.stdout.String())); got != piped {
@@ -331,7 +331,7 @@ func TestNewPreservesPipedFrontMatter(t *testing.T) {
 	}
 
 	deps, io = testDependencies(piped, false, 0)
-	if err := run(t, deps, "new", "--root", root, "--parent", "https://example.com/x", "piped parent"); err != nil {
+	if err := run(t, deps, "create", "--root", root, "--parent", "https://example.com/x", "piped parent"); err != nil {
 		t.Fatal(err)
 	}
 	want := "---\nparent: \"https://example.com/x\"\ntype: plan\n"
@@ -342,7 +342,7 @@ func TestNewPreservesPipedFrontMatter(t *testing.T) {
 	before := listFiles(t, root)
 	withParent := "---\ntype: plan\nparent: \"[[x]]\"\n---\n"
 	deps, _ = testDependencies(withParent, false, 0)
-	err := run(t, deps, "new", "--root", root, "--parent", "https://example.com/x", "piped duplicate")
+	err := run(t, deps, "create", "--root", root, "--parent", "https://example.com/x", "piped duplicate")
 	if err == nil || !strings.Contains(err.Error(), "already has a parent") {
 		t.Fatalf("error = %v", err)
 	}
@@ -390,7 +390,7 @@ func TestNewStatusAndNoteFlags(t *testing.T) {
 	initRepo(t, "upstream", "https://github.com/acme/widgets")
 	root := t.TempDir()
 	deps, io := testDependencies("", true, 0)
-	if err := run(t, deps, "new", "--root", root, "--status", "in-progress", "--note", "Started today.", "flags"); err != nil {
+	if err := run(t, deps, "create", "--root", root, "--status", "in-progress", "--note", "Started today.", "flags"); err != nil {
 		t.Fatal(err)
 	}
 	want := "---\ntype: plan\nimplementation_status: InProgress\nstatus_checked: 2026-09-29\nstatus_note: \"Started today.\"\n---\n\n"
@@ -399,7 +399,7 @@ func TestNewStatusAndNoteFlags(t *testing.T) {
 	}
 
 	deps, io = testDependencies("", true, 0)
-	if err := run(t, deps, "new", "--root", root, "--note", "Only a note.", "note only"); err != nil {
+	if err := run(t, deps, "create", "--root", root, "--note", "Only a note.", "note only"); err != nil {
 		t.Fatal(err)
 	}
 	if got := readFile(t, strings.TrimSpace(io.stdout.String())); !strings.Contains(got, "implementation_status: NotImplemented\nstatus_checked: 2026-09-29\nstatus_note: \"Only a note.\"\n") {
@@ -408,7 +408,7 @@ func TestNewStatusAndNoteFlags(t *testing.T) {
 
 	piped := "---\ntype: plan\nimplementation_status: NotImplemented\nstatus_checked: 2026-09-01\nstatus_note: \"Old.\"\n---\n\n# Piped\n"
 	deps, io = testDependencies(piped, false, 0)
-	if err := run(t, deps, "new", "--root", root, "--status", "Superseded", "--note", "Replaced.", "--parent", "https://example.com/p", "piped flags"); err != nil {
+	if err := run(t, deps, "create", "--root", root, "--status", "Superseded", "--note", "Replaced.", "--parent", "https://example.com/p", "piped flags"); err != nil {
 		t.Fatal(err)
 	}
 	want = "---\nparent: \"https://example.com/p\"\ntype: plan\nimplementation_status: Superseded\nstatus_checked: 2026-09-29\nstatus_note: \"Replaced.\"\n---\n\n# Piped\n"
@@ -423,7 +423,7 @@ func TestNewStatusAndNoteFlags(t *testing.T) {
 	}
 	for want, flags := range cases {
 		deps, _ := testDependencies("", true, 0)
-		err := run(t, deps, append([]string{"new", "--root", root, "rejected"}, flags...)...)
+		err := run(t, deps, append([]string{"create", "--root", root, "rejected"}, flags...)...)
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%v: error = %v, want %q", flags, err, want)
 		}

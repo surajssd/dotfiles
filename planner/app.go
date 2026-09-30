@@ -90,7 +90,7 @@ planner check findings for that plan.
 get, or a URL the plan lists. A name that matches no plan is reported after
 the others and the exit status is 1.`
 
-const newHelp = `Create <root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md and print its
+const createHelp = `Create <root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md and print its
 absolute path.
 
 The words of <name> are joined with hyphens; a trailing .md is dropped. The
@@ -114,7 +114,7 @@ overwritten.
 
 --issue and --pr, each repeatable, fill the issues and pull_requests lists
 with tracker and pull request URLs; with piped front matter they are merged
-into the lists it already holds. planner update issue and planner update pr
+into the lists it already holds. planner set issue and planner set pr
 add more later.`
 
 func newCommand(deps dependencies) *cobra.Command {
@@ -128,9 +128,9 @@ func newCommand(deps dependencies) *cobra.Command {
   planner tree [<plan>...]     the same as an effort tree, or the named subtrees
   planner describe <plan>...   every field of a plan, its children, its findings
   planner check                front matter and link findings; exit 1 on errors
-  planner new <name...>        create a plan for the current repository
-  planner update status        change a plan's status, checked date, and note
-  planner update pr|issue      add pull request or tracker URLs to a plan
+  planner create <name...>     create a plan for the current repository
+  planner set status           change a plan's status, checked date, and note
+  planner set pr|issue         add pull request or tracker URLs to a plan
   planner version              build information of this binary
 
 Plans are Markdown files named <YYMMDDHHMMSS>-<name>.md under
@@ -223,11 +223,11 @@ completes commands, flags, plan names, repositories, and statuses.`,
 		},
 	}
 
-	var newOpts newOptions
+	var newOpts createOptions
 	create := &cobra.Command{
-		Use:   "new [--parent <ref>] [--status <status> --note <text>] <name...>",
+		Use:   "create [--parent <ref>] [--status <status> --note <text>] <name...>",
 		Short: "Create a plan for the current repository and print its path",
-		Long:  newHelp,
+		Long:  createHelp,
 		Args:  cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			rootDir, err := resolve()
@@ -235,7 +235,7 @@ completes commands, flags, plan names, repositories, and statuses.`,
 				return err
 			}
 			newOpts.noteSet = cmd.Flags().Changed("note")
-			return runNew(deps, rootDir, args, newOpts)
+			return runCreate(deps, rootDir, args, newOpts)
 		},
 	}
 	create.Flags().StringVar(&newOpts.parent, "parent", "", "parent plan: [[wikilink]], basename, file path, or URL")
@@ -246,8 +246,8 @@ completes commands, flags, plan names, repositories, and statuses.`,
 	mustCompleteFlag(create, "parent", complete.parents)
 	mustCompleteFlag(create, "status", completeValues(statusValues))
 
-	update := &cobra.Command{
-		Use:   "update",
+	set := &cobra.Command{
+		Use:   "set",
 		Short: "Update a plan's front matter in place",
 		Args:  cobra.NoArgs,
 	}
@@ -270,7 +270,7 @@ completes commands, flags, plan names, repositories, and statuses.`,
 	status.Flags().StringVar(&statusOpts.note, "note", "", "new status_note text")
 	status.Flags().StringVar(&statusOpts.supersededBy, "superseded-by", "", "plan that replaces this one: [[wikilink]], basename, file path, or URL")
 	mustCompleteFlag(status, "superseded-by", complete.parents)
-	update.AddCommand(status, linksCommand(deps, resolve, complete, "pr", pullRequestsKey), linksCommand(deps, resolve, complete, "issue", issuesKey))
+	set.AddCommand(status, linksCommand(deps, resolve, complete, "pr", pullRequestsKey), linksCommand(deps, resolve, complete, "issue", issuesKey))
 
 	version := &cobra.Command{
 		Use:   "version",
@@ -282,11 +282,11 @@ completes commands, flags, plan names, repositories, and statuses.`,
 		},
 	}
 
-	root.AddCommand(get, tree, describe, check, create, update, version)
+	root.AddCommand(get, tree, describe, check, create, set, version)
 	return root
 }
 
-// linksCommand builds planner update pr and planner update issue, which differ
+// linksCommand builds planner set pr and planner set issue, which differ
 // only in the list they append to.
 func linksCommand(deps dependencies, resolve func() (string, error), complete completer, name, key string) *cobra.Command {
 	return &cobra.Command{

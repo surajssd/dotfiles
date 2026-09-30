@@ -78,10 +78,10 @@ planner get --all -o wide                # every plan, legacy ones included, wit
 planner tree --repo cks                  # plans whose <org>/<repo> contains "cks", plus ancestors
 planner check                            # integrity findings; exit 1 on errors
 planner get <url>                        # every plan that lists the URL as issue, pull request, parent, or successor
-planner new [--parent <ref>] [--status <status> --note <text>] [--issue <url>]... [--pr <url>]... <name...>   # create a plan for the current repository
-planner update status <plan> [<status>] [--note <text>] [--superseded-by <ref>]   # change status, checked date, note, and successor in place
-planner update pr <plan> <url>...        # add pull request URLs to a plan
-planner update issue <plan> <url>...     # add tracker URLs to a plan
+planner create [--parent <ref>] [--status <status> --note <text>] [--issue <url>]... [--pr <url>]... <name...>   # create a plan for the current repository
+planner set status <plan> [<status>] [--note <text>] [--superseded-by <ref>]   # change status, checked date, note, and successor in place
+planner set pr <plan> <url>...        # add pull request URLs to a plan
+planner set issue <plan> <url>...     # add tracker URLs to a plan
 planner version                          # build information of the installed binary
 source <(planner completion zsh)         # completion of commands, flags, plan names, repositories, and statuses
 ```
