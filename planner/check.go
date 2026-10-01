@@ -82,7 +82,8 @@ Rules:
   undumped-reference    advisory  Parent, SupersededBy, or a link in the body
                                   or in StatusNote points into .claude/plans/
   duplicate-title       advisory  two or more plans in one repository folder
-                                  share an H1
+                                  share an H1 without replacing one another
+                                  through SupersededBy
   stale-pr-note         advisory  (--github) a sentence of StatusNote calls a
                                   listed pull request open, by URL or #<n>,
                                   while GitHub says CLOSED or MERGED
@@ -350,7 +351,12 @@ func checkDuplicateTitles(c *corpus, add addFunc) {
 		groups[k] = append(groups[k], p)
 	}
 	for _, k := range order {
-		group := groups[k]
+		var group []*plan
+		for _, p := range groups[k] {
+			if !supersededInTitleGroup(c, p, groups[k]) {
+				group = append(group, p)
+			}
+		}
 		if len(group) < 2 {
 			continue
 		}
@@ -360,4 +366,35 @@ func checkDuplicateTitles(c *corpus, add addFunc) {
 		}
 		add(group[0], "duplicate-title", advisory, fmt.Sprintf("%q is also the title of %s", k.title, strings.Join(others, ", ")))
 	}
+}
+
+func supersededInTitleGroup(c *corpus, p *plan, group []*plan) bool {
+	current := p
+	seen := map[*plan]bool{p: true}
+	for current.valid() && current.front.ImplementationStatus == "Superseded" {
+		var next *plan
+		value := current.front.SupersededBy
+		switch classifyParent(value) {
+		case parentWikilink:
+			if matches := c.lookup(reduceLinkTarget(value)); len(matches) == 1 {
+				next = matches[0]
+			}
+		case parentPath:
+			path, err := expandParentPath(value, filepath.Dir(current.path))
+			if err == nil {
+				if resolved, err := filepath.EvalSymlinks(path); err == nil {
+					next = c.byPath[resolved]
+				}
+			}
+		}
+		if next == nil || !next.valid() || !slices.Contains(group, next) {
+			break
+		}
+		if seen[next] {
+			return false
+		}
+		seen[next] = true
+		current = next
+	}
+	return current != p
 }

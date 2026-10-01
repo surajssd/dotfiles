@@ -86,7 +86,7 @@ planner check <plan>                     # the findings of one plan only
 planner check --github [<plan>...]       # also warn when StatusNote calls a closed or merged pull request open
 planner get <url>                        # every plan that lists the URL as issue, pull request, parent, or successor
 planner create [--parent <ref>] [--status <status> --note <text>] [--issue <url>]... [--pr <url>]... <name...>   # create a plan for the current repository
-planner log <plan> <title...> [--note <text>] < entry.md   # append "### <today>: <title>" and the piped text under "## Progress log"; sets StatusChecked
+planner log <plan> <title...> [--note <text>] [--keep-checked] [--issue <url>]... [--pr <url>]... < entry.md   # append a dated entry; merge links and the note in the same write
 planner set status <plan> [<status>] [--note <text> | --note-file <path>] [--superseded-by <ref>]   # change status, checked date, note, and successor in place; --note-file - reads stdin
 planner set parent <plan> <ref>       # set the parent of a plan: a dumped plan, a file path, or a URL
 planner set pr <plan> <url>...        # add pull request URLs to a plan
@@ -94,6 +94,8 @@ planner set issue <plan> <url>...     # add tracker URLs to a plan
 planner version                          # build information of the installed binary
 source <(planner completion zsh)         # completion of commands, flags, plan names, repositories, and statuses
 ```
+
+`planner log` sets `StatusChecked` to today by default. Use `--keep-checked` for administrative entries, such as recording a ticket, that do not verify implementation status. The repeatable `--issue` and `--pr` flags add links in the same write and skip duplicates. Redirect a file into stdin with `< entry.md` to supply the entry body. `planner check` omits duplicate-title advisories for plans explicitly replaced through `SupersededBy` by another plan with the same title in the same repository folder.
 
 The plan root comes from `~/.planner.yaml`:
 

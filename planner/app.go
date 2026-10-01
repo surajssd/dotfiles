@@ -300,6 +300,9 @@ completes commands, flags, plan names, repositories, and statuses.`,
 		},
 	}
 	logCmd.Flags().StringVar(&logOpts.note, "note", "", "new StatusNote text, replaced in the same write")
+	logCmd.Flags().BoolVar(&logOpts.keepChecked, "keep-checked", false, "preserve StatusChecked for an administrative entry")
+	logCmd.Flags().StringArrayVar(&logOpts.issues, "issue", nil, "tracker URL to add in the same write (repeatable)")
+	logCmd.Flags().StringArrayVar(&logOpts.pullRequests, "pr", nil, "pull request URL to add in the same write (repeatable)")
 
 	set := &cobra.Command{
 		Use:   "set",

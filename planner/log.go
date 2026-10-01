@@ -12,7 +12,8 @@ import (
 const logSection = "Progress log"
 
 const logHelp = `Append a dated entry to the Progress log section of a plan's body and set
-StatusChecked to today.
+StatusChecked to today. Use --keep-checked for administrative entries, such
+as recording a ticket, that do not verify implementation status.
 
 The entry is a heading, ### <today>: <title>, followed by the text piped on
 stdin, if any. It goes at the end of the "## Progress log" section, before
@@ -24,19 +25,37 @@ words of <title> are joined with spaces.
 detail while the note stays short. A status change stays with planner set
 status.
 
+--issue and --pr, each repeatable, add tracker and pull request URLs in the
+same write, skipping duplicates. They use the same URL rules as planner set
+issue and planner set pr. Read the entry from a file with < entry.md.
+
 <plan> is a path under the root, a [[wikilink]], a basename, the short name
 shown by planner get, or a URL the plan lists. On success the new heading is
 printed.`
 
 type logOptions struct {
-	note    string
-	noteSet bool
+	note         string
+	noteSet      bool
+	keepChecked  bool
+	issues       []string
+	pullRequests []string
 }
 
 func runLog(deps dependencies, root string, args []string, opts logOptions) error {
 	title := strings.Join(strings.Fields(strings.Join(args[1:], " ")), " ")
 	if title == "" {
 		return errors.New("provide a nonempty entry title")
+	}
+	links := []struct {
+		key    string
+		values []string
+	}{{issuesKey, opts.issues}, {pullRequestsKey, opts.pullRequests}}
+	for _, list := range links {
+		for _, value := range list.values {
+			if problem := linkProblem(list.key, value); problem != "" {
+				return errors.New(problem)
+			}
+		}
 	}
 	body := ""
 	if !deps.stdinIsTerminal() {
@@ -65,7 +84,19 @@ func runLog(deps dependencies, root string, args []string, opts logOptions) erro
 		return err
 	}
 	today := deps.now().Format(dateLayout)
-	updated, err := updateFrontMatter(data, statusEdits("", opts.note, opts.noteSet, today))
+	checked := today
+	if opts.keepChecked {
+		checked = ""
+	}
+	edits := statusEdits("", opts.note, opts.noteSet, checked)
+	for _, list := range links {
+		existing := mergeLinks(linksFor(p.front, list.key), nil)
+		merged := mergeLinks(existing, list.values)
+		if len(merged) > len(existing) {
+			edits = append(edits, fieldEdit{list.key, listLines(list.key, merged)})
+		}
+	}
+	updated, err := updateFrontMatter(data, edits)
 	if err != nil {
 		return fmt.Errorf("%s: %w", p.relPath, err)
 	}

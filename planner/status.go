@@ -317,7 +317,9 @@ func statusEdits(status, note string, noteSet bool, today string) []fieldEdit {
 	if status != "" {
 		edits = append(edits, fieldEdit{"ImplementationStatus", "ImplementationStatus: " + status})
 	}
-	edits = append(edits, fieldEdit{"StatusChecked", "StatusChecked: " + today})
+	if today != "" {
+		edits = append(edits, fieldEdit{"StatusChecked", "StatusChecked: " + today})
+	}
 	if noteSet {
 		edits = append(edits, fieldEdit{"StatusNote", "StatusNote: " + quoteYAML(note)})
 	}

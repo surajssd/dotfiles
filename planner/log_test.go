@@ -89,11 +89,14 @@ func TestLogRejectsBadInput(t *testing.T) {
 	broken := filepath.Join(root, "github.com", "acme", "widgets", "260912120000-broken.md")
 	writeFile(t, broken, "---\nType: plan\nType: plan\n---\n# Broken\n")
 	cases := map[string][]string{
-		"nonempty entry title": {"widgets-plan", " "},
-		"no front matter":      {"legacy", "Started"},
-		"does not decode":      {"broken", "Started"},
-		"not found":            {"nope", "Started"},
+		"nonempty entry title":  {"widgets-plan", " "},
+		"no front matter":       {"legacy", "Started"},
+		"does not decode":       {"broken", "Started"},
+		"not found":             {"nope", "Started"},
+		"is a pull request URL": {"widgets-plan", "Started", "--issue", prA},
+		"is not an http(s) URL": {"widgets-plan", "Started", "--keep-checked", "--issue", jiraA, "--pr", "invalid"},
 	}
+	before := map[string]string{path: readFile(t, path), legacy: readFile(t, legacy), broken: readFile(t, broken)}
 	for want, args := range cases {
 		deps, _ := testDependencies("", true, 0)
 		err := run(t, deps, append([]string{"log", "--root", root}, args...)...)
@@ -101,9 +104,42 @@ func TestLogRejectsBadInput(t *testing.T) {
 			t.Errorf("%v: error = %v, want %q", args, err, want)
 		}
 	}
-	for _, file := range []string{path, legacy, broken} {
-		if got := readFile(t, file); strings.Contains(got, "2026-09-29") {
+	for file, original := range before {
+		if got := readFile(t, file); got != original {
 			t.Errorf("a rejected command changed %s:\n%s", file, got)
+		}
+	}
+}
+
+func TestLogAdministrativeEntry(t *testing.T) {
+	for _, eol := range []string{"\n", "\r\n"} {
+		root, path := logRoot(t, "# Title\n")
+		before := strings.Replace(logFront, "Type: plan\n", "Type: plan\nIssues: ["+jiraA+"]\n", 1) + "# Title\n"
+		before = strings.ReplaceAll(before, "\n", eol)
+		writeFile(t, path, before)
+		deps, _ := testDependencies("Recorded tickets.\n", false, 0)
+		if err := run(t, deps, "log", "--root", root, "widgets-plan", "Tickets", "--keep-checked", "--issue", jiraA, "--issue", ghIssue, "--pr", prA, "--pr", prA, "--note", "Tickets recorded."); err != nil {
+			t.Fatal(err)
+		}
+		want := "---\nType: plan\nIssues:\n  - " + jiraA + "\n  - " + ghIssue + "\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: \"Tickets recorded.\"\nPullRequests:\n  - " + prA + "\n---\n# Title\n\n## Progress log\n\n### 2026-09-29: Tickets\n\nRecorded tickets.\n"
+		if got := readFile(t, path); got != strings.ReplaceAll(want, "\n", eol) {
+			t.Errorf("content:\n%q", got)
+		}
+	}
+}
+
+func TestLogKeepsMetadataWhenLinksAlreadyExist(t *testing.T) {
+	for _, checked := range []string{"StatusChecked: '2026-09-01' # last verified\n", ""} {
+		root, path := logRoot(t, "# Title\n")
+		before := strings.Replace(logFront, "StatusChecked: 2026-09-01\n", checked, 1)
+		before = strings.Replace(before, "Type: plan\n", "Type: plan\nIssues: ["+jiraA+"]\n", 1) + "# Title\n"
+		writeFile(t, path, before)
+		deps, _ := testDependencies("", true, 0)
+		if err := run(t, deps, "log", "--root", root, "widgets-plan", "Recorded", "--keep-checked", "--issue", jiraA); err != nil {
+			t.Fatal(err)
+		}
+		if got := readFile(t, path); got != before+"\n## Progress log\n\n### 2026-09-29: Recorded\n" {
+			t.Errorf("metadata changed:\n%s", got)
 		}
 	}
 }

@@ -282,6 +282,51 @@ func TestCheckCleanCorpusReportsNoFindings(t *testing.T) {
 	}
 }
 
+func TestDuplicateTitlesWithSuccessors(t *testing.T) {
+	for _, tc := range []struct {
+		name, a, b, c string
+		duplicate     bool
+	}{
+		{"pair", "[[260910120000-b]]", "", "different", false},
+		{"chain", "[[260910120000-b]]", "[[260910120000-c]]", "", false},
+		{"two remaining", "[[260910120000-b]]", "", "", true},
+		{"active with successor", "active", "", "different", true},
+		{"unresolved", "[[missing]]", "", "different", true},
+		{"self", "[[260910120000-a]]", "", "different", true},
+		{"cycle", "[[260910120000-b]]", "[[260910120000-a]]", "different", true},
+		{"outside group", "[[260910120000-c]]", "", "different", true},
+		{"relative path", "./260910120000-b.md", "", "different", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			for i, successor := range []string{tc.a, tc.b, tc.c} {
+				front, title := logFront, "Shared title"
+				if successor == "different" {
+					title = "Different title"
+				} else if successor != "" {
+					if successor == "active" {
+						successor = "[[260910120000-b]]"
+					} else {
+						front = strings.ReplaceAll(front, "InProgress", "Superseded")
+					}
+					front = strings.Replace(front, "Type: plan\n", "Type: plan\nSupersededBy: "+quoteYAML(successor)+"\n", 1)
+				}
+				writeFile(t, filepath.Join(root, "260910120000-"+string(rune('a'+i))+".md"), front+"# "+title+"\n")
+			}
+			deps, output := testDependencies("", true, 0)
+			if err := run(t, deps, "check", "--root", root); err != nil && tc.name != "unresolved" {
+				t.Fatal(err)
+			}
+			if got := strings.Contains(output.stdout.String(), "duplicate-title"); got != tc.duplicate {
+				t.Errorf("duplicate-title = %v, want %v; output: %s", got, tc.duplicate, output.stdout)
+			}
+			if tc.name == "two remaining" && strings.Contains(output.stdout.String(), "260910120000-a.md") {
+				t.Errorf("replaced plan appears in the finding: %s", output.stdout)
+			}
+		})
+	}
+}
+
 func TestCheckExitStatus(t *testing.T) {
 	legacy := "# Legacy\n"
 	broken := "---\nType: plan\nType: plan\n---\n"
