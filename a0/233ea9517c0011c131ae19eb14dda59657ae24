@@ -1,0 +1,20 @@
+## Conversation
+The user asked to work on planner-follow-ups-from-the-jira-backfill, then asked whether every proposed feature was justified. The scope was reduced to log --keep-checked, log --issue/--pr, and suppression of duplicate-title findings for explicit replacements. The user then requested a signed commit and a local merge into master.
+
+## Actions
+Read the plan, repository instructions, existing implementation, tests, documentation, and commit notes. Created planner-backfill-edits with the wta shell function. Added regression tests before the implementation, then implemented the three selected changes and updated CLI help, README.md, and root CLAUDE.md. Ran gofmt, go test ./..., go vet ./..., and golangci-lint run successfully. Verified a compiled binary against a temporary plan: links and the log entry changed while StatusChecked and ImplementationStatus stayed intact. Ran a read-only check of the real collection, reducing duplicate-title findings from four to one while keeping the unrelated duplicate. Updated the plan through planner log and planner set status, retaining PartiallyImplemented for deferred work. Audited the full diff: eight human-authored files, 172 additions and 16 deletions, no generated files. Validated the Conventional Commit message. Staged only the eight task files. The commit is prepared for a local fast-forward into master with hooks disabled.
+
+## Errors & Mistakes
+Initially treated the whole plan as the implementation scope and added tests for body-file and multi-plan link updates before the user requested reassessment. Removed those tests and restored the existing URL-resolution assertions before implementing the reduced scope. The intended regression failures included "unknown flag: --keep-checked" and duplicate-title findings for replacement pairs. command -v wta initially returned no command because wta is a shell function; sourcing configs/aliases/git made it available. No unexpected implementation or validation failures remained.
+
+## Dead Ends
+Dropped --body-file because input redirection already supplies a file. Deferred multi-plan set issue/pr because the proposed argument partition breaks selection by an existing URL and the workflow still needs a loop for individual entries. Deferred check --jira because the same ticket can describe completed subplans and unfinished umbrella plans; equating ticket status with every linked plan status produces misleading findings.
+
+## Hints for Future Agents
+Use log --keep-checked for administrative entries. The default log behavior still refreshes StatusChecked, and set status is unchanged. Existing link lists retain their formatting when the supplied links are already present. Duplicate-title suppression requires a valid Superseded plan and follows only replacements within the same title group. Self references, cycles, missing targets, and ambiguous targets do not silently remove the duplicates. Preserve the unrelated configs/herdr/config.toml change in the master checkout. Use git -c core.hooksPath=/dev/null for local commit and merge operations because hooks can publish changes. No push is authorized.
+
+## Codebase Discoveries
+The documentation file is root CLAUDE.md; planner/CLAUDE.md does not exist. wta is defined in configs/aliases/git and creates worktrees under ~/.herdr/worktrees. The existing updateFrontMatter and writePlanFile functions support combining the note, links, checked date, and appended entry in one atomic replacement without introducing a new write path.
+
+## Open Questions
+Multi-plan link updates and Jira comparison remain deferred. Define a reliable relationship between tickets and plans before implementing Jira status comparison. The separate instruction and configuration updates from the original plan remain deferred until the relevant functionality ships.
