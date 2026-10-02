@@ -1,0 +1,40 @@
+## Conversation
+The user asked for a video, made with 3Blue1Brown's library (Manim), of the section "The CPU and GPU Superchip" in chapter 2 of a book PDF. They wanted it to look like Apple's hardware stacking films, covering the GB200 superchip, the Grace CPU and its memory, the dual-die Blackwell GPU, HBM 8-Hi stacks, NVLink-C2C, NVLink 5, and NV-HBI. After the GB200 video was done, they asked whether a reusable harness existed. I said only partly and proposed a skill. They asked to put it in the book folder, then to move it to dotfiles/skills, then to make it generic (they approved one change above the 500-line review trigger), then to commit it.
+
+## Actions
+- Built the GB200 video as one Manim Community 0.21 module with its own projection engine. Rendered 8 scenes in parallel at 1080p60 and joined them with ffmpeg concat (3:33).
+- Copied the generic sections of that module verbatim, by section marker, into assets/engine.py. Added hooks to Base (DEFAULTS, world(), overlays()), validation of START keys and of duplicate box names, hbars/show_bars, and the ACCENT dict.
+- Wrote assets/template.py (3 scenes, 61 s). Tuned its poses with preview.py and checked the draft's contact sheets and seams with review.sh.
+- Generalized the scripts. They find scenes with the regex ^class S<number>Name( and preview.py subclasses mod.Video, or mod.Base if there is none.
+- Ran make install-skills after checking that ~/.claude/skills and ~/.agents/skills had no broken symlinks.
+- Ran the documented workflow end to end in a scratch folder (copy, preview, draft render, review).
+
+## Errors & Mistakes
+- The first renders showed a frozen second copy of the board during every camera move. Scene.get_moving_and_static_mobjects flattens families in begin_animations, so the Stage polygons from the first frame of each play() were drawn on every frame. The fix overrides it to return list(self.mobjects).
+- Several callouts that pointed right were cropped at the frame edge. In the template, two callouts overlapped ("Compute die" and "Memory stacks"). Both were fixed by pointing labels left or down.
+- On this Mac, stat is GNU stat from coreutils gnubin, so `stat -f "%m %z"` printed filesystem information instead of the file's mtime.
+- A python heredoc followed by `rm render.sh && ls` hung until the 2-minute timeout, although both had already run. I killed the shell. The cause is unknown.
+- engine.py first defined BLUE and ORANGE, which shadow Manim's colors of the same names. Replaced them with the ACCENT dict before this commit.
+- The first draft of this commit message had a body line that started with "Manim:". commitlint parsed it as a footer (footer-leading-blank warning).
+
+## Dead Ends
+- Manim's ThreeDScene with Cairo sorts each face by its center, so a large board covers the chips on top of it. Not used.
+- The system Python is 3.14. I used 3.12 because wheel availability was uncertain, so 3.14 is untested.
+- Committing on a wta worktree branch was rejected. ~/.claude/skills/manim-video is a symlink into the main checkout, so moving the files would break the installed skill until a merge. The history shows that the user commits directly to master.
+
+## Hints for Future Agents
+- render.sh writes VIDEO.mp4 beside the module only at QUALITY=h. Drafts go to MEDIA_DIR.
+- Each video keeps its own copy of engine.py on purpose. Do not refactor a video to import the engine from the skill directory.
+- Each scene must end in the next scene's START. Keep looping pulses off screen at a seam, and do not use hash() for phases (it changes per process).
+- render() is exact only for boxes that do not intersect. Grow a part that splits into layers only after it has lifted clear of its neighbors.
+- Pango cannot see SF Pro, so the engine uses Helvetica Neue. A Text with "\n" leaves large gaps between lines, so use headline() and body().
+- PYTHONDONTWRITEBYTECODE=1 in render.sh and sys.dont_write_bytecode in preview.py keep __pycache__ out of video folders.
+
+## Codebase Discoveries
+- installers/install-skills.sh links skills/* into ~/.claude/skills and ~/.agents/skills, then deletes every broken symlink directly under those folders, including links that dotfiles did not create.
+- The other skills resolve SKILL_DIR by reading the link of ~/.claude/skills/<name>/SKILL.md. This skill uses the same pattern.
+
+## Open Questions
+- The GB200 reference video (8 scenes, about 1,400 lines) is not in this repo. It lives in a local book workspace (~/code/git/cfregly/book/visuals/ch02-grace-blackwell-superchip-video/). Whether to vendor a trimmed copy as a second example is undecided.
+- The timings in SKILL.md (about 35 s for a draft, about 4 min for the final) were measured on an 18-core Mac.
+- Not tested with the CLIs that read ~/.agents/skills (Codex, Gemini, opencode, Copilot).
