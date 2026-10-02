@@ -1,0 +1,20 @@
+## Conversation
+The user asked to commit the current changes. The only change was a staged update to configs/herdr/config.toml enabling agent labels on pane borders and experimental pane history.
+
+## Actions
+Read repository instructions, the conventional-commits skill, the complete diff against the merge base with origin/master, recent commit notes for the Herdr configuration, and the post-commit hook. Confirmed there were no unstaged or untracked files. Ran git diff --check, git diff --cached --check, the bundled commitlint validator, and herdr config check; all passed. Created the signed and signed-off commit with git -c core.hooksPath=/dev/null commit -s -S. The invocation-specific hooks override suppressed the automatic push to honor the instruction never to post to GitHub. No configuration content was edited during this task.
+
+## Errors & Mistakes
+An initial search included a nonexistent file and reported: rg: configs/gitconfig: No such file or directory (os error 2). Read the actual hook directly afterward; the missing file did not affect validation or the commit.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+The repository has an active post-commit hook that pushes master automatically and can pull with rebase. Suppress that hook for local-only commits. The override used here applies only to the individual Git invocation and does not change repository configuration. Both the commit and its note were kept local.
+
+## Codebase Discoveries
+The active ~/.config/herdr/config.toml is a symlink to configs/herdr/config.toml, so herdr config check validates the repository file. The installed Herdr reported config: ok for both added settings.
+
+## Open Questions
+None.
