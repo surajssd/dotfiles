@@ -40,6 +40,7 @@ height = 5
 # Open pane links with Ctrl-click, or bypass Herdr with Shift-Cmd-click in Ghostty.
 mouse_capture = true
 
+show_agent_labels_on_pane_borders = true
 [ui.toast]
 delivery = "terminal"
 delay_seconds = 1
@@ -47,3 +48,6 @@ delay_seconds = 1
 [theme]
 name = "dracula"
 auto_switch = false
+
+[experimental]
+pane_history = true
