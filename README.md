@@ -114,6 +114,8 @@ root: ~/plans
 
 `asana add` creates one task in one project, assigns it to the authenticated user, and prints the task URL. It accepts one nonblank title and an optional plain-text description. The due date defaults to today in local time.
 
+`asana get` lists incomplete tasks assigned to the authenticated user across every accessible workspace. By default, it includes overdue tasks and tasks due today in local time, and excludes tasks without a due date.
+
 1. Run `make install-asana` from this repository with Go 1.25 or later on `PATH`. The command installs `asana` into `$(go env GOPATH)/bin`; add that directory to `PATH` if needed. `make install-all` also includes this build. When Go is absent, the installer prints a message and skips the build.
 2. Create a personal access token in the [Asana developer console](https://app.asana.com/0/my-apps), following [Asana's token setup guide](https://developers.asana.com/docs/personal-access-token).
 3. On macOS, store the token once in Keychain with the command below. Paste the token at the password prompt. The token stays out of shell history.
@@ -145,9 +147,32 @@ asana add "File it there" -p https://app.asana.com/1/123/project/456/list
 asana --config ./asana.yaml add "Review the proposal" --due 2026-10-31
 ```
 
-`--project/-p` selects a configured alias before trying a project URL. Without the flag, the CLI uses `default_project`; if no default is set, pass `--project`. `--description/-d -` reads plain text from stdin. `--due` accepts `YYYY-MM-DD`, `today`, or `tomorrow` and defaults to `today`; the keywords use the local calendar date. `--config` overrides `~/.asana.yaml`.
+For `add`, `--project/-p` selects a configured alias before trying a project URL. Without the flag, `add` uses `default_project`; if no default is set, pass `--project`. `--description/-d -` reads plain text from stdin. `--due` accepts `YYYY-MM-DD`, `today`, or `tomorrow` and defaults to `today`; the keywords use the local calendar date. `--config` overrides `~/.asana.yaml` for both commands.
 
-The CLI validates the input before loading credentials and sends one [task-creation request](https://developers.asana.com/reference/createtask), with a 30-second HTTP timeout and no retries. SIGINT and SIGTERM cancel the command while it waits for stdin, credentials, or an HTTP response. Success prints only the permalink URL to stdout and exits 0. Failures print `error:` and a message to stderr and exit 1. Authentication, permission, missing-project, and rate-limit errors have specific messages; rate limits include `Retry-After` when Asana supplies it. After a transport failure or an unreadable success response, check Asana before retrying because the task may already exist. `asana --help` and `asana add --help` work without configuration or credentials.
+`add` sends one [task-creation request](https://developers.asana.com/reference/createtask). Success prints only the permalink URL to stdout and exits 0. After a transport failure or an unreadable success response from `add`, check Asana before retrying because the task may already exist.
+
+```bash
+asana get
+asana get --due tomorrow
+asana get --due any -o json
+asana get --due none
+asana get -p work -p personal -o wide --no-headers
+```
+
+`get` accepts no positional arguments. Its flags are:
+
+| Flag | Behavior |
+|---|---|
+| `--due` | Defaults to `today`. `YYYY-MM-DD`, `yesterday`, `today`, and `tomorrow` select tasks due on or before that local date. `any` includes every date and undated tasks. `none` selects only undated tasks. |
+| `--project/-p` | Selects a configured alias or project URL. Repeat the flag to include tasks in any selected project. Without this flag, `get` includes all projects and ignores `default_project`. |
+| `--output/-o` | Selects `table` (default), `wide`, or `json`. |
+| `--no-headers` | Omits table headers. JSON ignores this flag. |
+
+Table columns are `GID PROJECT DUE NAME`; `wide` adds `URL`. Project names are comma-separated. A missing project or due date appears as `-`. Names stay on one line in tables. Results sort by due date, with undated tasks last, then by name and GID. When `due_at` is present, its local calendar date takes precedence over `due_on` for filtering, sorting, and display. JSON preserves the original text and date fields, with an `items` array of tasks containing `gid`, `name`, `due_on`, `due_at`, `permalink_url`, and `projects` (each project contains `gid` and `name`). An empty table prints `No tasks found.` to stderr and nothing to stdout. Empty JSON prints `{"items":[]}`. Both exit 0.
+
+`get` [discovers the user's workspaces](https://developers.asana.com/reference/getuser) and reads each workspace's [paginated task list](https://developers.asana.com/reference/gettasks) in sequence. It uses `assignee=me` and `completed_since=now`, then applies date and project filters locally. It prints results only after all requests succeed. Completed tasks, task editing, and an `--all` flag are not supported.
+
+Both commands validate input and configuration before loading credentials. HTTP requests have a 30-second timeout, with no retries or redirects. SIGINT and SIGTERM cancel the command while it waits for stdin, credentials, or an HTTP response. Failures print `error:` and a message to stderr and exit 1. Authentication, permission, missing-resource, and rate-limit errors have specific messages; rate limits include `Retry-After` when Asana supplies it. `asana --help`, `asana add --help`, and `asana get --help` work without configuration or credentials.
 
 From `asana/`, run `gofmt -w *.go`, `go vet ./...`, `golangci-lint run`, and `go test ./...`. Tests use a local HTTP server and fake credentials; they do not create real tasks.
 
