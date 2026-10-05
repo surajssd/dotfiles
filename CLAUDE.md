@@ -20,6 +20,7 @@ Both repositories mirror the same structure:
 - `skills/` - Agent skills in `SKILL.md` format (symlinked to `~/.claude/skills/` and `~/.agents/skills/`)
 - `rules/` - Agent rule `.md` files (symlinked to `~/.claude/rules/`)
 - `planner/` - Go module for the `planner` command (public repo only, installed with `go install`)
+- `asana/` - Go module for the `asana` task-creation command (public repo only, installed with `go install`)
 - `installers/` - Installation automation scripts (public repo only)
 - `containers/` - Container image builds, e.g. `openclaw` (public repo only, not installed)
 
@@ -28,7 +29,7 @@ Both repositories mirror the same structure:
 ### Installation
 
 ```bash
-# Install all configs, scripts, skills, and rules
+# Install all configs, scripts, skills, rules, and Go commands
 make install-all
 
 # Install only scripts to ~/.local/bin
@@ -45,6 +46,9 @@ make install-rules
 
 # Build and install the planner Go command (skipped when go is absent)
 make install-planner
+
+# Build and install the asana Go command (skipped when go is absent)
+make install-asana
 
 # Download external skills (mattpocock, bastos, blader) into skills/ — also run by 'make update'
 make fetch-external-skills
@@ -72,6 +76,7 @@ make clone-private
 - **Skills**: Symlinked from `skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI)
 - **Rules**: Symlinked from `rules/` to `~/.claude/rules/` (Claude Code's global rules path)
 - **Planner**: Built from `planner/` by `installers/install-planner.sh` with `go -C planner install .` into `$(go env GOPATH)/bin`. When `go` is absent the installer prints an `ℹ️` line and skips; when present, the build may download Go modules or a toolchain and a build failure fails `make install-all`
+- **Asana**: Built from `asana/` by `installers/install-asana.sh` with `go -C asana install .`, under the same conditions as Planner
 - **Private files**: Installed by the private repository's own entry point when the optional clone exists
 
 ## Shell Script Conventions
@@ -90,7 +95,7 @@ All shell scripts must follow these standards:
 
 ### Symlink-Based Installation
 
-Installers normally create symlinks so that `git pull` immediately updates active configs and scripts; `planner` is the exception, a compiled Go command that needs `make install-planner` after a pull. Public installers use absolute paths via `realpath` or `pwd`. The `install-all` target invokes the optional private installer once, without exposing private installation details to the public component installers. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
+Installers normally create symlinks so that `git pull` immediately updates active configs and scripts; `planner` and `asana` are compiled Go commands that need `make install-planner` and `make install-asana` after a pull. Public installers use absolute paths via `realpath` or `pwd`. The `install-all` target invokes the optional private installer once, without exposing private installation details to the public component installers. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
 
 ### OS-Specific Config Handling
 
@@ -149,7 +154,7 @@ Some skills are vendored (copied) from upstream repos rather than authored here.
 - **`fetch`**: clone the upstream repo, copy the skill directory flat into `skills/<name>/` (dropping any category nesting, excluding repo infrastructure like `.git`/`.github`/`.claude-plugin`), and merge `license: MIT` + `metadata.author` into its `SKILL.md` (idempotent and merge-aware — safe for upstreams that already carry some of these keys). The `grilling`, `domain-modeling`, and `grill-with-docs` skills are vendored this way from [`mattpocock/skills`](https://github.com/mattpocock/skills); `humanizer` is vendored from [`blader/humanizer`](https://github.com/blader/humanizer) (its `SKILL.md` lives at the repo root, so `subpath` is `.`).
 - **`preserve`**: the skill is already vendored and locally customised, so the script verifies it exists and reports its source but never overwrites it. `conventional-commits` (from [`bastos/skills`](https://github.com/bastos/skills)) uses this mode — it carries local edits (a macOS clipboard section and a `README.md`) that must not be clobbered.
 
-Fetched skills are committed to the repo. Run `make fetch-external-skills` to refresh them; the script prints the upstream commit SHA(s), which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs never fetch skills; the only network use in `install-all` is the Go module download of `install-planner`, and only when Go is present), but `make update` does run it — after `pull-master` and before `install-all` — so a full update also refreshes the vendored skills. `install-skills.sh` then symlinks the vendored directories like any other local skill.
+Fetched skills are committed to the repo. Run `make fetch-external-skills` to refresh them; the script prints the upstream commit SHA(s), which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs never fetch skills; public installers use the network only for Go module or toolchain downloads for `planner` and `asana`, and only when Go is present), but `make update` runs it after `pull-master` and before `install-all`, so a full update also refreshes the vendored skills. `install-skills.sh` then symlinks the vendored directories like any other local skill.
 
 ## Adding Agent Rules
 
@@ -181,6 +186,20 @@ Attribution for vendored rules is recorded in a hand-maintained `rules/README.md
 The plan root comes from `~/.planner.yaml` (`root: ~/plans`); `--root <dir>` overrides it. The repository does not ship that file.
 
 Go conventions: run `gofmt`, `go vet ./...`, `golangci-lint run`, and `go test ./...` from `planner/`. Tests compare against golden files under `planner/testdata/`; regenerate them with `go test ./... -update` after an intentional output change. Renovate's existing `gomod` rule covers `planner/go.mod`.
+
+## Asana
+
+`asana/` is a flat `package main` Go module (`github.com/surajssd/dotfiles/asana`, `go 1.25`) built on Cobra and `yaml.v3`. Install it with `make install-asana`; `make install-all` also builds it when Go is available. The binary goes into `$(go env GOPATH)/bin` and must be rebuilt after code changes.
+
+`asana add <title>` creates one task in one project, assigns it to `me`, and prints the permalink URL. The title must be exactly one nonblank argument. `--project/-p` resolves a configured alias first, then a project URL. `--description/-d` supplies plain-text notes, with `-` reading stdin. `--due` accepts `YYYY-MM-DD`, `today`, or `tomorrow` and defaults to `today` in local time. No task listing, editing, arbitrary assignees, OAuth, caching, version command, or completion is provided.
+
+Configuration comes from `~/.asana.yaml`, overridden by global `--config`. The only keys are `token_command` (an optional argument list), `default_project` (an optional alias), and `projects` (a nonempty alias-to-URL map). Copy project URLs from the browser address bar while viewing a project. Accept `https://app.asana.com/1/<workspace>/project/<gid>`, optionally ending in `/list` or `/board`, and the older `https://app.asana.com/0/<gid>/...`, including query strings. Reject bare GIDs, unknown keys, invalid URLs, and defaults that are not aliases. Public configuration examples use fictitious project IDs; user configuration belongs outside the public repository.
+
+Create a personal access token using [Asana's token setup guide](https://developers.asana.com/docs/personal-access-token). On macOS, store it once with `security add-generic-password -a "$USER" -s ASANA_ACCESS_TOKEN -w`, which prompts for the token, and configure `token_command: [security, find-generic-password, -s, ASANA_ACCESS_TOKEN, -w]`. A nonempty `ASANA_ACCESS_TOKEN` takes precedence. Otherwise, execute `token_command` without a shell, trim trailing whitespace from stdout, and fail on a nonzero exit or empty token, including stderr. The command has a 30-second timeout. Never store tokens in YAML or logs. See [README.md](README.md#asana) for the full configuration example and usage.
+
+Validate title, configuration, project, due date, and description before credential lookup. Send one `POST /tasks?opt_fields=permalink_url` with `name`, one project GID, `assignee: "me"`, optional `notes`, and `due_on`. Inject the HTTP client, API base URL, clock, and standard streams through `dependencies`. HTTP requests time out after 30 seconds. SIGINT and SIGTERM cancel the command context. Do not retry or follow redirects. Transport errors and unreadable success responses must say that the task may exist and should be checked before retrying. Success exits 0 and prints only the permalink; errors exit 1 and print an `error:` message to stderr. Help needs no configuration or credentials.
+
+Run `gofmt -w *.go`, `go vet ./...`, `golangci-lint run`, and `go test ./...` from `asana/`. Integration tests run Cobra in process with `httptest.Server`, a temporary `HOME`, and a stub token command. They must not use real credentials or create real Asana tasks. Run `shellfmt.sh` on changed shell scripts.
 
 ## Important Notes
 

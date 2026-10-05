@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
 # Symlink installers (delegate to scripts)
-.PHONY: install-configs install-local-bin install-skills install-rules install-planner install-private fetch-external-skills fetch-external-rules
+.PHONY: install-configs install-local-bin install-skills install-rules install-planner install-asana install-private fetch-external-skills fetch-external-rules
 # Orchestration / maintenance
 .PHONY: install install-all update pull-master clone-private help
 
@@ -24,6 +24,9 @@ install-rules: ## Install agent rules to ~/.claude/rules
 install-planner: ## Build and install the planner Go command (skipped when go is absent)
 	./installers/install-planner.sh
 
+install-asana: ## Build and install the asana Go command (skipped when go is absent)
+	./installers/install-asana.sh
+
 install-private: ## Install the optional private dotfiles
 	@if [ -x dotfilesprivate/install.sh ]; then ./dotfilesprivate/install.sh; fi
 
@@ -35,7 +38,7 @@ fetch-external-rules: ## Verify vendored rules in rules/ (fetches any fetch-mode
 
 install: install-all ## Alias for install-all
 
-install-all: install-configs install-local-bin install-skills install-rules install-planner ## Install everything
+install-all: install-configs install-local-bin install-skills install-rules install-planner install-asana ## Install everything
 	$(MAKE) install-private
 
 update: pull-master fetch-external-skills fetch-external-rules install-all ## Pull latest, refresh external skills + rules, then reinstall

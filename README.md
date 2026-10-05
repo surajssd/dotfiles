@@ -15,7 +15,7 @@ make install-all
 ## Installation
 
 ```bash
-# Install everything (configs, scripts, skills, and rules)
+# Install everything (configs, scripts, skills, rules, and Go commands)
 make install-all
 
 # Install only scripts to ~/.local/bin
@@ -33,6 +33,9 @@ make install-rules
 # Build and install the planner Go command (skipped when go is absent)
 make install-planner
 
+# Build and install the asana Go command (skipped when go is absent)
+make install-asana
+
 # Pull latest from both public and private repos
 make pull-master
 
@@ -49,19 +52,21 @@ make update
 - `skills/` — Agent skills in `SKILL.md` format (symlinked to `~/.claude/skills/` and `~/.agents/skills/`)
 - `rules/` — Agent rule `.md` files (symlinked to `~/.claude/rules/`)
 - `planner/` — Go module for the `planner` command (built with `go install`)
+- `asana/` - Go module for the `asana` task-creation command (built with `go install`)
 - `installers/` — Installation automation scripts
 - `containers/` — Container images (e.g. `openclaw`)
 - `dotfilesprivate/` — private/sensitive configs and scripts (separate git clone, not a submodule)
 
 ## How It Works
 
-Installers create **symlinks** (not copies), so changes in this repo are immediately reflected in the home directory. The one exception is `planner/`, a Go command that `go install` compiles into `$(go env GOPATH)/bin`.
+Installers create **symlinks** (not copies), so changes in this repo are immediately reflected in the home directory. The exceptions are `planner/` and `asana/`, Go commands that `go install` compiles into `$(go env GOPATH)/bin`.
 
 - **Scripts:** Symlinked from `local-bin/` to `~/.local/bin/`
 - **Configs:** Symlinked to home directory with OS-specific handling (macOS uses zshrc, Linux uses bashrc)
 - **Skills:** Symlinked from `skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (the vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI)
 - **Rules:** Symlinked from `rules/` to `~/.claude/rules/` (Claude Code's global rules path)
 - **Planner:** Built from `planner/` with `go -C planner install .` when `go` is on `PATH`; otherwise the installer prints a note and skips. The build may download Go modules or a Go toolchain, and a build failure fails `make install-all`.
+- **Asana:** Built from `asana/` with `go -C asana install .` under the same conditions as Planner. Run `make install-asana` after changing the Go code.
 
 ## Planner
 
@@ -105,9 +110,50 @@ root: ~/plans
 
 `--root <dir>` overrides the file. `get` and `tree` print the same `kubectl`-style table (`NAME`, `REPO`, `STATUS`, `CHECKED`, `TITLE`) and share `--all`, `-o`, `--no-headers`, and `--repo`; `tree` adds connectors in `NAME`. `CHECKED` is the number of days since `StatusChecked`, with `!` after an active plan older than a week. Both accept plan names (a path, a wikilink, a basename, or the short `NAME` from the table); a name that matches nothing is reported after the rows that were found and the exit status is 1. `describe` prints one plan's fields as `Key: Value` lines. `-o wide` adds `TYPE`, `PATH` (home shown as `~`), and `NOTE`, and never truncates; `-o json` and `-o yaml` print every field of each plan (one named plan as a single object, otherwise a list under `items`); `-o name` prints basenames. `tree` supports only `-o wide`. `--repo` is a case-insensitive substring match. `get repos` prints every `<org>/<repo>` that has plans, one per line, whatever their status. Without `--all` only active plans are listed and a note on stderr counts the plans without valid front matter; `--all` lists every plan, those with `-` in STATUS and CHECKED. `planner check --help` lists the front matter keys, the recognised status values, and every rule with its severity; the link rules require `http(s)` URLs, a pull request path for `github.com` entries under `PullRequests`, a `SupersededBy` on every `Superseded` plan, and no keys outside the schema. `zshrc` and `bashrc` source `planner completion` when the binary is on `PATH`, which completes plan names, repositories, statuses, and output formats.
 
+## Asana
+
+`asana add` creates one task in one project, assigns it to the authenticated user, and prints the task URL. It accepts one nonblank title and an optional plain-text description. The due date defaults to today in local time.
+
+1. Run `make install-asana` from this repository with Go 1.25 or later on `PATH`. The command installs `asana` into `$(go env GOPATH)/bin`; add that directory to `PATH` if needed. `make install-all` also includes this build. When Go is absent, the installer prints a message and skips the build.
+2. Create a personal access token in the [Asana developer console](https://app.asana.com/0/my-apps), following [Asana's token setup guide](https://developers.asana.com/docs/personal-access-token).
+3. On macOS, store the token once in Keychain with the command below. Paste the token at the password prompt. The token stays out of shell history.
+
+   ```bash
+   security add-generic-password -a "$USER" -s ASANA_ACCESS_TOKEN -w
+   ```
+
+4. Save the following configuration as `~/.asana.yaml`. Replace the example URLs with your project URLs. Open each project in Asana and copy its URL from the browser address bar.
+
+   ```yaml
+   token_command: [security, find-generic-password, -s, ASANA_ACCESS_TOKEN, -w]
+   default_project: work
+   projects:
+     work: https://app.asana.com/1/123/project/456
+     personal: https://app.asana.com/1/123/project/789/list
+   ```
+
+The CLI uses a nonempty `ASANA_ACCESS_TOKEN` first. Otherwise, it runs the optional `token_command` list directly, without a shell, and trims trailing whitespace from stdout. The command must return a nonempty token within 30 seconds. On Linux or another system, set the environment variable through your secret manager or replace `token_command` with a command that prints the token. Keep the token out of the YAML file.
+
+`projects` must contain at least one alias. Each value must be a URL of the form `https://app.asana.com/1/<workspace>/project/<gid>`, optionally ending in `/list` or `/board`, or an older `https://app.asana.com/0/<gid>/...` URL. Query strings are accepted. Bare GIDs are rejected. Unknown configuration keys, invalid project URLs, and a `default_project` that is not an alias are errors.
+
+```bash
+asana add "Review the proposal"
+asana add "Fix the build" -p work -d "Investigate the failing release job."
+asana add "Write the runbook" -d - < notes.md
+asana add "Pay the invoice" --due tomorrow
+asana add "File it there" -p https://app.asana.com/1/123/project/456/list
+asana --config ./asana.yaml add "Review the proposal" --due 2026-10-31
+```
+
+`--project/-p` selects a configured alias before trying a project URL. Without the flag, the CLI uses `default_project`; if no default is set, pass `--project`. `--description/-d -` reads plain text from stdin. `--due` accepts `YYYY-MM-DD`, `today`, or `tomorrow` and defaults to `today`; the keywords use the local calendar date. `--config` overrides `~/.asana.yaml`.
+
+The CLI validates the input before loading credentials and sends one [task-creation request](https://developers.asana.com/reference/createtask), with a 30-second HTTP timeout and no retries. SIGINT and SIGTERM cancel the command while it waits for stdin, credentials, or an HTTP response. Success prints only the permalink URL to stdout and exits 0. Failures print `error:` and a message to stderr and exit 1. Authentication, permission, missing-project, and rate-limit errors have specific messages; rate limits include `Retry-After` when Asana supplies it. After a transport failure or an unreadable success response, check Asana before retrying because the task may already exist. `asana --help` and `asana add --help` work without configuration or credentials.
+
+From `asana/`, run `gofmt -w *.go`, `go vet ./...`, `golangci-lint run`, and `go test ./...`. Tests use a local HTTP server and fake credentials; they do not create real tasks.
+
 ## GitHub Codespaces
 
-GitHub Codespaces can install this repository as personal dotfiles. In your GitHub Codespaces settings, enable automatic dotfiles installation and select `surajssd/dotfiles`. Codespaces recognizes the root `install.sh`, which runs `make install-all`: config files, shell scripts, agent skills, agent rules, and the `planner` command when the container provides Go.
+GitHub Codespaces can install this repository as personal dotfiles. In your GitHub Codespaces settings, enable automatic dotfiles installation and select `surajssd/dotfiles`. Codespaces recognizes the root `install.sh`, which runs `make install-all`: config files, shell scripts, agent skills, agent rules, and the `planner` and `asana` commands when the container provides Go.
 
 The development container must provide `make`. To rerun the setup in an existing codespace:
 
