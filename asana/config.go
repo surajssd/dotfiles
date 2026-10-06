@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +16,8 @@ type config struct {
 	TokenCommand   []string          `yaml:"token_command"`
 	DefaultProject string            `yaml:"default_project"`
 	Projects       map[string]string `yaml:"projects"`
+	path           string
+	document       yaml.Node
 }
 
 func readConfig(path string) (config, error) {
@@ -26,12 +29,11 @@ func readConfig(path string) (config, error) {
 		}
 		path = filepath.Join(home, ".asana.yaml")
 	}
-	file, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return cfg, fmt.Errorf("read config: %w", err)
 	}
-	defer func() { _ = file.Close() }()
-	decoder := yaml.NewDecoder(file)
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
 	if err := decoder.Decode(&cfg); err != nil {
 		return cfg, fmt.Errorf("parse config %s: %w", path, err)
@@ -39,8 +41,15 @@ func readConfig(path string) (config, error) {
 	if err := decoder.Decode(new(any)); !errors.Is(err, io.EOF) {
 		return cfg, fmt.Errorf("config %s must contain one YAML document", path)
 	}
-	if len(cfg.Projects) == 0 {
-		return cfg, errors.New("config projects must not be empty")
+	if err := yaml.Unmarshal(data, &cfg.document); err != nil {
+		return cfg, fmt.Errorf("parse config %s: %w", path, err)
+	}
+	if len(cfg.document.Content) != 1 || cfg.document.Content[0].Kind != yaml.MappingNode {
+		return cfg, errors.New("config must be a YAML mapping")
+	}
+	cfg.path = path
+	if cfg.Projects == nil {
+		cfg.Projects = make(map[string]string)
 	}
 	for alias, projectURL := range cfg.Projects {
 		if strings.TrimSpace(alias) == "" {

@@ -107,28 +107,29 @@ type task struct {
 	dueDate      string
 }
 
-func fetchWorkspaces(ctx context.Context, deps dependencies, token string) ([]string, error) {
+func fetchUser(ctx context.Context, deps dependencies, token string) (string, []string, error) {
 	var result struct {
 		Data struct {
+			GID        string `json:"gid"`
 			Workspaces []struct {
 				GID string `json:"gid"`
 			} `json:"workspaces"`
 		} `json:"data"`
 	}
 	if err := getAsana(ctx, deps, token, "/users/me?opt_fields=workspaces", &result); err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	if result.Data.Workspaces == nil {
-		return nil, fmt.Errorf("user response has no workspaces")
+		return "", nil, fmt.Errorf("user response has no workspaces")
 	}
 	workspaces := make([]string, 0, len(result.Data.Workspaces))
 	for _, workspace := range result.Data.Workspaces {
 		if !isGID(workspace.GID) {
-			return nil, fmt.Errorf("user response has invalid workspace GID %q", workspace.GID)
+			return "", nil, fmt.Errorf("user response has invalid workspace GID %q", workspace.GID)
 		}
 		workspaces = append(workspaces, workspace.GID)
 	}
-	return workspaces, nil
+	return result.Data.GID, workspaces, nil
 }
 
 func fetchTasks(ctx context.Context, deps dependencies, token, workspace string) ([]task, error) {
@@ -172,12 +173,14 @@ func getAsana(ctx context.Context, deps dependencies, token, endpoint string, re
 	if err != nil {
 		return fmt.Errorf("prepare listing request: %w", err)
 	}
+	// A reused connection lets net/http retry a GET after a transport failure.
+	req.Close = true
 	req.Header.Set("Authorization", "Bearer "+token)
 	client := *deps.httpClient
 	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("list Asana tasks: %w", err)
+		return fmt.Errorf("read Asana: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if err := apiStatusError(resp, "permission denied: check access to the user and workspace", "user or workspace is missing or inaccessible"); err != nil {

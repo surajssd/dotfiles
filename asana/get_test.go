@@ -40,7 +40,7 @@ func listingHandler(t *testing.T, tasks string) http.HandlerFunc {
 
 func listedItems(t *testing.T, f *cliFixture, args ...string) []map[string]any {
 	t.Helper()
-	if code := f.execute(append([]string{"get", "-o", "json"}, args...)...); code != 0 || f.stderr.Len() != 0 {
+	if code := f.execute(append([]string{"get", "task", "-o", "json"}, args...)...); code != 0 || f.stderr.Len() != 0 {
 		t.Fatalf("exit = %d, stderr = %q", code, &f.stderr)
 	}
 	var result struct {
@@ -100,7 +100,7 @@ func TestGetOutput(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t, listingHandler(t, listingTasks))
-			if code := f.execute(append([]string{"get"}, tc.args...)...); code != 0 || f.stderr.Len() != 0 {
+			if code := f.execute(append([]string{"get", "task"}, tc.args...)...); code != 0 || f.stderr.Len() != 0 {
 				t.Fatalf("exit = %d, stderr = %q", code, &f.stderr)
 			}
 			lines := strings.Split(strings.TrimSuffix(f.stdout.String(), "\n"), "\n")
@@ -129,7 +129,7 @@ func TestGetEmpty(t *testing.T) {
 	for _, format := range []string{"table", "wide", "json"} {
 		t.Run(format, func(t *testing.T) {
 			f := newFixture(t, listingHandler(t, `[]`))
-			if code := f.execute("get", "-o", format); code != 0 {
+			if code := f.execute("get", "task", "-o", format); code != 0 {
 				t.Fatalf("exit = %d, stderr = %q", code, &f.stderr)
 			}
 			if format == "json" {
@@ -216,7 +216,7 @@ func TestGetFailures(t *testing.T) {
 				w.WriteHeader(tc.status)
 				_, _ = io.WriteString(w, tc.body)
 			})
-			f.failure(t, f.execute("get"), tc.want)
+			f.failure(t, f.execute("get", "task"), tc.want)
 			if len(f.requests) != 3 || strings.Contains(f.stderr.String(), "task may exist") {
 				t.Errorf("requests = %d, stderr = %q", len(f.requests), &f.stderr)
 			}
@@ -243,7 +243,7 @@ func TestGetValidationBeforeCredentials(t *testing.T) {
 			t.Setenv("ASANA_ACCESS_TOKEN", "")
 			command, marker := tokenCommand(t, "token", "", "0")
 			f.configure(t, command+testConfig)
-			f.failure(t, f.execute(append([]string{"get"}, tc.args...)...), tc.want)
+			f.failure(t, f.execute(append([]string{"get", "task"}, tc.args...)...), tc.want)
 			if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) || len(f.requests) != 0 {
 				t.Errorf("token marker error = %v, requests = %d", err, len(f.requests))
 			}
@@ -267,7 +267,7 @@ func TestGetCancellationAndTimeout(t *testing.T) {
 				f.deps.httpClient.Timeout = 100 * time.Millisecond
 				want = "deadline exceeded"
 			}
-			f.failure(t, run(ctx, f.deps, []string{"get"}), want)
+			f.failure(t, run(ctx, f.deps, []string{"get", "task"}), want)
 			if len(f.requests) != 1 || strings.Contains(f.stderr.String(), "task may exist") {
 				t.Errorf("requests = %d, stderr = %q", len(f.requests), &f.stderr)
 			}
@@ -281,7 +281,7 @@ func TestGetHelpWithoutConfigOrToken(t *testing.T) {
 	if err := os.Remove(f.configPath); err != nil {
 		t.Fatal(err)
 	}
-	if code := f.execute("get", "--help"); code != 0 || !strings.Contains(f.stdout.String(), "Usage:") || f.stderr.Len() != 0 || len(f.requests) != 0 {
+	if code := f.execute("get", "task", "--help"); code != 0 || !strings.Contains(f.stdout.String(), "Usage:") || f.stderr.Len() != 0 || len(f.requests) != 0 {
 		t.Fatalf("exit = %d, stdout = %q, stderr = %q, requests = %d", code, &f.stdout, &f.stderr, len(f.requests))
 	}
 }

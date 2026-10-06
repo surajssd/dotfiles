@@ -10,10 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newAddCommand(deps dependencies, configPath *string) *cobra.Command {
+func newAddTaskCommand(deps dependencies, configPath *string) *cobra.Command {
 	var project, description, due string
 	cmd := &cobra.Command{
-		Use:   "add <title>",
+		Use:   "task <title>",
 		Short: "Create one task in one project and print its URL",
 		Long: `Create a task assigned to the authenticated user. The title must be one
 nonblank argument. Projects are aliases from the configuration or Asana
@@ -24,10 +24,10 @@ plain text; --description - reads stdin. The due date defaults to today in
 local time; --due overrides it.
 The command sends one request without retries. Check Asana before retrying
 after a transport error, because the task may already exist.`,
-		Example: `  asana add "Review the proposal"
-  asana add "Fix the build" -p work -d "Investigate the release job."
-  asana add "Write the runbook" -d - < notes.md
-  asana add "Pay the invoice" --due tomorrow`,
+		Example: `  asana add task "Review the proposal"
+  asana add task "Fix the build" -p work -d "Investigate the release job."
+  asana add task "Write the runbook" -d - < notes.md
+  asana add task "Pay the invoice" --due tomorrow`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(args[0]) == "" {

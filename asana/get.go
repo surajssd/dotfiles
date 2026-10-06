@@ -12,12 +12,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newGetCommand(deps dependencies, configPath *string) *cobra.Command {
+func newGetTaskCommand(deps dependencies, configPath *string) *cobra.Command {
 	var due, output string
 	var projects []string
 	var noHeaders bool
 	cmd := &cobra.Command{
-		Use:   "get",
+		Use:   "task",
 		Short: "List your incomplete tasks across all workspaces",
 		Long: `List incomplete tasks assigned to the authenticated user across every
 accessible workspace. By default, include overdue tasks and tasks due today
@@ -27,11 +27,11 @@ in local time. Tasks without a due date are excluded.
 and none selects only undated tasks. Repeat --project to match any selected
 project. Without --project, include all projects and ignore default_project.
 Results are sorted by local due date, undated last, then name and GID.`,
-		Example: `  asana get
-  asana get --due tomorrow
-  asana get --due any -o json
-  asana get --due none
-  asana get -p work -p personal -o wide --no-headers`,
+		Example: `  asana get task
+  asana get task --due tomorrow
+  asana get task --due any -o json
+  asana get task --due none
+  asana get task -p work -p personal -o wide --no-headers`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if output != "table" && output != "wide" && output != "json" {
@@ -58,7 +58,7 @@ Results are sorted by local due date, undated last, then name and GID.`,
 			if err != nil {
 				return err
 			}
-			workspaces, err := fetchWorkspaces(cmd.Context(), deps, token)
+			_, workspaces, err := fetchUser(cmd.Context(), deps, token)
 			if err != nil {
 				return err
 			}

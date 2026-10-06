@@ -33,7 +33,7 @@ func newCommand(deps dependencies) *cobra.Command {
 	var configPath string
 	root := &cobra.Command{
 		Use:           "asana",
-		Short:         "Create and list Asana tasks assigned to yourself",
+		Short:         "Manage your Asana tasks and project aliases",
 		SilenceErrors: true,
 		SilenceUsage:  true,
 	}
@@ -42,7 +42,16 @@ func newCommand(deps dependencies) *cobra.Command {
 	root.SetOut(deps.stdout)
 	root.SetErr(deps.stderr)
 	root.PersistentFlags().StringVar(&configPath, "config", "", "configuration file (default ~/.asana.yaml)")
-	root.AddCommand(newAddCommand(deps, &configPath))
-	root.AddCommand(newGetCommand(deps, &configPath))
+	add := &cobra.Command{
+		Use: "add", Short: "Create a task or private project", Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
+	}
+	add.AddCommand(newAddTaskCommand(deps, &configPath), newAddProjectCommand(deps, &configPath))
+	get := &cobra.Command{
+		Use: "get", Short: "List your tasks or configured projects", Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error { return cmd.Help() },
+	}
+	get.AddCommand(newGetTaskCommand(deps, &configPath), newGetProjectCommand(deps, &configPath))
+	root.AddCommand(add, get)
 	return root
 }

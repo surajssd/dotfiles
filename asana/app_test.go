@@ -143,7 +143,7 @@ func TestAdd(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFixture(t, nil)
 			f.deps.stdin = strings.NewReader(tc.stdin)
-			r := f.success(t, append([]string{"add", "Review the proposal"}, tc.args...)...)
+			r := f.success(t, append([]string{"add", "task", "Review the proposal"}, tc.args...)...)
 			if r.method != "POST" || r.path != "/api/1.0/tasks" || r.query != "opt_fields=permalink_url" {
 				t.Errorf("request = %s %s?%s", r.method, r.path, r.query)
 			}
@@ -173,7 +173,7 @@ func TestProjectAliasPrecedesURL(t *testing.T) {
 	f := newFixture(t, nil)
 	alias := "https://app.asana.com/0/900/list"
 	f.configure(t, testConfig+fmt.Sprintf("  %q: https://app.asana.com/0/800/list\n", alias))
-	r := f.success(t, "add", "Title", "-p", alias)
+	r := f.success(t, "add", "task", "Title", "-p", alias)
 	if !strings.Contains(r.body, `"projects":["800"]`) {
 		t.Errorf("body = %s", r.body)
 	}
@@ -184,7 +184,7 @@ func TestConfigOverride(t *testing.T) {
 	f.configure(t, "unknown: key\n")
 	f.configPath = filepath.Join(filepath.Dir(f.configPath), "override.yaml")
 	f.configure(t, strings.Replace(testConfig, "default_project: work", "default_project: personal", 1))
-	r := f.success(t, "--config", f.configPath, "add", "Title")
+	r := f.success(t, "--config", f.configPath, "add", "task", "Title")
 	if !strings.Contains(r.body, `"projects":["300"]`) {
 		t.Errorf("body = %s", r.body)
 	}
@@ -195,20 +195,20 @@ func TestValidationBeforeCredentials(t *testing.T) {
 		name, config, want string
 		args               []string
 	}{
-		{name: "missing title", args: []string{"add"}, want: "accepts 1 arg(s)"},
-		{name: "extra title", args: []string{"add", "one", "two"}, want: "accepts 1 arg(s)"},
-		{name: "blank title", args: []string{"add", " \n\t"}, want: "title must not be blank"},
-		{name: "empty title", args: []string{"add", ""}, want: "title must not be blank"},
-		{name: "unknown alias", args: []string{"add", "Title", "-p", "unknown"}, want: "configured aliases: personal, work"},
-		{name: "bare GID", args: []string{"add", "Title", "-p", "200"}, want: "unknown project"},
-		{name: "bad URL", args: []string{"add", "Title", "-p", "https://example.com/0/200/list"}, want: "unknown project"},
-		{name: "empty project", args: []string{"add", "Title", "-p", ""}, want: "no project selected"},
-		{name: "invalid date", args: []string{"add", "Title", "--due", "2026-02-29"}, want: "invalid due date"},
-		{name: "unknown date", args: []string{"add", "Title", "--due", "next week"}, want: "invalid due date"},
-		{name: "empty date", args: []string{"add", "Title", "--due", ""}, want: "invalid due date"},
+		{name: "missing title", args: []string{"add", "task"}, want: "accepts 1 arg(s)"},
+		{name: "extra title", args: []string{"add", "task", "one", "two"}, want: "accepts 1 arg(s)"},
+		{name: "blank title", args: []string{"add", "task", " \n\t"}, want: "title must not be blank"},
+		{name: "empty title", args: []string{"add", "task", ""}, want: "title must not be blank"},
+		{name: "unknown alias", args: []string{"add", "task", "Title", "-p", "unknown"}, want: "configured aliases: personal, work"},
+		{name: "bare GID", args: []string{"add", "task", "Title", "-p", "200"}, want: "unknown project"},
+		{name: "bad URL", args: []string{"add", "task", "Title", "-p", "https://example.com/0/200/list"}, want: "unknown project"},
+		{name: "empty project", args: []string{"add", "task", "Title", "-p", ""}, want: "no project selected"},
+		{name: "invalid date", args: []string{"add", "task", "Title", "--due", "2026-02-29"}, want: "invalid due date"},
+		{name: "unknown date", args: []string{"add", "task", "Title", "--due", "next week"}, want: "invalid due date"},
+		{name: "empty date", args: []string{"add", "task", "Title", "--due", ""}, want: "invalid due date"},
 		{name: "unknown key", config: testConfig + "unknown: value\n", want: "field unknown not found"},
-		{name: "empty projects", config: "projects: {}\n", want: "projects must not be empty"},
-		{name: "missing projects", config: "default_project: work\n", want: "projects must not be empty"},
+		{name: "empty projects", config: "projects: {}\n", want: "no project selected"},
+		{name: "missing projects", config: "default_project: work\n", want: "default_project"},
 		{name: "invalid project", config: "projects:\n  work: 200\n", want: "project \"work\""},
 		{name: "invalid unused project", config: testConfig + "  broken: https://example.com\n", want: "project \"broken\""},
 		{name: "blank alias", config: "projects:\n  ' ': https://app.asana.com/0/200/list\n", want: "aliases must not be blank"},
@@ -230,7 +230,7 @@ func TestValidationBeforeCredentials(t *testing.T) {
 			f.configure(t, command+cfg)
 			args := tc.args
 			if args == nil {
-				args = []string{"add", "Title"}
+				args = []string{"add", "task", "Title"}
 			}
 			f.failure(t, f.execute(args...), tc.want)
 			if len(f.requests) != 0 {
@@ -249,7 +249,7 @@ func TestMissingConfig(t *testing.T) {
 	if err := os.Remove(f.configPath); err != nil {
 		t.Fatal(err)
 	}
-	f.failure(t, f.execute("add", "Title"), "read config", ".asana.yaml")
+	f.failure(t, f.execute("add", "task", "Title"), "read config", ".asana.yaml")
 	if len(f.requests) != 0 {
 		t.Fatal("request sent with missing config")
 	}
@@ -265,7 +265,7 @@ func TestDescriptionReadFailure(t *testing.T) {
 	command, marker := tokenCommand(t, "token", "", "0")
 	f.configure(t, command+testConfig)
 	f.deps.stdin = brokenReader{}
-	f.failure(t, f.execute("add", "Title", "-d", "-"), "read description: input failed")
+	f.failure(t, f.execute("add", "task", "Title", "-d", "-"), "read description: input failed")
 	if len(f.requests) != 0 {
 		t.Fatal("request sent after input failure")
 	}
@@ -299,7 +299,7 @@ func TestDescriptionCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	done := make(chan int, 1)
-	go func() { done <- run(ctx, f.deps, []string{"add", "Title", "-d", "-"}) }()
+	go func() { done <- run(ctx, f.deps, []string{"add", "task", "Title", "-d", "-"}) }()
 	select {
 	case <-started:
 	case code := <-done:
@@ -327,7 +327,7 @@ func TestDescriptionCancellation(t *testing.T) {
 }
 
 func TestHelpWithoutConfigOrToken(t *testing.T) {
-	for _, args := range [][]string{nil, {"--help"}, {"help"}, {"add", "--help"}, {"help", "add"}, {"--config", "/missing", "add", "--help"}} {
+	for _, args := range [][]string{nil, {"--help"}, {"help"}, {"add", "task", "--help"}, {"help", "add"}, {"--config", "/missing", "add", "task", "--help"}} {
 		t.Run(strings.Join(args, " "), func(t *testing.T) {
 			f := newFixture(t, nil)
 			t.Setenv("ASANA_ACCESS_TOKEN", "")
@@ -362,12 +362,12 @@ func TestTokenSources(t *testing.T) {
 			command, marker := tokenCommand(t, tc.output, tc.stderr, tc.exit)
 			f.configure(t, command+testConfig)
 			if tc.failure == "" {
-				r := f.success(t, "add", "Title")
+				r := f.success(t, "add", "task", "Title")
 				if r.authorization != "Bearer "+tc.want {
 					t.Errorf("authorization = %q", r.authorization)
 				}
 			} else {
-				f.failure(t, f.execute("add", "Title"), tc.failure)
+				f.failure(t, f.execute("add", "task", "Title"), tc.failure)
 				if len(f.requests) != 0 || strings.Contains(f.stderr.String(), "must-not-leak") {
 					t.Fatalf("requests = %d, stderr = %q", len(f.requests), &f.stderr)
 				}
@@ -391,7 +391,7 @@ func TestUnavailableToken(t *testing.T) {
 			f := newFixture(t, nil)
 			t.Setenv("ASANA_ACCESS_TOKEN", "")
 			f.configure(t, tc.config+testConfig)
-			f.failure(t, f.execute("add", "Title"), tc.want)
+			f.failure(t, f.execute("add", "task", "Title"), tc.want)
 			if len(f.requests) != 0 {
 				t.Fatal("request sent without credentials")
 			}
@@ -423,7 +423,7 @@ func TestHTTPFailures(t *testing.T) {
 				w.WriteHeader(tc.status)
 				_, _ = io.WriteString(w, tc.body)
 			})
-			f.failure(t, f.execute("add", "Title"), tc.want...)
+			f.failure(t, f.execute("add", "task", "Title"), tc.want...)
 			if len(f.requests) != 1 {
 				t.Errorf("requests = %d, want 1", len(f.requests))
 			}
@@ -440,7 +440,7 @@ func TestTransportFailure(t *testing.T) {
 		}
 		_ = conn.Close()
 	})
-	f.failure(t, f.execute("add", "Title"), "task may exist", "check Asana before retrying")
+	f.failure(t, f.execute("add", "task", "Title"), "task may exist", "check Asana before retrying")
 	if len(f.requests) != 1 {
 		t.Errorf("requests = %d, want 1", len(f.requests))
 	}
@@ -462,7 +462,7 @@ func TestRequestCancellationAndTimeout(t *testing.T) {
 				f.deps.httpClient.Timeout = 100 * time.Millisecond
 				want = "deadline exceeded"
 			}
-			f.failure(t, run(ctx, f.deps, []string{"add", "Title"}), want, "task may exist")
+			f.failure(t, run(ctx, f.deps, []string{"add", "task", "Title"}), want, "task may exist")
 			if len(f.requests) != 1 {
 				t.Errorf("requests = %d, want 1", len(f.requests))
 			}
@@ -477,7 +477,7 @@ func TestTokenCommandCancellation(t *testing.T) {
 	f.configure(t, command+testConfig)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	f.failure(t, run(ctx, f.deps, []string{"add", "Title"}), "token_command failed", "context canceled")
+	f.failure(t, run(ctx, f.deps, []string{"add", "task", "Title"}), "token_command failed", "context canceled")
 	if len(f.requests) != 0 {
 		t.Fatal("request sent after cancellation")
 	}
