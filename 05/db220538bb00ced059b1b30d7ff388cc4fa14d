@@ -7,6 +7,8 @@ Read the README, installation targets, relevant source command definitions, repo
 ## Errors & Mistakes
 Initial searches assumed planner/root.go, planner/get.go, planner/set.go, and configs/gitconfig existed; the tools reported those files missing. A later search found command definitions in planner/app.go. Preflight scope checks rejected draft rewrites totaling 535, 510, and 501 changed lines before those drafts were written. Revised the drafts to shorten the guides. An early paragraph-splitting transformation broke a Planner sentence at inline field names; visual text inspection found it and the paragraph was repaired before handoff.
 
+The first signature verification inside the sandbox reported `gpg: Fatal: can't open '/Users/suraj/.gnupg/trustdb.gpg': Operation not permitted`. Retried `git verify-commit HEAD` with the required filesystem permission; it returned a good signature with ultimate trust. Confirmed the sign-off, all seven note sections, an empty index, and only the unrelated CLAUDE.md and grilling skill edits remaining in the working tree. No push was run.
+
 ## Dead Ends
 The initial docs/planner.md and docs/asana.md locations did not match the user's preferred component-folder layout. Moving them beside their modules and reducing the root references resolved that. Keeping all API implementation details in the Asana guide left long paragraphs; removed those details and linked contributor checks in CLAUDE.md.
 
