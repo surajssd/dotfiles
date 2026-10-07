@@ -15,7 +15,7 @@ install-configs: ## Install config files (shell, git, gpg, tmux, starship, k9s)
 install-local-bin: ## Install scripts to ~/.local/bin
 	./installers/install-local-bin.sh
 
-install-skills: ## Install agent skills to ~/.claude/skills and ~/.agents/skills
+install-skills: ## Install public and private agent skills to ~/.claude/skills and ~/.agents/skills
 	./installers/install-skills.sh
 
 install-rules: ## Install agent rules to ~/.claude/rules
