@@ -1,0 +1,20 @@
+## Conversation
+The user created a private Copilot review skill and asked whether update.sh and existing installers would install it. Full installation already included private skills, but make install-skills only handled public skills. The user explicitly asked for that target to install both sets. They later requested a commit of only the parent repository's currently staged changes.
+
+## Actions
+Read installer code, shared link helpers, repository instructions, and commit notes explaining the earlier separation of public and private installation. Added optional private skill linking after public skill linking in installers/install-skills.sh and updated the Makefile target description. Ran shellfmt.sh, make install-skills, and checks that all 11 repository skills resolved to their expected sources in both ~/.claude/skills and ~/.agents/skills. Before committing, reran ShellCheck, shfmt in check mode, and the staged whitespace check; all passed. Inspected the staged diff and the full diff against the merge base with origin/master, and inspected the separate untracked documentation. Only Makefile and installers/install-skills.sh were staged, totaling six additions and one deletion, with no generated files. Validated the Conventional Commit message and created a signed, signed-off commit with hooks disabled, then attached this note.
+
+## Errors & Mistakes
+Earlier discovery commands named nonexistent files or searched directories with no matching instruction files, so chained commands stopped before later reads. Reran the needed reads separately. No validation or installation failure occurred for this change.
+
+## Dead Ends
+Running the entire private installer from make install-skills would also reinstall unrelated configuration and build tools. Used the existing link_tree helper directly for the optional skills directory instead.
+
+## Hints for Future Agents
+An earlier commit note asks public component installers to remain private-repository agnostic. The user's explicit request supersedes that convention for skill installation only. Private skills are linked after public skills so matching names preserve the precedence of the full installation. The standalone private installer remains unchanged. The auto-push hook can publish commits, so disable hooks per invocation for local-only commits. Do not stage unrelated documentation while finishing this change.
+
+## Codebase Discoveries
+link_tree already supports optional source directories and directory symlinks. The existing private installer independently installs private skills during the full installation; repeated linking is idempotent. update.sh calls make update, which includes install-all and the private installer. The skill-only target does not need to run those broader paths.
+
+## Open Questions
+The user deliberately staged only the installer and Makefile. CLAUDE.md, README.md, skills/grilling/SKILL.md, and new tool documentation remain outside this commit. Some documentation edits describe the new skill behavior, but committing them requires a separate request. Nothing was pushed.
