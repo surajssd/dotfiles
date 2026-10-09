@@ -1,0 +1,20 @@
+## Conversation
+The user asked to commit the newly cached changes after the previous staged-only commit. The only staged file was CLAUDE.md, containing the previously unstaged skill-installation documentation update.
+
+## Actions
+Reviewed the staged diff, index status, recent commit notes for CLAUDE.md, complete diff and stat against the merge base with origin/master, and untracked-file inventory. Checked installers/install-skills.sh, installers/lib.sh, and Makefile to confirm direct installation of both skill sets and private-skill precedence. Validated the Conventional Commit message with the conventional-commits skill validator; it passed with zero problems and warnings. Ran git diff --cached --check successfully and verified the index tree before committing. Created the signed, signed-off commit with git -c core.hooksPath=/dev/null commit -s -S and attached this note immediately afterward. No source files were edited or added to the index during this task.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+The active post-commit hook automatically pushes master and may rebase it. Keep the invocation-specific core.hooksPath=/dev/null override for local-only commits under the user's prohibition on posting to GitHub. The override does not alter repository configuration. When publishing is explicitly authorized, push commit notes with the branch.
+
+## Codebase Discoveries
+The skills installer links public skills first and optional private skills second into both agent skill directories. link_tree uses ln -sfn for directories, so the second set takes precedence for matching names. The install-all target invokes the private installation entry point once; install-skills links both skill sets without invoking unrelated private installation steps. This commit changes only CLAUDE.md, with two additions and two deletions. There are no generated files or executable changes, so validation consisted of documentation review against the implementation and whitespace checks.
+
+## Open Questions
+None.
