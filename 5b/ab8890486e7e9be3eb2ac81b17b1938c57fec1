@@ -4,8 +4,12 @@ The user asked to commit the newly cached changes after the previous staged-only
 ## Actions
 Reviewed the staged diff, index status, recent commit notes for CLAUDE.md, complete diff and stat against the merge base with origin/master, and untracked-file inventory. Checked installers/install-skills.sh, installers/lib.sh, and Makefile to confirm direct installation of both skill sets and private-skill precedence. Validated the Conventional Commit message with the conventional-commits skill validator; it passed with zero problems and warnings. Ran git diff --cached --check successfully and verified the index tree before committing. Created the signed, signed-off commit with git -c core.hooksPath=/dev/null commit -s -S and attached this note immediately afterward. No source files were edited or added to the index during this task.
 
+On 2026-10-09, the user asked to repair the divergent history. Fetched origin and confirmed master was two commits ahead and two behind origin/master. The remote-only change was the merged Planner dependency update; both local commits changed documentation. Preserved the original tip in refs/backups/history-repair-20261009-680298d, validated both existing commit messages, and rebased the two local commits onto 6d95899230376409a2568de6f8506a6f663bcfce with signing, sign-off, and hooks disabled. Copied each original note to its rewritten commit immediately after the rebase. git range-diff reported both patches and messages unchanged, and git verify-commit reported good signatures for both. The resulting commits are af80223 (formerly b17fee5) and 5bab889 (formerly 680298d). The working tree is clean, and master is two ahead and zero behind origin/master. No push was run.
+
 ## Errors & Mistakes
 None.
+
+The two documentation commits were created without first fetching the latest origin/master. A later fetch exposed divergence from the already-merged dependency update. Rebased the unpublished commits onto the freshly fetched remote tip; no conflicts occurred.
 
 ## Dead Ends
 None.
