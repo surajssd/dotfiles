@@ -73,7 +73,7 @@ make clone-private
   - macOS: Uses `zshrc`, `gpg-agent-mac.conf`, `gpg.conf`, ghostty config to `~/Library/Application Support/com.mitchellh.ghostty/`, k9s skin to `~/Library/Application Support/k9s/skins/`
   - Linux: Uses `bashrc`, `gpg-agent-linux.conf`, k9s skin to `~/.config/k9s/skins/`
   - Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`, herdr config to `~/.config/herdr/config.toml`
-- **Skills**: Symlinked from `skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI)
+- **Skills**: `make install-skills` symlinks skills from `skills/` and, when present, `dotfilesprivate/skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI). Private skills take precedence when names match.
 - **Rules**: Symlinked from `rules/` to `~/.claude/rules/` (Claude Code's global rules path)
 - **Planner**: Built from `planner/` by `installers/install-planner.sh` with `go -C planner install .` into `$(go env GOPATH)/bin`. When `go` is absent the installer prints an `ℹ️` line and skips; when present, the build may download Go modules or a toolchain and a build failure fails `make install-all`
 - **Asana**: Built from `asana/` by `installers/install-asana.sh` with `go -C asana install .`, under the same conditions as Planner
@@ -95,7 +95,7 @@ All shell scripts must follow these standards:
 
 ### Symlink-Based Installation
 
-Installers normally create symlinks so that `git pull` immediately updates active configs and scripts; `planner` and `asana` are compiled Go commands that need `make install-planner` and `make install-asana` after a pull. Public installers use absolute paths via `realpath` or `pwd`. The `install-all` target invokes the optional private installer once, without exposing private installation details to the public component installers. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
+Installers normally create symlinks so that `git pull` immediately updates active configs and scripts; `planner` and `asana` are compiled Go commands that need `make install-planner` and `make install-asana` after a pull. Public installers use absolute paths via `realpath` or `pwd`. The `install-all` target invokes the optional private installer once. The skills installer also links the optional private skills directly, so `make install-skills` installs both sets without running unrelated private installation steps. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
 
 ### OS-Specific Config Handling
 
