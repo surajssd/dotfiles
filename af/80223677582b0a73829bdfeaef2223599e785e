@@ -1,0 +1,20 @@
+## Conversation
+The user asked to commit the git cached changes as in previous sessions. Only skills/grilling/SKILL.md was staged. CLAUDE.md had a pre-existing unstaged change.
+
+## Actions
+Reviewed the complete staged diff, working-tree diff, merge-base diff against origin/master, untracked-file inventory, and notes on prior grilling commits. Read the conventional-commits skill and validated the message with its bundled commitlint validator, which passed with zero problems and warnings. Checked the upstream file history through read-only GitHub API calls and identified 95249b0b49782349740fd9b8c6ce32b4e59e497a as the commit that added the instruction. Compared the complete staged file against that revision after removing the three locally injected attribution lines; the comparison passed. Ran git diff --cached --check successfully and verified the index tree before committing. Created the signed, signed-off commit with git -c core.hooksPath=/dev/null commit -s -S. Attached this note immediately after committing. No files were edited or staged during this task.
+
+## Errors & Mistakes
+An initial rg search included configs/gitconfig, which does not exist: rg: configs/gitconfig: No such file or directory (os error 2). An initial upstream history query used grilling/SKILL.md and returned no entries; the registry showed the correct path is skills/productivity/grilling/SKILL.md. The first full-file comparison failed because jq @base64d rejected the API content with embedded newlines as not valid base64 data. Removing those newlines before decoding made the comparison pass.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+The active .git/hooks/post-commit symlink runs local-bin/git-autopush-post-commit, which pushes master automatically and can rebase it. Disable hooks for a local-only commit because the user prohibits posting to GitHub. The override was command-local and did not change repository configuration. Cite the upstream commit that touched the vendored file, not repository HEAD. The upstream GitHub contents API base64 payload needs newlines removed before jq @base64d.
+
+## Codebase Discoveries
+The grilling skill is fetched from skills/productivity/grilling in mattpocock/skills. The staged file matched upstream commit 95249b0b49782349740fd9b8c6ce32b4e59e497a apart from the injected license and author metadata. The user change in CLAUDE.md is unrelated and remains unstaged. This commit contains only two added lines in one Markdown file. No generated files or executable changes are included.
+
+## Open Questions
+None.
