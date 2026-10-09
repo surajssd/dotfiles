@@ -1,0 +1,20 @@
+## Conversation
+The user approved four separate improvements, including protection from concurrent sessions, and excluded a locking service. This third change adds optional full-file hash preconditions and local write coordination without a service or lock files.
+
+## Actions
+Created planner-write-guards with wta from planner-status-history. Added failing CLI regression tests for stale hash inputs and a changed file after loading. Stored the original bytes on each loaded plan, used those bytes for transformations, and checked them before rename under a nonblocking directory flock. Added --expect-hash to every update command with hexadecimal validation. Added actual filesystem tests for concurrent writes, lock contention and release, and link no-ops. Documented the hash workflow and cooperative locking limit. Ran gofmt, go test ./..., go test -race ./..., go vet ./..., and golangci-lint with GOTOOLCHAIN=go1.26.6. Inspected the full diff against the previous branch, the cumulative diff size, and untracked tests. Validated and created this signed local commit with hooks disabled.
+
+## Errors & Mistakes
+The regression initially reproduced a silent overwrite: set status returned nil after another edit was injected through the clock dependency. Hash tests initially failed with unknown flag: --expect-hash. No unexpected failures remained.
+
+## Dead Ends
+A hash check alone has a check-to-rename race between cooperating writers. Locking the plan inode is also insufficient because atomic rename replaces that inode. A nonblocking lock on the containing directory avoids both gaps without persistent lock-file cleanup.
+
+## Hints for Future Agents
+Directory locking serializes writes in one repository plan folder and can return a busy error even for different plans. External editors and older binaries do not cooperate and can still race the final check. Hashes cover all bytes and accept either hexadecimal case. A user must reread and reconcile after conflict rather than automatically recompute a hash and retry. The writer now accepts a loaded plan with its source bytes instead of only a path. Never mutate source bytes in place. The syscall lock targets the existing macOS/Linux support. Disable hooks for local-only commits.
+
+## Codebase Discoveries
+The old commands loaded metadata through loadCorpus and then reread file bytes, allowing an update to mix two versions. Reusing source bytes removes those redundant reads and makes metadata checks and writes consistent. The existing atomic writer cleans up its temporary file on conflict and other failures.
+
+## Open Questions
+Blocked status is the remaining approved change.
