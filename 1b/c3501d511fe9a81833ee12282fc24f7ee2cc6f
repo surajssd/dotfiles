@@ -4,6 +4,8 @@ The user approved four separate improvements, including protection from concurre
 ## Actions
 Created planner-write-guards with wta from planner-status-history. Added failing CLI regression tests for stale hash inputs and a changed file after loading. Stored the original bytes on each loaded plan, used those bytes for transformations, and checked them before rename under a nonblocking directory flock. Added --expect-hash to every update command with hexadecimal validation. Added actual filesystem tests for concurrent writes, lock contention and release, and link no-ops. Documented the hash workflow and cooperative locking limit. Ran gofmt, go test ./..., go test -race ./..., go vet ./..., and golangci-lint with GOTOOLCHAIN=go1.26.6. Inspected the full diff against the previous branch, the cumulative diff size, and untracked tests. Validated and created this signed local commit with hooks disabled.
 
+Final handoff: the body commit was amended to handle Markdown heading and fence boundaries; the three dependent branches were rebased with signing and their notes copied immediately. git range-diff confirmed that all three dependent patches were unchanged. The final stack passed go test ./..., go test -race ./..., go vet ./..., and golangci-lint with GOTOOLCHAIN=go1.26.6. A compiled macOS smoke test preserved history, rejected a stale hash, recorded status transitions, listed Blocked, and passed planner check. A Linux amd64 cross-build also succeeded. All four commit signatures verified. The complete diff contains 14 human-authored files plus one regenerated golden fixture, totaling 675 additions and 76 deletions. Master and all four worktrees are clean. Nothing was pushed, merged into master, or installed globally.
+
 ## Errors & Mistakes
 The regression initially reproduced a silent overwrite: set status returned nil after another edit was injected through the clock dependency. Hash tests initially failed with unknown flag: --expect-hash. No unexpected failures remained.
 
@@ -17,4 +19,4 @@ Directory locking serializes writes in one repository plan folder and can return
 The old commands loaded metadata through loadCorpus and then reread file bytes, allowing an update to mix two versions. Reusing source bytes removes those redundant reads and makes metadata checks and writes consistent. The existing atomic writer cleans up its temporary file on conflict and other failures.
 
 ## Open Questions
-Blocked status is the remaining approved change.
+None. Blocked status is complete in the dependent local branch.
