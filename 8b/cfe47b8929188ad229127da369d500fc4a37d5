@@ -4,6 +4,8 @@ The user approved all four feedback items as separate changes. This fourth chang
 ## Actions
 Created planner-blocked with wta from planner-write-guards. Added a failing end-to-end workflow test before adding Blocked to the shared status list and help. The workflow covers creation, active listing, tree output, case-insensitive filtering, describe, check, transitions through set status and log, and completion. Updated README and repository guidance. Regenerated the check golden after the intentional allowed-status message change; only one fixture line changed. Ran gofmt, go test ./..., go test -race ./..., go vet ./..., and golangci-lint with GOTOOLCHAIN=go1.26.6. Reviewed the full diff against planner-write-guards and the new test. Validated and created this signed local commit with hooks disabled.
 
+Final handoff: the body commit was amended to handle Markdown heading and fence boundaries; the three dependent branches were rebased with signing and their notes copied immediately. git range-diff confirmed that all three dependent patches were unchanged. The final stack passed go test ./..., go test -race ./..., go vet ./..., and golangci-lint with GOTOOLCHAIN=go1.26.6. A compiled macOS smoke test preserved history, rejected a stale hash, recorded status transitions, listed Blocked, and passed planner check. A Linux amd64 cross-build also succeeded. All four commit signatures verified. The complete diff contains 14 human-authored files plus one regenerated golden fixture, totaling 675 additions and 76 deletions. Master and all four worktrees are clean. Nothing was pushed, merged into master, or installed globally.
+
 ## Errors & Mistakes
 The regression initially failed with unknown status "BLOCKED", as expected. No unexpected failures remained.
 
