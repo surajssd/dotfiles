@@ -4,6 +4,8 @@ The user approved four separate planner improvements. This second change records
 ## Actions
 Created planner-status-history with wta based on planner-body. Added regression tests before implementing default status history and log --status. Updated existing exact-content assertions and documentation. Ran gofmt, go test ./..., go vet ./..., and golangci-lint with GOTOOLCHAIN=go1.26.6. Audited the diff against planner-body and the new history tests. Validated the commit message before a signed, signed-off local commit with hooks disabled.
 
+Final handoff: the body commit was amended to handle Markdown heading and fence boundaries; the three dependent branches were rebased with signing and their notes copied immediately. git range-diff confirmed that all three dependent patches were unchanged. The final stack passed go test ./..., go test -race ./..., go vet ./..., and golangci-lint with GOTOOLCHAIN=go1.26.6. A compiled macOS smoke test preserved history, rejected a stale hash, recorded status transitions, listed Blocked, and passed planner check. A Linux amd64 cross-build also succeeded. All four commit signatures verified. The complete diff contains 14 human-authored files plus one regenerated golden fixture, totaling 675 additions and 76 deletions. Master and all four worktrees are clean. Nothing was pushed, merged into master, or installed globally.
+
 ## Errors & Mistakes
 Regression tests initially showed the missing transition entry and unknown flag: --status. One lint invocation from the repository root failed with directory prefix planner does not contain main module or its selected dependencies. Reran from planner/ successfully.
 
@@ -17,4 +19,4 @@ set status appends only for a changed status, using the supplied note rather tha
 appendLogEntry already handles section boundaries and line ending normalization. Both commands construct all metadata and history changes before the one atomic write.
 
 ## Open Questions
-Write preconditions and Blocked status remain to implement.
+None. The remaining approved changes are complete in dependent local branches.
