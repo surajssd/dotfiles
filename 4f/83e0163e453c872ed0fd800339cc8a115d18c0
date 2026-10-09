@@ -1,0 +1,20 @@
+## Conversation
+The user supplied four planner improvements and explicitly approved all four as separate changes. This is the first change, safe body replacement.
+
+## Actions
+Read instructions, history notes, commands, tests, and docs. Created planner-body with wta. Added failing command tests, implemented body using the shared history scanner and atomic writer, and documented it. Ran gofmt, go test ./..., go vet ./..., and golangci-lint with GOTOOLCHAIN=go1.26.6. Audited the full diff against master and untracked files. Final audit added regressions for indented headings, optional closing hashes, and fence-like lines with trailing text. Corrected the shared scanner and reran all required checks. Amended the signed local commit with hooks disabled and reattached this note immediately.
+
+## Errors & Mistakes
+Initial tests failed with unknown command "body" for "planner", as expected. The stdout assertion initially compared an unresolved macOS temporary path against /private; fixed it with filepath.EvalSymlinks. An initial read searched for ../rules/markdown.md, which does not exist. Final audit reproduced history deletion for ## Progress log ## and rejection of valid input containing a fence-like line with trailing text. The scanner now supports Markdown heading decoration and closes fences only when the remaining text is whitespace.
+
+## Dead Ends
+Reusing the scanner without checking standard heading and fence variants was not sufficient for safe body replacement. Kept the shared scanner and corrected its boundary rules instead of introducing a second parser.
+
+## Hints for Future Agents
+Body preserves the entire suffix from the first recognised progress log heading, including later sections. It rejects an unclosed fence before that boundary and a closing front matter delimiter without a newline. Heading recognition ignores case, supports zero to three leading spaces and optional closing hashes, and ignores fenced code. The scanner returns whether EOF was reached inside a fence. The third stacked change adds stale-write protection. Disable hooks on local commits because post-commit can push.
+
+## Codebase Discoveries
+loadCorpus resolves root symlinks. The writer syncs and atomically renames a temporary file while preserving permissions. Existing resource-limit integration tests validate failed body writes without a mocked filesystem.
+
+## Open Questions
+None for body replacement. Status history, write preconditions, and Blocked are implemented in dependent local branches that must be rebased onto this amended commit.
