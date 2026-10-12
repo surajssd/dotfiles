@@ -6,7 +6,7 @@ Personal shell configurations, utility scripts, and installation automation for 
 
 ## Quick Setup
 
-Install with `make`. Go is optional; when it is available, installation also builds `planner` and `asana`.
+Install with `make`. Go is optional; when it is available, installation also builds `planner`, `asana`, and `yt-playlist-creator`.
 
 ```bash
 cd ~/code
@@ -29,10 +29,11 @@ Use individual targets to install only what you need. Run `make help` for all ta
 | `make install-rules` | [Agent rules](rules/) into `~/.claude/rules/`. |
 | `make install-planner` | The [Planner command](planner/) into `$(go env GOPATH)/bin`. |
 | `make install-asana` | The [Asana command](asana/) into `$(go env GOPATH)/bin`. |
+| `make install-yt-playlist-creator` | The [playlist command](yt-playlist-creator/) into `$(go env GOPATH)/bin`. |
 
-Skills come from both `skills/` and, when present, `dotfilesprivate/skills/`. Private skills take precedence when names match. The `~/.agents/skills/` path is shared by Codex, Gemini, opencode, and Copilot CLI.
+Skills come from `skills/`, `yt-playlist-creator/skill/`, and, when present, `dotfilesprivate/skills/`. Private skills take precedence when names match. The `~/.agents/skills/` path is shared by Codex, Gemini, opencode, and Copilot CLI.
 
-Planner and Asana are compiled Go commands. Their installers skip the build when Go is absent. Builds may download Go modules or a toolchain; a build failure stops `make install-all`. Rebuild them with their install targets after changing Go code.
+Planner, Asana, and yt-playlist-creator are compiled Go commands. Their installers skip the build when Go is absent. Builds may download Go modules or a toolchain; a build failure stops `make install-all`. Rebuild them with their install targets after changing Go code.
 
 Installation scripts live in [installers/](installers/). Container builds, including OpenClaw, live in [containers/](containers/) and are not installed by `make install-all`.
 
@@ -48,6 +49,7 @@ This pulls the public repository and the private clone when present, refreshes v
 
 - [Planner](planner/) manages Markdown plans and implementation status.
 - [Asana](asana/) manages tasks and private project aliases from the terminal.
+- [YouTube playlist creator](yt-playlist-creator/) creates private playlists from ordered video references or song queries.
 
 ### Claude Code with LiteLLM
 

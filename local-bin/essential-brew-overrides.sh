@@ -26,6 +26,7 @@ common_packages=(
     shfmt
     starship
     yq
+    yt-dlp
     zsh
     zsh-completions
 )

@@ -21,6 +21,7 @@ Both repositories mirror the same structure:
 - `rules/` - Agent rule `.md` files (symlinked to `~/.claude/rules/`)
 - `planner/` - Go module for the `planner` command (public repo only, installed with `go install`)
 - `asana/` - Go module for the `asana` task-creation command (public repo only, installed with `go install`)
+- `yt-playlist-creator/` - Go module for private YouTube playlists, with its agent skill in `skill/` (public repo only, installed with `go install`)
 - `installers/` - Installation automation scripts (public repo only)
 - `containers/` - Container image builds, e.g. `openclaw` (public repo only, not installed)
 
@@ -50,6 +51,9 @@ make install-planner
 # Build and install the asana Go command (skipped when go is absent)
 make install-asana
 
+# Build and install the playlist Go command (skipped when go is absent)
+make install-yt-playlist-creator
+
 # Download external skills (mattpocock, bastos, blader) into skills/ — also run by 'make update'
 make fetch-external-skills
 
@@ -73,7 +77,7 @@ make clone-private
   - macOS: Uses `zshrc`, `gpg-agent-mac.conf`, `gpg.conf`, ghostty config to `~/Library/Application Support/com.mitchellh.ghostty/`, k9s skin to `~/Library/Application Support/k9s/skins/`
   - Linux: Uses `bashrc`, `gpg-agent-linux.conf`, k9s skin to `~/.config/k9s/skins/`
   - Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`, herdr config to `~/.config/herdr/config.toml`
-- **Skills**: `make install-skills` symlinks skills from `skills/` and, when present, `dotfilesprivate/skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI). Private skills take precedence when names match.
+- **Skills**: `make install-skills` symlinks skills from `skills/`, `yt-playlist-creator/skill/`, and, when present, `dotfilesprivate/skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI). Private skills take precedence when names match.
 - **Rules**: Symlinked from `rules/` to `~/.claude/rules/` (Claude Code's global rules path)
 - **Planner**: Built from `planner/` by `installers/install-planner.sh` with `go -C planner install .` into `$(go env GOPATH)/bin`. When `go` is absent the installer prints an `ℹ️` line and skips; when present, the build may download Go modules or a toolchain and a build failure fails `make install-all`
 - **Asana**: Built from `asana/` by `installers/install-asana.sh` with `go -C asana install .`, under the same conditions as Planner
@@ -95,7 +99,7 @@ All shell scripts must follow these standards:
 
 ### Symlink-Based Installation
 
-Installers normally create symlinks so that `git pull` immediately updates active configs and scripts; `planner` and `asana` are compiled Go commands that need `make install-planner` and `make install-asana` after a pull. Public installers use absolute paths via `realpath` or `pwd`. The `install-all` target invokes the optional private installer once. The skills installer also links the optional private skills directly, so `make install-skills` installs both sets without running unrelated private installation steps. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
+Installers normally create symlinks so that `git pull` immediately updates active configs and scripts; `planner`, `asana`, and `yt-playlist-creator` are compiled Go commands that need their `make install-<command>` target after a pull. Public installers use absolute paths via `realpath` or `pwd`. The `install-all` target invokes the optional private installer once. The skills installer also links the optional private skills directly, so `make install-skills` installs both sets without running unrelated private installation steps. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
 
 ### OS-Specific Config Handling
 
@@ -154,7 +158,7 @@ Some skills are vendored (copied) from upstream repos rather than authored here.
 - **`fetch`**: clone the upstream repo, copy the skill directory flat into `skills/<name>/` (dropping any category nesting, excluding repo infrastructure like `.git`/`.github`/`.claude-plugin`), and merge `license: MIT` + `metadata.author` into its `SKILL.md` (idempotent and merge-aware — safe for upstreams that already carry some of these keys). The `grilling`, `domain-modeling`, and `grill-with-docs` skills are vendored this way from [`mattpocock/skills`](https://github.com/mattpocock/skills); `humanizer` is vendored from [`blader/humanizer`](https://github.com/blader/humanizer) (its `SKILL.md` lives at the repo root, so `subpath` is `.`).
 - **`preserve`**: the skill is already vendored and locally customised, so the script verifies it exists and reports its source but never overwrites it. `conventional-commits` (from [`bastos/skills`](https://github.com/bastos/skills)) uses this mode — it carries local edits (a macOS clipboard section and a `README.md`) that must not be clobbered.
 
-Fetched skills are committed to the repo. Run `make fetch-external-skills` to refresh them; the script prints the upstream commit SHA(s), which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs never fetch skills; public installers use the network only for Go module or toolchain downloads for `planner` and `asana`, and only when Go is present), but `make update` runs it after `pull-master` and before `install-all`, so a full update also refreshes the vendored skills. `install-skills.sh` then symlinks the vendored directories like any other local skill.
+Fetched skills are committed to the repo. Run `make fetch-external-skills` to refresh them; the script prints the upstream commit SHA(s), which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs never fetch skills; public installers use the network only for Go module or toolchain downloads for `planner`, `asana`, and `yt-playlist-creator`, and only when Go is present), but `make update` runs it after `pull-master` and before `install-all`, so a full update also refreshes the vendored skills. `install-skills.sh` then symlinks the vendored directories like any other local skill.
 
 ## Adding Agent Rules
 
@@ -216,6 +220,18 @@ Project listing sorts by alias and has identical output with and without refresh
 The shared configuration writer uses yaml.v3 nodes to preserve comments, key order, and unrelated values. Follow symlinks and replace the target, preserving its permissions. Before credential lookup or API calls, create a temporary file beside the target to probe writability. Write, sync, close, then rename atomically. Do not compare the target with the original contents before replacement; concurrent edits can be overwritten. Clean up temporary files on failure. Leave `default_project` unchanged, even for the first project, and avoid rewriting the file when refresh adds nothing. Public-project creation, team sharing, project editing or deletion, and archived-project discovery are outside these commands.
 
 Run `gofmt -w *.go`, `go vet ./...`, `golangci-lint run`, `go test ./...`, and `go test -race ./...` from `asana/`. Use `GOTOOLCHAIN=go1.26.6` with the installed linter if its Go version differs from the active toolchain. Integration tests run Cobra in process with `httptest.Server`, a temporary `HOME`, and a stub token command. They must not use real credentials or create real Asana resources. Run `shellfmt.sh` on changed shell scripts.
+
+## YouTube playlist creator
+
+`yt-playlist-creator/` is a standalone, flat `package main` module using Go 1.26, Cobra, and `golang.org/x/oauth2`. Run `make install-yt-playlist-creator` after code changes; `make install-all` includes its installer and skips the build only when Go is absent. See [yt-playlist-creator/README.md](yt-playlist-creator/README.md) for setup and the complete input and output contract.
+
+`create` accepts an ordered list through title/description/repeatable track flags or strict JSON from `--file` (`-` for stdin). The CLI never fetches source pages. Exact video references and anonymous `yt-dlp` Songs queries share one preflight and creation sequence. Resolve every query before loading credentials, reject all invalid or duplicate tracks, fetch metadata in batches of 50, and create private playlists only. `--dry-run` does no writes. JSON output is exactly one `created`, `validated`, `rejected`, `error`, `partial`, or `unknown` object after flag parsing. Do not retry mutations, delete partial playlists, broaden visibility, or treat API success as proof of YouTube Music playback.
+
+`auth login --client-secrets <path>` uses loopback OAuth with PKCE and fixed Google endpoints. A nonempty `YT_PLAYLIST_CREATOR_OAUTH` JSON bundle takes precedence over macOS Keychain. Keychain operations call `security` directly, never `apikey.sh`. Writes use one bounded `security -i` command with hex data on stdin and verified readback, not a password in process arguments. Tests use local HTTP servers and fake `security`/`yt-dlp` executables; never use real credentials or create live playlists without separate authorization.
+
+The agent skill lives at `yt-playlist-creator/skill/SKILL.md`. `installers/install-skills.sh` links that directory after public skills and before private skills in each destination, preserving private precedence. The Go installer builds only the binary. `local-bin/essential-brew-overrides.sh` includes `yt-dlp`, which is required only for queries.
+
+Run `gofmt -w *.go`, `go vet ./...`, `golangci-lint run`, `go test ./...`, and `go test -race ./...` from the module. Use `GOTOOLCHAIN=go1.26.6` with the installed linter when its build version differs from the active toolchain. Run `shellfmt.sh` on changed shell scripts, including test fixtures.
 
 ## Important Notes
 
