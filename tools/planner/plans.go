@@ -79,6 +79,18 @@ func (p *plan) linksTo(url string) bool {
 	return false
 }
 
+func (p *plan) hasPullRequest(url string) bool {
+	if !p.valid() {
+		return false
+	}
+	for _, value := range p.front.PullRequests {
+		if strings.TrimSpace(value) == url {
+			return true
+		}
+	}
+	return false
+}
+
 type corpus struct {
 	root       string
 	plans      []*plan

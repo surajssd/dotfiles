@@ -46,12 +46,15 @@ A plan reference can be a path, wikilink, basename, short name from the table, o
 | `--all` | Includes inactive plans and plans with missing or invalid front matter. |
 | `--repo <text>` | Matches repository names by case-insensitive substring. `--repo '!=<text>'` excludes those repositories instead and keeps plans without a repository. Spaces after `!=` are ignored. |
 | `--status <status>` | Matches any case, with or without hyphens. Includes matching inactive plans without `--all`. |
+| `--pr <url>` | For `get`, selects plans whose `PullRequests` list contains the exact URL, including inactive plans without `--all`. Uses local metadata. |
 | `-o wide` | Adds `TYPE`, `PATH`, and `NOTE` to `NAME REPO STATUS CHECKED TITLE`. Paths abbreviate home as `~`. |
 | `-o json` / `-o yaml` | Prints all fields. One named plan is an object; other selections use an `items` list. |
 | `-o name` | Prints basenames. |
 | `--no-headers` | Omits table headers. |
 
 For example, `planner get --repo '!=acme/widgets'` hides plans in `acme/widgets` and in any repository whose name contains that text, such as `acme/widgets-tools`. `planner tree` still shows an excluded parent when it is needed to place an included plan.
+
+Run `planner get --pr https://github.com/acme/widgets/pull/1` to find every plan that lists that pull request. Add `--repo` or `--status` to narrow the results. Unlike a positional URL, `--pr` searches only `PullRequests`. It also filters named plans.
 
 `tree` supports only `-o wide`. `CHECKED` shows days since the last check; `!` marks active plans older than a week. Invalid front matter shows `-` in status and checked columns.
 

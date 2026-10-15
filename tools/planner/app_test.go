@@ -235,6 +235,103 @@ func TestRepoFilterRejectsBareExclusion(t *testing.T) {
 	}
 }
 
+func TestGetByPullRequest(t *testing.T) {
+	root := t.TempDir()
+	for _, file := range []struct{ repo, name, status, fields string }{
+		{"widgets", "active", "InProgress", "PullRequests: [" + prA + ", " + prA + "]\n"},
+		{"widgets", "done", "Implemented", "PullRequests: [\" " + prA + " \"]\n"},
+		{"gadgets", "abandoned", "Abandoned", "PullRequests: [" + prA + "]\n"},
+		{"gadgets", "superseded", "Superseded", "PullRequests: [" + prA + "]\n"},
+		{"widgets", "other-pr", "InProgress", "PullRequests: [" + prB + "]\n"},
+		{"widgets", "parent-only", "InProgress", "Parent: " + prA + "\n"},
+		{"widgets", "successor-only", "InProgress", "SupersededBy: " + prA + "\n"},
+		{"widgets", "issue-only", "InProgress", "Issues: [" + prA + "]\n"},
+		{"widgets", "note-only", "InProgress", ""},
+	} {
+		content := "---\nType: plan\nImplementationStatus: " + file.status + "\nStatusChecked: 2026-09-01\nStatusNote: " + prA + "\n" + file.fields + "---\n# Plan\n" + prA + "\n"
+		writeFile(t, filepath.Join(root, "github.com/acme", file.repo, "260910120000-"+file.name+".md"), content)
+	}
+	writeFile(t, filepath.Join(root, "legacy.md"), "# Legacy\n"+prA+"\n")
+	writeFile(t, filepath.Join(root, "broken.md"), "---\nPullRequests: ["+prA+"]\nType: [broken\n---\n")
+	cases := []struct {
+		name string
+		args []string
+		want []string
+	}{
+		{"all statuses", nil, []string{"abandoned", "superseded", "active", "done"}},
+		{"trimmed URL", []string{"--pr", " " + prA + " "}, []string{"abandoned", "superseded", "active", "done"}},
+		{"repository", []string{"--repo", "widgets"}, []string{"active", "done"}},
+		{"excluded repository", []string{"--repo", "!=widgets"}, []string{"abandoned", "superseded"}},
+		{"status", []string{"--status", "implemented"}, []string{"done"}},
+		{"all", []string{"--all"}, []string{"abandoned", "superseded", "active", "done"}},
+		{"named match", []string{"done"}, []string{"done"}},
+		{"named nonmatch", []string{"other-pr"}, nil},
+		{"no matches", []string{"--pr", "https://github.com/acme/widgets/pull/100"}, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			deps, io := testDependencies("", true, 0)
+			args := append([]string{"get", "--root", root, "--pr", prA, "-o", "name"}, tc.args...)
+			if err := run(t, deps, args...); err != nil {
+				t.Fatal(err)
+			}
+			want := ""
+			for _, name := range tc.want {
+				want += "260910120000-" + name + "\n"
+			}
+			if io.stdout.String() != want {
+				t.Errorf("stdout = %q, want %q", io.stdout, want)
+			}
+			wantStderr := ""
+			if tc.name == "no matches" {
+				wantStderr = "No plans found.\n"
+			}
+			if io.stderr.String() != wantStderr {
+				t.Errorf("stderr = %q, want %q", io.stderr, wantStderr)
+			}
+		})
+	}
+	for _, format := range []string{"", "wide", "json", "yaml"} {
+		t.Run("format "+format, func(t *testing.T) {
+			deps, io := testDependencies("", true, 0)
+			args := []string{"get", "--root", root, "--pr", prA, "--status", "implemented"}
+			if format != "" {
+				args = append(args, "-o", format)
+			}
+			if err := run(t, deps, args...); err != nil {
+				t.Fatal(err)
+			}
+			out := io.stdout.String()
+			if !strings.Contains(out, "done") || io.stderr.Len() != 0 {
+				t.Errorf("stdout = %q, stderr = %q", out, io.stderr)
+			}
+			if (format == "json" && !strings.Contains(out, `"items": [`)) || (format == "yaml" && !strings.HasPrefix(out, "items:\n")) {
+				t.Errorf("expected a list, got %q", out)
+			}
+		})
+	}
+	deps, io := testDependencies("", true, 0)
+	if err := run(t, deps, "get", "--root", root, "--pr", prB, "--status", "implemented", "-o", "json"); err != nil {
+		t.Fatal(err)
+	}
+	if got := io.stdout.String(); got != "{\n    \"items\": []\n}\n" || io.stderr.Len() != 0 {
+		t.Errorf("empty json list: stdout = %q, stderr = %q", got, io.stderr)
+	}
+}
+
+func TestGetPullRequestRejectsInvalidURL(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "missing")
+	for _, value := range []string{"", " ", "1", "acme/widgets#1", ghIssue, "https://github.com/acme/widgets", "ftp://example.com/pr/1"} {
+		t.Run(value, func(t *testing.T) {
+			deps, io := testDependencies("", true, 0)
+			err := run(t, deps, "get", "--root", root, "--pr", value)
+			if err == nil || !strings.Contains(err.Error(), "--pr:") || io.stdout.Len() != 0 {
+				t.Errorf("error = %v, stdout = %q", err, io.stdout)
+			}
+		})
+	}
+}
+
 func TestEmptyListCountsInactivePlans(t *testing.T) {
 	fixtureHome(t)
 	root := fixtureRoot(t)

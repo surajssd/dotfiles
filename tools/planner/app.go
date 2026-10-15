@@ -64,6 +64,9 @@ calendar days since StatusChecked; ! marks an active plan older than 7 days.
 repository. Spaces after != are ignored.
 --status keeps plans with that ImplementationStatus, typed in any case with
 or without hyphens, and includes matching inactive plans without --all.
+--pr <url> keeps plans whose PullRequests list contains that exact URL,
+including inactive plans without --all. --repo and --status can narrow the
+results. The lookup uses local front matter and does not query GitHub.
 
 -o wide adds TYPE, PATH (home shown as ~), and NOTE, and never truncates.
 -o json and -o yaml print every field of each plan: one named plan is a
@@ -78,7 +81,8 @@ StatusNote; an empty one is left out. -o name prints one basename per line.
 With plan names (a path, [[wikilink]], basename, or the short NAME shown in
 the table) only those plans are printed, whatever their status. A URL selects
 every plan that lists it under Issues, PullRequests, Parent, or
-SupersededBy. A name that matches no plan is reported after the others and
+SupersededBy. --pr also filters named plans by their PullRequests list.
+A name that matches no plan is reported after the others and
 the exit status is 1.
 
 planner get repos prints every <org>/<repo> that has plans, one per line,
@@ -91,7 +95,7 @@ children sit under their parent plan, and one group row per external parent
 Without --all only active plans are shown, together with the ancestors needed
 to place them. With plan names, each named plan is printed as a root with its
 descendants. The columns and the other flags are those of planner get; the
-only output format is -o wide.`
+only output format is -o wide. --pr is available only for planner get.`
 
 const describeHelp = `Print one block per named plan, kubectl describe style: the name, title,
 file (home shown as ~), repository, type, status, checked date and age, parent,
@@ -187,6 +191,12 @@ completes commands, flags, plan names, repositories, and statuses.`,
 			if err := getOpts.validate(getFormats); err != nil {
 				return err
 			}
+			if cmd.Flags().Changed("pr") {
+				getOpts.pr = strings.TrimSpace(getOpts.pr)
+				if problem := linkProblem(pullRequestsKey, getOpts.pr); problem != "" {
+					return fmt.Errorf("--pr: %s", problem)
+				}
+			}
 			rootDir, err := resolve()
 			if err != nil {
 				return err
@@ -195,6 +205,8 @@ completes commands, flags, plan names, repositories, and statuses.`,
 		},
 	}
 	addListFlags(get, &getOpts, complete, getFormats)
+	get.Flags().StringVar(&getOpts.pr, "pr", "", "only plans listing this pull request URL, including inactive plans")
+	mustCompleteFlag(get, "pr", completeValues(nil))
 	get.AddCommand(&cobra.Command{
 		Use:   "repos",
 		Short: "List every repository that has plans",

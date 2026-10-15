@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -30,6 +31,7 @@ type listOptions struct {
 	noHeaders bool
 	repo      string
 	status    string
+	pr        string
 }
 
 func (o listOptions) wide() bool { return o.output == "wide" }
@@ -52,31 +54,33 @@ func matchesRepo(repo, filter string) bool {
 	return strings.Contains(strings.ToLower(repo), strings.ToLower(text)) != exclude
 }
 
-// selects reports whether the --all, --repo, and --status filters keep a
-// plan. --status names the plans to show by itself, so an inactive status
-// matches without --all.
+// selects reports whether the list filters keep a plan. --status and --pr
+// include matching inactive plans without --all.
 func (o listOptions) selects(p *plan) bool {
 	if !matchesRepo(p.repo, o.repo) {
+		return false
+	}
+	if o.pr != "" && !p.hasPullRequest(o.pr) {
 		return false
 	}
 	if o.status != "" {
 		return p.valid() && p.front.ImplementationStatus == o.status
 	}
-	return o.all || (p.valid() && p.active())
+	return o.all || o.pr != "" || (p.valid() && p.active())
 }
 
 // hidden reports whether a plan is left out only for lacking valid front
-// matter, which is what the note about --all counts. Under --status no such
-// plan can match, so the note does not apply.
+// matter, which is what the note about --all counts. Under --status or --pr
+// no such plan can match, so the note does not apply.
 func (o listOptions) hidden(p *plan) bool {
-	return o.status == "" && !p.valid() && matchesRepo(p.repo, o.repo)
+	return o.pr == "" && o.status == "" && !p.valid() && matchesRepo(p.repo, o.repo)
 }
 
 // inactive reports whether a valid plan is left out only for being
 // Implemented, Superseded, or Abandoned, which the note about an empty list
 // counts so it can point at --all.
 func (o listOptions) inactive(p *plan) bool {
-	return !o.all && o.status == "" && p.valid() && !p.active() && matchesRepo(p.repo, o.repo)
+	return !o.all && o.pr == "" && o.status == "" && p.valid() && !p.active() && matchesRepo(p.repo, o.repo)
 }
 
 func listHeader(opts listOptions) []string {
@@ -123,7 +127,7 @@ func writeList(deps dependencies, output string, skipped, inactive int, noteWhen
 // runGet lists plans as a flat table or as records. Named plans are shown
 // whatever their status, in the order given, and a name that resolves to no
 // plan is reported after the output; otherwise the --all, --repo, and
-// --status filters apply.
+// --status filters apply. --pr filters both named and unnamed selections.
 func runGet(deps dependencies, root string, opts listOptions, names []string) error {
 	c, err := loadCorpus(root)
 	if err != nil {
@@ -134,6 +138,9 @@ func runGet(deps dependencies, root string, opts listOptions, names []string) er
 	skipped, inactive := 0, 0
 	if len(names) > 0 {
 		plans, missing = findPlans(c, names)
+		if opts.pr != "" {
+			plans = slices.DeleteFunc(plans, func(p *plan) bool { return !p.hasPullRequest(opts.pr) })
+		}
 	} else {
 		for _, p := range c.plans {
 			switch {
