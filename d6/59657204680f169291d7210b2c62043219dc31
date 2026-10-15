@@ -1,0 +1,20 @@
+## Conversation
+The user wanted two plans marked as abandoned or not to be implemented. Planner lacked a matching status, so the plans were initially marked Superseded with explicit abandonment notes. The user then requested an Abandoned status in planner, asked to apply it to the plans, and requested a commit and local merge into master. No publication was requested.
+
+## Actions
+Read the repository guidance, status handling, CLI help, documentation, tests, and prior commit notes. Created planner-abandoned with wta. Added integration tests first and observed the expected unknown-status and missing-completion failures. Added Abandoned to the shared status list and inactive classification. Updated help, hidden-plan messages, README.md, and CLAUDE.md. Added coverage for status updates, creation, validation without a successor, default hiding, explicit listing, absence of stale indicators, and completion. Regenerated only testdata/check.golden for the expanded valid-status list. Ran gofmt, go test ./..., go vet ./..., and GOTOOLCHAIN=go1.26.6 golangci-lint run successfully. Installed with make install-planner and used the installed command to mark the two real plans Abandoned; planner check reported No findings. Those plan files live outside this public repository and are excluded from this commit. Audited all 10 changed files against the master merge base: nine human-authored files and one regenerated golden snapshot, 92 additions and 20 deletions. Confirmed there were no untracked files. Validated the Conventional Commit message before preparing the signed, signed-off local commit with hooks disabled.
+
+## Errors & Mistakes
+One diff audit used a mistyped full SHA and failed with: fatal: ambiguous argument '0de9c95032dda00e82787dc7bc7bc7dbfe8f60a4be9': unknown revision or path not in the working tree. Repeated the audit using git merge-base HEAD master. An initial rg search across all of ~/.herdr returned excessive unrelated paths; narrowed the subsequent checks to known ancestors. The first full test run failed only because check.golden did not yet include Abandoned in the unknown-status message; regenerated that intentional output and reran the complete suite successfully.
+
+## Dead Ends
+Using Superseded for abandonment was an interim workaround. The dedicated Abandoned status replaces that workaround for the two requested plans. No alias for the user's original misspelling was added.
+
+## Hints for Future Agents
+The post-commit hook can publish changes. Use git -c core.hooksPath=/dev/null for local-only commits and merges. The installed golangci-lint was built with Go 1.26.5, while the active Go toolchain is 1.27.2; GOTOOLCHAIN=go1.26.6 worked for linting. The installed planner binary includes this feature. The feature worktree is /Users/suraj/.herdr/worktrees/dotfiles-planner-abandoned and the master checkout is /Users/suraj/code/git/surajssd/dotfiles. Keep the plan-vault edits separate from the public repository commit.
+
+## Codebase Discoveries
+statusValues in check.go controls canonicalization, validation, and status completion for creation, updates, and list filters. plan.active in plans.go controls default visibility, stale markers, and the active scope for optional GitHub checks. Abandoned needs no successor; the existing missing-successor advisory remains specific to Superseded. Existing tree behavior can still show inactive ancestors when needed to place active descendants.
+
+## Open Questions
+None. No feature follow-up work is deferred.
