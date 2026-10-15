@@ -12,6 +12,6 @@ if ! command -v go >/dev/null 2>&1; then
     exit 0
 fi
 
-echo "⏳ Installing asana Go command from ${REPO_DIR}/asana ..."
-go -C "${REPO_DIR}/asana" install . || die "asana build failed"
+echo "⏳ Installing asana Go command from ${REPO_DIR}/tools/asana ..."
+go -C "${REPO_DIR}/tools/asana" install . || die "asana build failed"
 echo "✅ asana installed into $(go env GOPATH)/bin"

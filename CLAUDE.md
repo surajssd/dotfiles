@@ -19,9 +19,9 @@ Both repositories mirror the same structure:
 - `local-bin/` - Custom utility scripts
 - `skills/` - Agent skills in `SKILL.md` format (symlinked to `~/.claude/skills/` and `~/.agents/skills/`)
 - `rules/` - Agent rule `.md` files (symlinked to `~/.claude/rules/`)
-- `planner/` - Go module for the `planner` command (public repo only, installed with `go install`)
-- `asana/` - Go module for the `asana` task-creation command (public repo only, installed with `go install`)
-- `yt-playlist-creator/` - Go module for private YouTube playlists, with its agent skill in `skill/` (public repo only, installed with `go install`)
+- `tools/planner/` - Go module for the `planner` command (public repo only, installed with `go install`)
+- `tools/asana/` - Go module for the `asana` task-creation command (public repo only, installed with `go install`)
+- `tools/yt-playlist-creator/` - Go module for private YouTube playlists, with its agent skill in `skill/` (public repo only, installed with `go install`)
 - `installers/` - Installation automation scripts (public repo only)
 
 ## Common Commands
@@ -76,10 +76,10 @@ make clone-private
   - macOS: Uses `zshrc`, `gpg-agent-mac.conf`, `gpg.conf`, ghostty config to `~/Library/Application Support/com.mitchellh.ghostty/`, k9s skin to `~/Library/Application Support/k9s/skins/`
   - Linux: Uses `bashrc`, `gpg-agent-linux.conf`, k9s skin to `~/.config/k9s/skins/`
   - Both: `gitignore`, `terraformrc`, `tmux.conf`, `starship.toml`, herdr config to `~/.config/herdr/config.toml`
-- **Skills**: `make install-skills` symlinks skills from `skills/`, `yt-playlist-creator/skill/`, and, when present, `dotfilesprivate/skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI). Private skills take precedence when names match.
+- **Skills**: `make install-skills` symlinks skills from `skills/`, `tools/yt-playlist-creator/skill/`, and, when present, `dotfilesprivate/skills/` to `~/.claude/skills/` (Claude Code) and `~/.agents/skills/` (vendor-neutral path read by Codex, Gemini, opencode, and Copilot CLI). Private skills take precedence when names match.
 - **Rules**: Symlinked from `rules/` to `~/.claude/rules/` (Claude Code's global rules path)
-- **Planner**: Built from `planner/` by `installers/install-planner.sh` with `go -C planner install .` into `$(go env GOPATH)/bin`. When `go` is absent the installer prints an `ℹ️` line and skips; when present, the build may download Go modules or a toolchain and a build failure fails `make install-all`
-- **Asana**: Built from `asana/` by `installers/install-asana.sh` with `go -C asana install .`, under the same conditions as Planner
+- **Planner**: Built from `tools/planner/` by `installers/install-planner.sh` with `go -C tools/planner install .` into `$(go env GOPATH)/bin`. When `go` is absent the installer prints an `ℹ️` line and skips; when present, the build may download Go modules or a toolchain and a build failure fails `make install-all`
+- **Asana**: Built from `tools/asana/` by `installers/install-asana.sh` with `go -C tools/asana install .`, under the same conditions as Planner
 - **Private files**: Installed by the private repository's own entry point when the optional clone exists
 
 ## Shell Script Conventions
@@ -176,7 +176,7 @@ Attribution for vendored rules is recorded in a hand-maintained `rules/README.md
 
 ## Planner
 
-`planner/` is a flat `package main` Go module (`github.com/surajssd/dotfiles/planner`, `go 1.25`) built on `cobra`, `yaml.v3`, and `x/term`. It manages a folder of Markdown plans with YAML front matter (`Type`, `ImplementationStatus`, `StatusChecked`, `StatusNote`, optional `Parent` and `SupersededBy` references, optional `Issues` and `PullRequests` URL lists), filed as `<root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md`:
+`tools/planner/` is a flat `package main` Go module (`github.com/surajssd/dotfiles/tools/planner`, `go 1.25`) built on `cobra`, `yaml.v3`, and `x/term`. It manages a folder of Markdown plans with YAML front matter (`Type`, `ImplementationStatus`, `StatusChecked`, `StatusNote`, optional `Parent` and `SupersededBy` references, optional `Issues` and `PullRequests` URL lists), filed as `<root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md`:
 
 `Abandoned` means a plan will not be implemented. Like `Implemented` and `Superseded`, it is inactive and hidden from the default lists; select it by name, with `--all`, or with `--status Abandoned`.
 
@@ -190,11 +190,11 @@ Attribution for vendored rules is recorded in a hand-maintained `rules/README.md
 
 The plan root comes from `~/.planner.yaml` (`root: ~/plans`); `--root <dir>` overrides it. The repository does not ship that file.
 
-Go conventions: run `gofmt`, `go vet ./...`, `golangci-lint run`, and `go test ./...` from `planner/`. Tests compare against golden files under `planner/testdata/`; regenerate them with `go test ./... -update` after an intentional output change. Renovate's existing `gomod` rule covers `planner/go.mod`.
+Go conventions: run `gofmt`, `go vet ./...`, `golangci-lint run`, and `go test ./...` from `tools/planner/`. Tests compare against golden files under `tools/planner/testdata/`; regenerate them with `go test ./... -update` after an intentional output change. Renovate's existing `gomod` rule covers `tools/planner/go.mod`.
 
 ## Asana
 
-`asana/` is a flat `package main` Go module (`github.com/surajssd/dotfiles/asana`, `go 1.25`) built on Cobra and `yaml.v3`. Install it with `make install-asana`; `make install-all` also builds it when Go is available. The binary goes into `$(go env GOPATH)/bin` and must be rebuilt after code changes.
+`tools/asana/` is a flat `package main` Go module (`github.com/surajssd/dotfiles/tools/asana`, `go 1.25`) built on Cobra and `yaml.v3`. Install it with `make install-asana`; `make install-all` also builds it when Go is available. The binary goes into `$(go env GOPATH)/bin` and must be rebuilt after code changes.
 
 `asana add task <title>` creates one task in one project, assigns it to `me`, and prints the permalink URL. The title must be exactly one nonblank argument. `--project/-p` resolves a configured alias first, then a project URL. `--description/-d` supplies plain-text notes, with `-` reading stdin. `--due` accepts `YYYY-MM-DD`, `today`, or `tomorrow` and defaults to `today` in local time. No task editing, arbitrary assignees, OAuth, caching, version command, or completion is provided.
 
@@ -202,7 +202,7 @@ Go conventions: run `gofmt`, `go vet ./...`, `golangci-lint run`, and `go test .
 
 Configuration comes from `~/.asana.yaml`, overridden by global `--config`. The only keys are `token_command` (an optional argument list), `default_project` (an optional alias), and `projects` (an optional alias-to-URL map that may be empty). Copy project URLs from the browser address bar while viewing a project. Accept `https://app.asana.com/1/<workspace>/project/<gid>`, optionally ending in `/list` or `/board`, and the older `https://app.asana.com/0/<gid>/...`, including query strings. Reject bare GIDs, unknown keys, invalid URLs, and defaults that are not aliases. Public configuration examples use fictitious project IDs; user configuration belongs outside the public repository.
 
-Create a personal access token using [Asana's token setup guide](https://developers.asana.com/docs/personal-access-token). On macOS, store it once with `security add-generic-password -a "$USER" -s ASANA_ACCESS_TOKEN -w`, which prompts for the token, and configure `token_command: [security, find-generic-password, -s, ASANA_ACCESS_TOKEN, -w]`. A nonempty `ASANA_ACCESS_TOKEN` takes precedence. Otherwise, execute `token_command` without a shell, trim trailing whitespace from stdout, and fail on a nonzero exit or empty token, including stderr. The command has a 30-second timeout. Never store tokens in YAML or logs. See [asana/README.md](asana/README.md) for the full configuration example and usage.
+Create a personal access token using [Asana's token setup guide](https://developers.asana.com/docs/personal-access-token). On macOS, store it once with `security add-generic-password -a "$USER" -s ASANA_ACCESS_TOKEN -w`, which prompts for the token, and configure `token_command: [security, find-generic-password, -s, ASANA_ACCESS_TOKEN, -w]`. A nonempty `ASANA_ACCESS_TOKEN` takes precedence. Otherwise, execute `token_command` without a shell, trim trailing whitespace from stdout, and fail on a nonzero exit or empty token, including stderr. The command has a 30-second timeout. Never store tokens in YAML or logs. See [tools/asana/README.md](tools/asana/README.md) for the full configuration example and usage.
 
 For `add task`, validate title, configuration, project, due date, and description before credential lookup. Send one `POST /tasks?opt_fields=permalink_url` with `name`, one project GID, `assignee: "me"`, optional `notes`, and `due_on`. Transport errors and unreadable success responses from task creation must say that the task may exist and should be checked before retrying. Success exits 0 and prints only the permalink.
 
@@ -220,17 +220,17 @@ Project listing sorts by alias and has identical output with and without refresh
 
 The shared configuration writer uses yaml.v3 nodes to preserve comments, key order, and unrelated values. Follow symlinks and replace the target, preserving its permissions. Before credential lookup or API calls, create a temporary file beside the target to probe writability. Write, sync, close, then rename atomically. Do not compare the target with the original contents before replacement; concurrent edits can be overwritten. Clean up temporary files on failure. Leave `default_project` unchanged, even for the first project, and avoid rewriting the file when refresh adds nothing. Public-project creation, team sharing, project editing or deletion, and archived-project discovery are outside these commands.
 
-Run `gofmt -w *.go`, `go vet ./...`, `golangci-lint run`, `go test ./...`, and `go test -race ./...` from `asana/`. Use `GOTOOLCHAIN=go1.26.6` with the installed linter if its Go version differs from the active toolchain. Integration tests run Cobra in process with `httptest.Server`, a temporary `HOME`, and a stub token command. They must not use real credentials or create real Asana resources. Run `shellfmt.sh` on changed shell scripts.
+Run `gofmt -w *.go`, `go vet ./...`, `golangci-lint run`, `go test ./...`, and `go test -race ./...` from `tools/asana/`. Use `GOTOOLCHAIN=go1.26.6` with the installed linter if its Go version differs from the active toolchain. Integration tests run Cobra in process with `httptest.Server`, a temporary `HOME`, and a stub token command. They must not use real credentials or create real Asana resources. Run `shellfmt.sh` on changed shell scripts.
 
 ## YouTube playlist creator
 
-`yt-playlist-creator/` is a standalone, flat `package main` module using Go 1.26, Cobra, and `golang.org/x/oauth2`. Run `make install-yt-playlist-creator` after code changes; `make install-all` includes its installer and skips the build only when Go is absent. See [yt-playlist-creator/README.md](yt-playlist-creator/README.md) for setup and the complete input and output contract.
+`tools/yt-playlist-creator/` is a standalone, flat `package main` module using Go 1.26, Cobra, and `golang.org/x/oauth2`. Run `make install-yt-playlist-creator` after code changes; `make install-all` includes its installer and skips the build only when Go is absent. See [tools/yt-playlist-creator/README.md](tools/yt-playlist-creator/README.md) for setup and the complete input and output contract.
 
 `create` accepts an ordered list through title/description/repeatable track flags or strict JSON from `--file` (`-` for stdin). The CLI never fetches source pages. Exact video references and anonymous `yt-dlp` Songs queries share one preflight and creation sequence. Resolve every query before loading credentials, reject all invalid or duplicate tracks, fetch metadata in batches of 50, and create private playlists only. `--dry-run` does no writes. JSON output is exactly one `created`, `validated`, `rejected`, `error`, `partial`, or `unknown` object after flag parsing. Do not retry mutations, delete partial playlists, broaden visibility, or treat API success as proof of YouTube Music playback.
 
 `auth login --client-secrets <path>` uses loopback OAuth with PKCE and fixed Google endpoints. A nonempty `YT_PLAYLIST_CREATOR_OAUTH` JSON bundle takes precedence over macOS Keychain. Keychain operations call `security` directly, never `apikey.sh`. Writes use one bounded `security -i` command with hex data on stdin and verified readback, not a password in process arguments. Tests use local HTTP servers and fake `security`/`yt-dlp` executables; never use real credentials or create live playlists without separate authorization.
 
-The agent skill lives at `yt-playlist-creator/skill/SKILL.md`. `installers/install-skills.sh` links that directory after public skills and before private skills in each destination, preserving private precedence. The Go installer builds only the binary. `local-bin/essential-brew-overrides.sh` includes `yt-dlp`, which is required only for queries.
+The agent skill lives at `tools/yt-playlist-creator/skill/SKILL.md`. `installers/install-skills.sh` links that directory after public skills and before private skills in each destination, preserving private precedence. The Go installer builds only the binary. `local-bin/essential-brew-overrides.sh` includes `yt-dlp`, which is required only for queries.
 
 Run `gofmt -w *.go`, `go vet ./...`, `golangci-lint run`, `go test ./...`, and `go test -race ./...` from the module. Use `GOTOOLCHAIN=go1.26.6` with the installed linter when its build version differs from the active toolchain. Run `shellfmt.sh` on changed shell scripts, including test fixtures.
 

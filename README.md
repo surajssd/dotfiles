@@ -27,11 +27,11 @@ Use individual targets to install only what you need. Run `make help` for all ta
 | `make install-local-bin` | [Utility scripts](local-bin/) into `~/.local/bin/`. |
 | `make install-skills` | [Agent skills](skills/) into `~/.claude/skills/` and `~/.agents/skills/`. |
 | `make install-rules` | [Agent rules](rules/) into `~/.claude/rules/`. |
-| `make install-planner` | The [Planner command](planner/) into `$(go env GOPATH)/bin`. |
-| `make install-asana` | The [Asana command](asana/) into `$(go env GOPATH)/bin`. |
-| `make install-yt-playlist-creator` | The [playlist command](yt-playlist-creator/) into `$(go env GOPATH)/bin`. |
+| `make install-planner` | The [Planner command](tools/planner/) into `$(go env GOPATH)/bin`. |
+| `make install-asana` | The [Asana command](tools/asana/) into `$(go env GOPATH)/bin`. |
+| `make install-yt-playlist-creator` | The [playlist command](tools/yt-playlist-creator/) into `$(go env GOPATH)/bin`. |
 
-Skills come from `skills/`, `yt-playlist-creator/skill/`, and, when present, `dotfilesprivate/skills/`. Private skills take precedence when names match. The `~/.agents/skills/` path is shared by Codex, Gemini, opencode, and Copilot CLI.
+Skills come from `skills/`, `tools/yt-playlist-creator/skill/`, and, when present, `dotfilesprivate/skills/`. Private skills take precedence when names match. The `~/.agents/skills/` path is shared by Codex, Gemini, opencode, and Copilot CLI.
 
 Planner, Asana, and yt-playlist-creator are compiled Go commands. Their installers skip the build when Go is absent. Builds may download Go modules or a toolchain; a build failure stops `make install-all`. Rebuild them with their install targets after changing Go code.
 
@@ -47,9 +47,9 @@ This pulls the public repository and the private clone when present, refreshes v
 
 ## Tools
 
-- [Planner](planner/) manages Markdown plans and implementation status.
-- [Asana](asana/) manages tasks and private project aliases from the terminal.
-- [YouTube playlist creator](yt-playlist-creator/) creates private playlists from ordered video references or song queries.
+- [Planner](tools/planner/) manages Markdown plans and implementation status.
+- [Asana](tools/asana/) manages tasks and private project aliases from the terminal.
+- [YouTube playlist creator](tools/yt-playlist-creator/) creates private playlists from ordered video references or song queries.
 
 ### Claude Code with LiteLLM
 

@@ -1,6 +1,6 @@
 # Asana
 
-[Back to the README](../README.md#tools)
+[Back to the README](../../README.md#tools)
 
 Manage assigned tasks and private project aliases from the terminal.
 
@@ -146,4 +146,4 @@ Errors print `error:` to stderr and exit 1. Requests time out after 30 seconds, 
 
 Run any command with `--help`. Bare `asana add` and `asana get` also show help. Help requires no configuration or credentials; task operations require the `task` subcommand.
 
-Rebuild with `make install-asana` after changing Go code. See [the development checks](../CLAUDE.md#asana) for formatting, linting, and tests.
+Rebuild with `make install-asana` after changing Go code. See [the development checks](../../CLAUDE.md#asana) for formatting, linting, and tests.

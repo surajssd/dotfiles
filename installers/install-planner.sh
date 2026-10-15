@@ -12,6 +12,6 @@ if ! command -v go >/dev/null 2>&1; then
     exit 0
 fi
 
-echo "⏳ Installing planner Go command from ${REPO_DIR}/planner ..."
-go -C "${REPO_DIR}/planner" install . || die "planner build failed"
+echo "⏳ Installing planner Go command from ${REPO_DIR}/tools/planner ..."
+go -C "${REPO_DIR}/tools/planner" install . || die "planner build failed"
 echo "✅ planner installed into $(go env GOPATH)/bin"

@@ -1,4 +1,4 @@
-module github.com/surajssd/dotfiles/yt-playlist-creator
+module github.com/surajssd/dotfiles/tools/yt-playlist-creator
 
 go 1.26.0
 

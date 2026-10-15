@@ -1,6 +1,6 @@
 # Planner
 
-[Back to the README](../README.md#tools)
+[Back to the README](../../README.md#tools)
 
 Manage Markdown plans by repository, track implementation status, and check metadata and links.
 
