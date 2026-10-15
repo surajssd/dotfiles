@@ -1,0 +1,29 @@
+## Conversation
+The user asked to remove the containers/ folder and all references to OpenClaw. Mid-turn they added "do it in a wt", so the work moved to a worktree made with wta. After reviewing the summary they said "ok commit it".
+
+## Actions
+- Searched with rg (including --no-ignore and --hidden) across the repo, dotfilesprivate/, renovate.json, and docs/ for "openclaw" and "containers".
+- Created worktree ~/.herdr/worktrees/dotfiles-remove-openclaw on new branch remove-openclaw from master 315b9cd, by sourcing the Claude shell snapshot to get the wta function.
+- git rm -r containers .github/workflows/build-openclaw-image.yaml.
+- Removed the containers/ line from CLAUDE.md (AGENTS.md is a symlink to it) and the container-builds sentence from README.md with sed -i ''.
+- Linted the commit message with the conventional-commits validator (0 problems) and committed with git commit -s -S.
+
+## Errors & Mistakes
+The first edits were planned in the main checkout before the user asked for a worktree. No files had been changed there yet, so nothing needed reverting.
+
+## Dead Ends
+None
+
+## Hints for Future Agents
+- The post-commit autopush hook (local-bin/git-autopush-post-commit) only pushes main or master. Commits on this branch stay local until pushed or merged.
+- Images already pushed to ghcr.io/surajssd/dotfiles/openclaw are not removed by this commit; the GHCR package must be deleted in GitHub package settings.
+- "containers" still appears in local-bin/docker-cleanup.sh and local-bin/debug-node.sh, but those are Docker and Kubernetes terms, not references to the deleted folder.
+- Renovate had no explicit OpenClaw rule; it tracked the base image through the Dockerfile, so those digest PRs stop on their own.
+
+## Codebase Discoveries
+- wta is a zsh function (not a script) that creates worktrees under ~/.herdr/worktrees/<repo>-<branch>.
+- The OpenClaw history is mostly Renovate digest bumps (chore(deps): update ghcr.io/openclaw/openclaw:latest docker digest ...).
+
+## Open Questions
+- Whether the user wants the GHCR openclaw package deleted.
+- Whether to merge to master (which autopushes) or open a PR.
