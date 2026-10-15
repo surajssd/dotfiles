@@ -98,13 +98,20 @@ func (c completer) parents(cmd *cobra.Command, args []string, toComplete string)
 	return out, cobra.ShellCompDirectiveDefault
 }
 
-// repos offers every distinct repository label.
+// repos offers every distinct repository label, keeping a leading != that
+// the user has typed.
 func (c completer) repos(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	corp, ok := c.corpus()
 	if !ok {
 		return nil, cobra.ShellCompDirectiveNoFileComp
 	}
-	return completeValues(repoLabels(corp))(cmd, args, toComplete)
+	labels := repoLabels(corp)
+	if strings.HasPrefix(toComplete, repoExclusion) {
+		for i, label := range labels {
+			labels[i] = repoExclusion + label
+		}
+	}
+	return completeValues(labels)(cmd, args, toComplete)
 }
 
 // completeValues completes from a fixed list.

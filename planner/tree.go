@@ -38,10 +38,18 @@ func (o listOptions) wide() bool { return o.output == "wide" }
 // than a machine-readable one.
 func (o listOptions) table() bool { return o.output == "" || o.output == "wide" }
 
+// repoExclusion is the prefix that turns the --repo filter into an exclusion.
+const repoExclusion = "!="
+
 // matchesRepo reports whether a repository label passes the --repo filter: an
-// empty filter matches everything, otherwise a case-insensitive substring.
+// empty filter matches everything, otherwise a case-insensitive substring,
+// inverted when the filter starts with !=.
 func matchesRepo(repo, filter string) bool {
-	return filter == "" || strings.Contains(strings.ToLower(repo), strings.ToLower(filter))
+	if filter == "" {
+		return true
+	}
+	text, exclude := strings.CutPrefix(filter, repoExclusion)
+	return strings.Contains(strings.ToLower(repo), strings.ToLower(text)) != exclude
 }
 
 // selects reports whether the --all, --repo, and --status filters keep a

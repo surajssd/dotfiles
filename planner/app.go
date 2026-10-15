@@ -60,6 +60,8 @@ Implemented, Superseded, and Abandoned) are shown. --all also lists plans
 without valid front matter, with - in STATUS and CHECKED. CHECKED counts
 calendar days since StatusChecked; ! marks an active plan older than 7 days.
 --repo keeps plans whose <org>/<repo> contains the value, ignoring case.
+--repo '!=<text>' leaves those plans out instead and keeps plans without a
+repository. Spaces after != are ignored.
 --status keeps plans with that ImplementationStatus, typed in any case with
 or without hyphens, and includes matching inactive plans without --all.
 
@@ -384,18 +386,27 @@ func addListFlags(cmd *cobra.Command, opts *listOptions, complete completer, for
 	cmd.Flags().BoolVar(&opts.all, "all", false, "show Implemented, Superseded, and Abandoned plans too")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output format: "+strings.Join(formats, ", "))
 	cmd.Flags().BoolVar(&opts.noHeaders, "no-headers", false, "omit the header row")
-	cmd.Flags().StringVar(&opts.repo, "repo", "", "only plans whose <org>/<repo> contains this text (case-insensitive)")
+	cmd.Flags().StringVar(&opts.repo, "repo", "", "only plans whose <org>/<repo> contains this text (case-insensitive); !=<text> excludes them instead")
 	cmd.Flags().StringVar(&opts.status, "status", "", "only plans with this ImplementationStatus (any case, with or without hyphens)")
 	mustCompleteFlag(cmd, "output", completeValues(formats))
 	mustCompleteFlag(cmd, "repo", complete.repos)
 	mustCompleteFlag(cmd, "status", completeValues(statusValues))
 }
 
-// validate rejects an output format the command does not offer and a status
-// it does not recognise, and stores the recognised spelling of the status.
+// validate rejects an output format the command does not offer, an
+// exclusion without a repository, and a status it does not recognise. It
+// drops the spaces around the text after != and stores the recognised
+// spelling of the status.
 func (o *listOptions) validate(formats []string) error {
 	if o.output != "" && !slices.Contains(formats, o.output) {
 		return fmt.Errorf("unknown output format %q; use one of %s", o.output, strings.Join(formats, ", "))
+	}
+	if text, ok := strings.CutPrefix(o.repo, repoExclusion); ok {
+		text = strings.TrimSpace(text)
+		if text == "" {
+			return fmt.Errorf("--repo %q names no repository; use --repo '!=<org>/<repo>'", o.repo)
+		}
+		o.repo = repoExclusion + text
 	}
 	if o.status == "" {
 		return nil

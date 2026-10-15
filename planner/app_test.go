@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -167,6 +168,69 @@ func TestRepoFilterIsPartialAndCaseInsensitive(t *testing.T) {
 		}
 		if io.stdout.Len() != 0 || io.stderr.String() != "No plans found.\n" {
 			t.Errorf("%s --repo nomatch: stdout = %q, stderr = %q", cmd, io.stdout, io.stderr)
+		}
+	}
+}
+
+func TestRepoExclusion(t *testing.T) {
+	fixtureHome(t)
+	root := fixtureRoot(t)
+	list := func(t *testing.T, args ...string) testIO {
+		t.Helper()
+		deps, io := testDependencies("", true, 0)
+		if err := run(t, deps, append([]string{"--root", root}, args...)...); err != nil {
+			t.Fatalf("%v: %v", args, err)
+		}
+		return io
+	}
+	for _, cmd := range []string{"get", "tree"} {
+		for _, repo := range []string{"!=acme/widgets", "!=widgets", "!=ACME/Widgets", "!= acme/widgets "} {
+			out := list(t, cmd, "--repo", repo, "--all").stdout.String()
+			for _, want := range []string{"loose-plan", "gadgets-cross-child", "acme/gizmos"} {
+				if !strings.Contains(out, want) {
+					t.Errorf("%s --repo %q lacks %q:\n%s", cmd, repo, want, out)
+				}
+			}
+			// The tree places gadgets-cross-child under its excluded parent.
+			if strings.Contains(out, "widgets-crlf") || strings.Contains(out, "widgets-umbrella") != (cmd == "tree") {
+				t.Errorf("%s --repo %q printed:\n%s", cmd, repo, out)
+			}
+		}
+		all := list(t, cmd, "--all")
+		unmatched := list(t, cmd, "--repo", "!=nomatch", "--all")
+		if unmatched.stdout.String() != all.stdout.String() || unmatched.stderr.String() != all.stderr.String() {
+			t.Errorf("%s --repo !=nomatch differs from --all:\n%s", cmd, unmatched.stdout)
+		}
+		out := list(t, cmd, "--repo", "!=widgets", "--status", "implemented").stdout.String()
+		if !strings.Contains(out, "Shared name in gadgets") || !strings.Contains(out, "Shared name in gizmos") || strings.Contains(out, "widgets-") {
+			t.Errorf("%s --repo !=widgets --status implemented printed:\n%s", cmd, out)
+		}
+		hidden := map[string]string{"get": "4", "tree": "3"}[cmd] + " plans without valid front matter hidden (--all shows them; planner check lists the problems)\n"
+		if got := list(t, cmd, "--repo", "!=gadgets").stderr.String(); got != hidden {
+			t.Errorf("%s --repo !=gadgets: stderr = %q, want %q", cmd, got, hidden)
+		}
+		if got := list(t, cmd, "--repo", "!=widgets").stderr.String(); got != "" {
+			t.Errorf("%s --repo !=widgets: stderr = %q", cmd, got)
+		}
+		if out := list(t, cmd, "--repo", "!=widgets", "widgets-crlf").stdout.String(); !strings.Contains(out, "widgets-crlf") {
+			t.Errorf("%s --repo !=widgets widgets-crlf printed:\n%s", cmd, out)
+		}
+	}
+	io := list(t, "get", "-o", "json", "--repo", "!=acme", "--status", "implemented")
+	if got := io.stdout.String(); got != "{\n    \"items\": []\n}\n" || io.stderr.Len() != 0 {
+		t.Errorf("empty json list: stdout = %q, stderr = %q", got, io.stderr)
+	}
+}
+
+func TestRepoFilterRejectsBareExclusion(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "missing")
+	for _, cmd := range []string{"get", "tree"} {
+		for _, repo := range []string{"!=", "!= "} {
+			deps, io := testDependencies("", true, 0)
+			err := run(t, deps, cmd, "--root", root, "--repo", repo)
+			if err == nil || !strings.Contains(err.Error(), fmt.Sprintf("--repo %q names no repository", repo)) || io.stdout.Len() != 0 {
+				t.Errorf("%s --repo %q: error = %v, stdout = %q", cmd, repo, err, io.stdout)
+			}
 		}
 	}
 }
@@ -610,6 +674,7 @@ func TestCompletion(t *testing.T) {
 		{[]string{"tree", "--root", root, "--status", "Ab"}, []string{"Abandoned"}, []string{"Superseded"}},
 		{[]string{"create", "--root", root, "--status", "Ab"}, []string{"Abandoned"}, []string{"Superseded"}},
 		{[]string{"get", "--root", root, "--repo", "acme/g"}, []string{"acme/gadgets", "acme/gizmos"}, []string{"acme/widgets"}},
+		{[]string{"get", "--root", root, "--repo", "!=acme/g"}, []string{"!=acme/gadgets", "!=acme/gizmos"}, []string{"acme/widgets"}},
 		{[]string{"get", "--root", root, "rep"}, []string{"repos\tList every repository that has plans"}, []string{"widgets-"}},
 		{[]string{"tree", "--root", root, "--status", "Sup"}, []string{"Superseded"}, []string{"InProgress"}},
 		{[]string{"get", "--root", root, "-o", ""}, []string{"wide", "json", "yaml", "name"}, nil},
