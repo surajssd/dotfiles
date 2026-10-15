@@ -1,0 +1,20 @@
+## Conversation
+The user asked to add planner get --pr to find all plans associated with a pull request. The implementation uses the existing PullRequests metadata, searches locally, and includes inactive plans. After the implementation was installed and checked, the user asked to commit and merge to master. Publication was not requested.
+
+## Actions
+Read the repository guidance, existing CLI and selection code, tests, documentation, and prior commit notes. Created planner-get-pr with wta from master fd3eb39. Added integration tests first and observed unknown flag: --pr failures. Added URL validation using linkProblem, exact matching of trimmed PullRequests entries, inactive-plan inclusion, named-plan filtering, and consistent empty-list reporting. Updated CLI help, tools/planner/README.md, and CLAUDE.md. Ran gofmt, focused tests, go test ./..., go vet ./..., and GOTOOLCHAIN=go1.26.6 golangci-lint run successfully. Installed with make install-planner and verified name and JSON output against the fixture corpus with the installed binary. Audited the complete diff: six human-authored files, 143 additions and 12 deletions, no generated or untracked files. Fetched origin master before committing and confirmed master and origin/master both remained at fd3eb39. Validated the Conventional Commit message with the skill validator, then created the signed, signed-off commit with hooks disabled and attached this note before local integration.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+The post-commit hook can push master to GitHub. Use git -c core.hooksPath=/dev/null for local commits and merges. The user did not authorize publication. The new flag accepts one URL and belongs only to get. It searches PullRequests, while positional URL references still search Parent, SupersededBy, Issues, and PullRequests. PR filtering also applies to named plans, while the pre-existing behavior of named selections bypassing repository and status filters remains unchanged. URL matching trims surrounding whitespace but does not otherwise canonicalize URLs. The installed linter needs GOTOOLCHAIN=go1.26.6 with the current Go setup.
+
+## Codebase Discoveries
+listOptions and selection helpers live in tree.go and are shared by get and tree. The get-only flag leaves the tree option empty. hidden and inactive must exclude PR searches so empty PR results do not print misleading --all hints. hasPullRequest requires decoded front matter, including when --all is present, and duplicate PR entries do not duplicate plan rows.
+
+## Open Questions
+None. No follow-up work is deferred.
