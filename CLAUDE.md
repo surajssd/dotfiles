@@ -23,7 +23,6 @@ Both repositories mirror the same structure:
 - `asana/` - Go module for the `asana` task-creation command (public repo only, installed with `go install`)
 - `yt-playlist-creator/` - Go module for private YouTube playlists, with its agent skill in `skill/` (public repo only, installed with `go install`)
 - `installers/` - Installation automation scripts (public repo only)
-- `containers/` - Container image builds, e.g. `openclaw` (public repo only, not installed)
 
 ## Common Commands
 

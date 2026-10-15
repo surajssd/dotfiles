@@ -35,7 +35,7 @@ Skills come from `skills/`, `yt-playlist-creator/skill/`, and, when present, `do
 
 Planner, Asana, and yt-playlist-creator are compiled Go commands. Their installers skip the build when Go is absent. Builds may download Go modules or a toolchain; a build failure stops `make install-all`. Rebuild them with their install targets after changing Go code.
 
-Installation scripts live in [installers/](installers/). Container builds, including OpenClaw, live in [containers/](containers/) and are not installed by `make install-all`.
+Installation scripts live in [installers/](installers/).
 
 ## Updates
 
