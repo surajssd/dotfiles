@@ -19,6 +19,7 @@ var statusValues = []string{
 	"ImplementedUnmerged",
 	"Implemented",
 	"Superseded",
+	"Abandoned",
 }
 
 // canonicalStatus maps a status typed on the command line to its recognised
@@ -55,7 +56,7 @@ URL; Issues and PullRequests hold lists of URLs.
 Recognised ImplementationStatus values:
 
   NotImplemented, InProgress, PartiallyImplemented, ImplementedUnmerged,
-  Implemented, Superseded
+  Implemented, Superseded, Abandoned
 
 Rules:
 

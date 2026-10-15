@@ -61,7 +61,7 @@ func (p *plan) valid() bool {
 
 func (p *plan) active() bool {
 	status := p.front.ImplementationStatus
-	return status != "Implemented" && status != "Superseded"
+	return status != "Implemented" && status != "Superseded" && status != "Abandoned"
 }
 
 // linksTo reports whether the front matter names the URL as parent,

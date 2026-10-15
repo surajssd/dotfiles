@@ -56,12 +56,12 @@ const getHelp = `Print the plans under the root as a table: NAME, REPO, STATUS, 
 TITLE, one row per plan, sorted by repository then filename.
 
 Without --all only active plans (every ImplementationStatus except
-Implemented and Superseded) are shown; --all also lists plans without valid
-front matter, with - in STATUS and CHECKED. CHECKED counts calendar days
-since StatusChecked; ! marks an active plan older than 7 days. --repo keeps
-plans whose <org>/<repo> contains the value, ignoring case. --status keeps
-plans with that ImplementationStatus, typed in any case with or without
-hyphens, and shows an Implemented or Superseded status without --all.
+Implemented, Superseded, and Abandoned) are shown. --all also lists plans
+without valid front matter, with - in STATUS and CHECKED. CHECKED counts
+calendar days since StatusChecked; ! marks an active plan older than 7 days.
+--repo keeps plans whose <org>/<repo> contains the value, ignoring case.
+--status keeps plans with that ImplementationStatus, typed in any case with
+or without hyphens, and includes matching inactive plans without --all.
 
 -o wide adds TYPE, PATH (home shown as ~), and NOTE, and never truncates.
 -o json and -o yaml print every field of each plan: one named plan is a
@@ -160,7 +160,8 @@ Parent, SupersededBy, Issues, and PullRequests. The plan root comes from
 
   root: ~/plans
 
-Active means every ImplementationStatus except Implemented and Superseded.
+Active means every ImplementationStatus except Implemented, Superseded,
+and Abandoned.
 planner completion zsh (or bash, fish, powershell) prints a script that
 completes commands, flags, plan names, repositories, and statuses.`,
 		SilenceErrors: true,
@@ -380,7 +381,7 @@ func linksCommand(deps dependencies, resolve func() (string, error), complete co
 
 // addListFlags attaches the flags that planner get and planner tree share.
 func addListFlags(cmd *cobra.Command, opts *listOptions, complete completer, formats []string) {
-	cmd.Flags().BoolVar(&opts.all, "all", false, "show Implemented and Superseded plans too")
+	cmd.Flags().BoolVar(&opts.all, "all", false, "show Implemented, Superseded, and Abandoned plans too")
 	cmd.Flags().StringVarP(&opts.output, "output", "o", "", "output format: "+strings.Join(formats, ", "))
 	cmd.Flags().BoolVar(&opts.noHeaders, "no-headers", false, "omit the header row")
 	cmd.Flags().StringVar(&opts.repo, "repo", "", "only plans whose <org>/<repo> contains this text (case-insensitive)")

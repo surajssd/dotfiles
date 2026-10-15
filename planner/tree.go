@@ -45,8 +45,8 @@ func matchesRepo(repo, filter string) bool {
 }
 
 // selects reports whether the --all, --repo, and --status filters keep a
-// plan. --status names the plans to show by itself, so an Implemented or
-// Superseded status matches without --all.
+// plan. --status names the plans to show by itself, so an inactive status
+// matches without --all.
 func (o listOptions) selects(p *plan) bool {
 	if !matchesRepo(p.repo, o.repo) {
 		return false
@@ -65,8 +65,8 @@ func (o listOptions) hidden(p *plan) bool {
 }
 
 // inactive reports whether a valid plan is left out only for being
-// Implemented or Superseded, which the note about an empty list counts so it
-// can point at --all.
+// Implemented, Superseded, or Abandoned, which the note about an empty list
+// counts so it can point at --all.
 func (o listOptions) inactive(p *plan) bool {
 	return !o.all && o.status == "" && p.valid() && !p.active() && matchesRepo(p.repo, o.repo)
 }
@@ -91,7 +91,7 @@ func listWidth(deps dependencies, opts listOptions) int {
 // writeList prints the output on stdout and the notes about empty output and
 // hidden plans on stderr. The empty note is skipped when plans were named,
 // because their errors already say what is missing; otherwise it also counts
-// the Implemented or Superseded plans the filters passed over.
+// the inactive plans the filters passed over.
 func writeList(deps dependencies, output string, skipped, inactive int, noteWhenEmpty bool) error {
 	if err := writeOutput(deps.stdout, output); err != nil {
 		return err
@@ -100,7 +100,7 @@ func writeList(deps dependencies, output string, skipped, inactive int, noteWhen
 	if output == "" && noteWhenEmpty {
 		notes = append(notes, "No plans found.")
 		if inactive > 0 {
-			notes = append(notes, fmt.Sprintf("%s hidden (--all shows them)", plural(inactive, "Implemented or Superseded plan", "Implemented or Superseded plans")))
+			notes = append(notes, fmt.Sprintf("%s hidden (--all shows them)", plural(inactive, "Implemented, Superseded, or Abandoned plan", "Implemented, Superseded, or Abandoned plans")))
 		}
 	}
 	if skipped > 0 {

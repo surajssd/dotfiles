@@ -174,7 +174,7 @@ func TestRepoFilterIsPartialAndCaseInsensitive(t *testing.T) {
 func TestEmptyListCountsInactivePlans(t *testing.T) {
 	fixtureHome(t)
 	root := fixtureRoot(t)
-	want := "No plans found.\n1 Implemented or Superseded plan hidden (--all shows them)\n"
+	want := "No plans found.\n1 Implemented, Superseded, or Abandoned plan hidden (--all shows them)\n"
 	for _, cmd := range []string{"get", "tree"} {
 		deps, io := testDependencies("", true, 0)
 		if err := run(t, deps, cmd, "--root", root, "--repo", "gizmos"); err != nil {
@@ -189,6 +189,55 @@ func TestEmptyListCountsInactivePlans(t *testing.T) {
 		}
 		if io.stdout.Len() != 0 || io.stderr.String() != "No plans found.\n" {
 			t.Errorf("%s --repo gizmos --status InProgress: stdout = %q, stderr = %q", cmd, io.stdout, io.stderr)
+		}
+	}
+}
+
+func TestAbandonedStatus(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "github.com", "acme", "widgets", "260910120000-abandoned-plan.md")
+	input := "---\nType: plan\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: \"Old note.\"\n---\n\n# Abandoned plan\n\nBody.\n"
+	writeFile(t, path, input)
+	deps, _ := testDependencies("", true, 0)
+	if err := run(t, deps, "set", "status", "--root", root, "abandoned-plan", "aBaNdOnEd", "--note", "Will not be implemented."); err != nil {
+		t.Fatal(err)
+	}
+	want := strings.NewReplacer("InProgress", "Abandoned", "2026-09-01", "2026-09-29", "Old note.", "Will not be implemented.").Replace(input)
+	if got := readFile(t, path); got != want {
+		t.Errorf("content:\n%s", got)
+	}
+	deps, io := testDependencies("", true, 0)
+	if err := run(t, deps, "check", "--root", root); err != nil {
+		t.Fatal(err)
+	}
+	if io.stdout.Len() != 0 || io.stderr.String() != "No findings.\n" {
+		t.Errorf("check: stdout = %q, stderr = %q", io.stdout, io.stderr)
+	}
+	for _, cmd := range []string{"get", "tree"} {
+		for _, tc := range []struct {
+			args []string
+			show bool
+		}{
+			{nil, false},
+			{[]string{"--all"}, true},
+			{[]string{"--status", "abandoned"}, true},
+			{[]string{"abandoned-plan"}, true},
+		} {
+			deps, io := testDependencies("", true, 0)
+			deps.now = func() time.Time { return fixedNow.AddDate(0, 0, 14) }
+			if err := run(t, deps, append([]string{cmd, "--root", root}, tc.args...)...); err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.Contains(io.stdout.String(), "abandoned-plan"); got != tc.show {
+				t.Errorf("%s %v: stdout = %q", cmd, tc.args, io.stdout)
+			}
+			if tc.show {
+				if !strings.Contains(io.stdout.String(), "Abandoned") || !strings.Contains(io.stdout.String(), "14d") || strings.Contains(io.stdout.String(), "!") || io.stderr.Len() != 0 {
+					t.Errorf("%s %v: stdout = %q, stderr = %q", cmd, tc.args, io.stdout, io.stderr)
+				}
+			} else if io.stderr.String() != "No plans found.\n1 Implemented, Superseded, or Abandoned plan hidden (--all shows them)\n" {
+				t.Errorf("%s: stderr = %q", cmd, io.stderr)
+			}
 		}
 	}
 }
@@ -556,6 +605,10 @@ func TestCompletion(t *testing.T) {
 		{[]string{"get", "--root", root, "sha"}, nil, []string{"shared-name"}},
 		{[]string{"describe", "--root", root, "widgets-umbrella", "widgets-"}, []string{"widgets-crlf\t"}, []string{"widgets-umbrella\t"}},
 		{[]string{"set", "status", "--root", root, "widgets-umbrella", "In"}, []string{"InProgress"}, []string{"Implemented", "widgets-"}},
+		{[]string{"set", "status", "--root", root, "widgets-umbrella", "Ab"}, []string{"Abandoned"}, []string{"Superseded"}},
+		{[]string{"get", "--root", root, "--status", "Ab"}, []string{"Abandoned"}, []string{"Superseded"}},
+		{[]string{"tree", "--root", root, "--status", "Ab"}, []string{"Abandoned"}, []string{"Superseded"}},
+		{[]string{"create", "--root", root, "--status", "Ab"}, []string{"Abandoned"}, []string{"Superseded"}},
 		{[]string{"get", "--root", root, "--repo", "acme/g"}, []string{"acme/gadgets", "acme/gizmos"}, []string{"acme/widgets"}},
 		{[]string{"get", "--root", root, "rep"}, []string{"repos\tList every repository that has plans"}, []string{"widgets-"}},
 		{[]string{"tree", "--root", root, "--status", "Sup"}, []string{"Superseded"}, []string{"InProgress"}},

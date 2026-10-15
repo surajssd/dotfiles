@@ -24,10 +24,13 @@ match exactly one plan.
 Recognised ImplementationStatus values:
 
   NotImplemented, InProgress, PartiallyImplemented, ImplementedUnmerged,
-  Implemented, Superseded
+  Implemented, Superseded, Abandoned
 
 The status may be typed in any case, with or without hyphens: in-progress and
 inprogress both mean InProgress.
+
+Abandoned means the plan will not be implemented. Like Implemented and
+Superseded, it is inactive and hidden by default.
 
 --note-file reads the note from a file instead, or from stdin when the path
 is -, dropping blank lines at either end. It cannot be combined with --note.

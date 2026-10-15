@@ -26,6 +26,8 @@ Plans live at `<root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md`. Front m
 | `Parent`, `SupersededBy` | Link related plans using a wikilink, path, or URL. |
 | `Issues`, `PullRequests` | Store lists of tracker and pull request URLs. |
 
+Use `Abandoned` for a plan that will not be implemented. `Implemented`, `Superseded`, and `Abandoned` are inactive statuses.
+
 ## Browse plans
 
 | Command | Result |
@@ -65,6 +67,8 @@ A plan reference can be a path, wikilink, basename, short name from the table, o
 - `create` accepts `--parent` and an initial `--status` with `--note`. Both `create` and `log` accept repeatable `--issue` and `--pr` flags; duplicate URLs are skipped.
 - `log` updates `StatusChecked` to today. Use `--keep-checked` for administrative entries and `--note` to replace the summary in the same write.
 - `set status` accepts `--note-file <path>` or `--note-file -` for stdin. Use `--superseded-by <ref>` when setting the status to `Superseded`.
+
+To abandon a plan, run `planner set status <plan> Abandoned --note "Will not be implemented."`. The plan stays available by name, with `--all`, or with `--status Abandoned`.
 
 ## Validate plans
 

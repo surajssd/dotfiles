@@ -400,6 +400,14 @@ func TestNewStatusAndNoteFlags(t *testing.T) {
 	}
 
 	deps, io = testDependencies("", true, 0)
+	if err := run(t, deps, "create", "--root", root, "--status", "abandoned", "--note", "Will not be implemented.", "abandoned"); err != nil {
+		t.Fatal(err)
+	}
+	if got := readFile(t, strings.TrimSpace(io.stdout.String())); got != "---\nType: plan\nImplementationStatus: Abandoned\nStatusChecked: 2026-09-29\nStatusNote: \"Will not be implemented.\"\n---\n\n" {
+		t.Errorf("content:\n%s", got)
+	}
+
+	deps, io = testDependencies("", true, 0)
 	if err := run(t, deps, "create", "--root", root, "--note", "Only a note.", "note only"); err != nil {
 		t.Fatal(err)
 	}
