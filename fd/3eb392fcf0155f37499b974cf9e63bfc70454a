@@ -1,0 +1,27 @@
+## Conversation
+
+The user asked to move asana, planner, and yt-playlist-creator into a folder called tools. Mid-turn they said "bro rebase on master before you start"; local master already matched origin/master at d70615e after a fetch, so no rebase was needed and no branch or worktree was created. After reviewing the uncommitted result, they said "ok commit it and merge to master". The work was already on master, so the commit itself is the merge; the post-commit autopush hook published it.
+
+## Actions
+
+Moved the three module directories with git mv (127 pure renames). Changed each go.mod module line to github.com/surajssd/dotfiles/tools/<name>. Updated the go -C paths and echo lines in installers/install-{planner,asana,yt-playlist-creator}.sh, the three binary entries in .gitignore, links and the skill path in README.md, and every path, link, and module name in CLAUDE.md (AGENTS.md is a symlink to it). Fixed ../README.md#tools and ../CLAUDE.md#asana links in tools/planner/README.md and tools/asana/README.md to ../../. Ran gofmt -l, go vet ./..., and go test -count=1 ./... in each module (all ok), shellfmt.sh on the three installers (clean), and make install-planner install-asana install-yt-playlist-creator (all built from tools/). Outside the repo, repointed ~/.claude/skills/yt-playlist-creator and ~/.agents/skills/yt-playlist-creator with ln -sfn to tools/yt-playlist-creator/skill, because the old links went dead after the move. Commit message passed the conventional-commits commitlint validator.
+
+## Errors & Mistakes
+
+The session cwd was the old planner/ directory, so after git mv the next Bash call failed with "Working directory ... was deleted"; reissuing from the repo root fixed it. The first CLAUDE.md sed pass missed the module paths in parentheses (pattern expected a backtick before the paren); a second sed fixed them. The first commit body claimed the root would hold "only configuration, scripts, and installers", which was false (skills/, rules/, docs/, containers/ remain); it was rewritten before committing.
+
+## Dead Ends
+
+None.
+
+## Hints for Future Agents
+
+The yt-playlist-creator skill is NOT linked by installers/install-skills.sh (the link was dropped before commit 4acd0c0, see its note), yet CLAUDE.md, README.md, and tools/yt-playlist-creator/README.md still say it is. The only working links are the hand-made symlinks in ~/.claude/skills and ~/.agents/skills. This mismatch predates the move and was reported to the user, not fixed. tools/planner/testdata contains ../ relative paths that are fixture data for link checks, not repo paths; do not rewrite them.
+
+## Codebase Discoveries
+
+No Go code imports the module paths, and planner's version command reads debug.ReadBuildInfo without hardcoding the path, so renaming the modules needed only go.mod edits. The renovate gomod manager discovers go.mod files anywhere, so renovate.json needed no change. The private repo has no references to these directories.
+
+## Open Questions
+
+Whether to restore the yt-playlist-creator line in install-skills.sh or correct the docs that claim it exists.
