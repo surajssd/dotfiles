@@ -149,6 +149,7 @@ func newCommand(deps dependencies) *cobra.Command {
   planner get repos            every repository that has plans
   planner tree [<plan>...]     the same as an effort tree, or the named subtrees
   planner describe <plan>...   every field of a plan, its children, its findings
+  planner open <plan>          open a plan file in VS Code
   planner check [<plan>...]    front matter and link findings; exit 1 on errors
   planner check --github       also compare StatusNote with GitHub's PR states
   planner create <name...>     create a plan for the current repository
@@ -257,6 +258,21 @@ completes commands, flags, plan names, repositories, and statuses.`,
 		},
 	}
 	describe.Flags().BoolVar(&describeGitHub, "github", false, "show the state gh reports for each pull request")
+
+	open := &cobra.Command{
+		Use:               "open <plan>",
+		Short:             "Open a plan file in VS Code",
+		Long:              openHelp,
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: complete.planFirst,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			rootDir, err := resolve()
+			if err != nil {
+				return err
+			}
+			return runOpen(cmd.Context(), deps, rootDir, args[0])
+		},
+	}
 
 	var checkOpts checkOptions
 	check := &cobra.Command{
@@ -370,7 +386,7 @@ completes commands, flags, plan names, repositories, and statuses.`,
 		},
 	}
 
-	root.AddCommand(get, tree, describe, check, create, logCmd, set, version)
+	root.AddCommand(get, tree, describe, open, check, create, logCmd, set, version)
 	return root
 }
 

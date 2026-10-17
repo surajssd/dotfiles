@@ -782,6 +782,8 @@ func TestCompletion(t *testing.T) {
 		{[]string{"check", "--root", root, "widgets-um"}, []string{"widgets-umbrella\tWidgets umbrella"}, nil},
 		{[]string{"log", "--root", root, "widgets-um"}, []string{"widgets-umbrella\tWidgets umbrella"}, nil},
 		{[]string{"log", "--root", root, "widgets-umbrella", "widgets-"}, nil, []string{"widgets-crlf"}},
+		{[]string{"open", "--root", root, "widgets-um"}, []string{"widgets-umbrella\tWidgets umbrella"}, nil},
+		{[]string{"open", "--root", root, "widgets-umbrella", "widgets-"}, nil, []string{"widgets-crlf"}},
 	}
 	for _, tc := range cases {
 		deps, io := testDependencies("", true, 0)

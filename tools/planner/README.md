@@ -39,6 +39,12 @@ Use `Abandoned` for a plan that will not be implemented. `Implemented`, `Superse
 
 A plan reference can be a path, wikilink, basename, short name from the table, or listed URL. URLs select every matching plan. Unmatched references exit 1 after found results.
 
+### Open a plan in VS Code
+
+Run `planner open <plan>` to open a plan file in VS Code. For example, `planner open improve-performance` opens the plan with that short name. Tab completion works for plan names.
+
+The command accepts the same plan references as `get`, but the reference must match exactly one plan. Inactive plans and plans with missing or invalid front matter can be opened too. The command uses `code` on `PATH` and returns without waiting for the file to be closed. If `code` is missing, install the VS Code command-line launcher.
+
 ### Filters and output
 
 | Option | Behavior |
