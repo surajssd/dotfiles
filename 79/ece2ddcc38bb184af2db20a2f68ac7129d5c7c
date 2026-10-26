@@ -1,0 +1,20 @@
+## Conversation
+The user asked to commit the existing skill changes and follow prior vendored-skill commits. The only change was the Humanizer README. No push or content edits were requested.
+
+## Actions
+Read the conventional-commits skill, repository instructions, Humanizer AGENTS.md, the vendoring registry, prior vendoring commits and their notes, and the active post-commit hook. Inspected the complete diff against the merge base with origin/master, which was HEAD 2508cc68ae568ce41adddd3d6e89c62de37d643e. Cloned blader/humanizer, confirmed README.md matches upstream HEAD 8c307f367c91bd974002f10f2be2965d642c13df byte for byte, and confirmed the upstream diff since the prior vendored revision is the same README-only change. Ran python3 scripts/validate-package.py in the complete upstream clone; it reported Humanizer package v3.1.0 is valid. The commit message passed commitlint with zero problems and zero warnings. Staged and reviewed one file with five additions and two deletions. Committed with git commit -s -S and invocation-scoped hooks disabled. Attached this note immediately after committing.
+
+## Errors & Mistakes
+Git diff --check reported trailing whitespace on README.md lines 1 and 5, and the staged check exited 2. Both lines match upstream exactly, so the existing imported formatting was preserved deliberately.
+
+## Dead Ends
+None
+
+## Hints for Future Agents
+The active post-commit hook automatically pushes master and can rebase. Disable it per invocation for local commits when publishing is not authorized. Prior vendoring commits use docs(skills): re-vendor humanizer and record the upstream SHA in the message. The vendoring script excludes .claude-plugin, so package validation needs the complete upstream clone. Do not add excluded files merely to run the validator locally.
+
+## Codebase Discoveries
+The sponsorship update is documentation only. Upstream remains at Humanizer v3.1.0, and SKILL.md is unchanged. README.md has blob f7d1508fcfb223697f69d25ebb844fcb7748373b. The committed file is vendored upstream content; there are no generated build artifacts or local source changes.
+
+## Open Questions
+None. No implementation follow-up work is deferred, and nothing was pushed.
