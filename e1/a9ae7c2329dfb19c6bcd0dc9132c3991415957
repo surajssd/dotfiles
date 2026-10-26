@@ -7,6 +7,8 @@ Read the upstream code-review skill, the local review skills and helper scripts,
 ## Errors & Mistakes
 The initial regression test reproduced the base-selection bug: changed-files.txt included release.txt as well as feature.txt, although the PR targeted release and should include only feature.txt. A direct quick_validate.py invocation failed with ModuleNotFoundError: No module named 'yaml'; running it through uv run --with pyyaml --no-project resolved the missing dependency. Some searches returned exit status 1 for no matches and skipped later commands chained with &&; needed checks were run separately. No unresolved validation failures remain.
 
+A post-commit verification command that also attempted temporary-message cleanup was rejected before execution: rm -f style commands are not permitted. Use a safer approach. Verification was rerun without cleanup and passed. The temporary commit-message file was left for system cleanup.
+
 ## Dead Ends
 The first implementation passed a shared snapshot to the dashboard. The user subsequently removed that workflow from scope, so the dashboard instruction change, extra PR metadata fields, and pr.json snapshot output were removed. The standalone dashboard skill is unchanged in the final diff.
 
