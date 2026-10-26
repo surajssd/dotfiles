@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"strings"
 )
@@ -79,29 +78,21 @@ func runLog(deps dependencies, root string, args []string, opts logOptions) erro
 	case p.frontErr != nil:
 		return fmt.Errorf("%s: front matter does not decode (%v); fix it before logging to it", p.relPath, p.frontErr)
 	}
-	data, err := os.ReadFile(p.path)
-	if err != nil {
-		return err
-	}
 	today := deps.now().Format(dateLayout)
 	checked := today
 	if opts.keepChecked {
 		checked = ""
 	}
-	edits := statusEdits("", opts.note, opts.noteSet, checked)
-	for _, list := range links {
-		existing := mergeLinks(linksFor(p.front, list.key), nil)
-		merged := mergeLinks(existing, list.values)
-		if len(merged) > len(existing) {
-			edits = append(edits, fieldEdit{list.key, listLines(list.key, merged)})
-		}
-	}
-	updated, err := updateFrontMatter(data, edits)
-	if err != nil {
-		return fmt.Errorf("%s: %w", p.relPath, err)
-	}
 	heading := fmt.Sprintf("### %s: %s", today, title)
-	if err := writePlanFile(p.path, appendLogEntry(updated, heading, body)); err != nil {
+	if _, err := editPlanFile(p, planChange{
+		checked:      checked,
+		note:         opts.note,
+		noteSet:      opts.noteSet,
+		issues:       opts.issues,
+		pullRequests: opts.pullRequests,
+		logHeading:   heading,
+		logBody:      body,
+	}); err != nil {
 		return err
 	}
 	return writeOutput(deps.stdout, heading+"\n")

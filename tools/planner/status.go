@@ -110,7 +110,12 @@ func runStatus(deps dependencies, root string, args []string, opts statusOptions
 	if p.hasFront && p.frontErr != nil {
 		return fmt.Errorf("%s: front matter does not decode (%v); fix it before changing its status", p.relPath, p.frontErr)
 	}
-	edits := statusEdits(status, opts.note, opts.noteSet, deps.now().Format(dateLayout))
+	change := planChange{
+		status:  status,
+		checked: deps.now().Format(dateLayout),
+		note:    opts.note,
+		noteSet: opts.noteSet,
+	}
 	if opts.supersededBy != "" {
 		target := status
 		if target == "" {
@@ -126,22 +131,12 @@ func runStatus(deps dependencies, root string, args []string, opts statusOptions
 		if successor == "[["+p.basename+"]]" {
 			return errors.New("a plan cannot supersede itself")
 		}
-		edits = append(edits, fieldEdit{"SupersededBy", "SupersededBy: " + quoteYAML(successor)})
+		change.supersededBy = successor
 	}
-	data, err := os.ReadFile(p.path)
-	if err != nil {
-		return err
-	}
-	updated, err := updateFrontMatter(data, edits)
-	switch {
-	case errors.Is(err, errNoFrontMatter) && (status == "" || !opts.noteSet):
+	if !p.hasFront && (status == "" || !opts.noteSet) {
 		return fmt.Errorf("%s: the plan has no front matter; give both a status and --note to add one", p.relPath)
-	case errors.Is(err, errNoFrontMatter):
-		updated = newFrontMatter(data, edits)
-	case err != nil:
-		return fmt.Errorf("%s: %w", p.relPath, err)
 	}
-	if err := writePlanFile(p.path, updated); err != nil {
+	if _, err := editPlanFile(p, change); err != nil {
 		return err
 	}
 	reloaded, err := loadPlan(c.root, p.path)
@@ -194,24 +189,19 @@ func runLinks(deps dependencies, root, key string, args []string) error {
 	case p.frontErr != nil:
 		return fmt.Errorf("%s: front matter does not decode (%v); fix it before adding links", p.relPath, p.frontErr)
 	}
-	existing := mergeLinks(linksFor(p.front, key), nil)
-	merged := mergeLinks(existing, args[1:])
-	if len(merged) > len(existing) {
-		data, err := os.ReadFile(p.path)
-		if err != nil {
-			return err
-		}
-		updated, err := updateFrontMatter(data, []fieldEdit{{key, listLines(key, merged)}})
-		if err != nil {
-			return fmt.Errorf("%s: %w", p.relPath, err)
-		}
-		if err := writePlanFile(p.path, updated); err != nil {
-			return err
-		}
+	change := planChange{}
+	if key == pullRequestsKey {
+		change.pullRequests = args[1:]
+	} else {
+		change.issues = args[1:]
+	}
+	front, err := editPlanFile(p, change)
+	if err != nil {
+		return err
 	}
 	var out strings.Builder
 	out.WriteString(linkLabel(key) + ":\n")
-	for _, value := range merged {
+	for _, value := range linksFor(front, key) {
 		out.WriteString("  " + value + "\n")
 	}
 	return writeOutput(deps.stdout, out.String())
@@ -243,15 +233,7 @@ func runSetParent(deps dependencies, root string, args []string) error {
 	if chain := parentCycle(c, p, value); chain != nil {
 		return fmt.Errorf("parent would form a cycle: %s", strings.Join(chain, " -> "))
 	}
-	data, err := os.ReadFile(p.path)
-	if err != nil {
-		return err
-	}
-	updated, err := updateFrontMatter(data, []fieldEdit{{"Parent", parentLine(value)}})
-	if err != nil {
-		return fmt.Errorf("%s: %w", p.relPath, err)
-	}
-	if err := writePlanFile(p.path, updated); err != nil {
+	if _, err := editPlanFile(p, planChange{parent: value}); err != nil {
 		return err
 	}
 	return writeOutput(deps.stdout, "Parent: "+value+"\n")
@@ -275,6 +257,69 @@ func parentCycle(c *corpus, p *plan, value string) []string {
 		}
 	}
 	return nil
+}
+
+type planChange struct {
+	status       string
+	checked      string
+	note         string
+	noteSet      bool
+	supersededBy string
+	parent       string
+	issues       []string
+	pullRequests []string
+	logHeading   string
+	logBody      string
+}
+
+func editPlanFile(p *plan, change planChange) (frontMatter, error) {
+	edits := statusEdits(change.status, change.note, change.noteSet, change.checked)
+	if change.supersededBy != "" {
+		edits = append(edits, fieldEdit{"SupersededBy", "SupersededBy: " + quoteYAML(change.supersededBy)})
+	}
+	if change.parent != "" {
+		edits = append(edits, fieldEdit{"Parent", parentLine(change.parent)})
+	}
+	front := p.front
+	front.Issues = mergeLinks(front.Issues, nil)
+	front.PullRequests = mergeLinks(front.PullRequests, nil)
+	for _, list := range []struct {
+		key             string
+		existing, added []string
+	}{
+		{issuesKey, front.Issues, change.issues},
+		{pullRequestsKey, front.PullRequests, change.pullRequests},
+	} {
+		merged := mergeLinks(list.existing, list.added)
+		if len(merged) > len(list.existing) {
+			edits = append(edits, fieldEdit{list.key, listLines(list.key, merged)})
+		}
+	}
+	if len(edits) == 0 && change.logHeading == "" {
+		return front, nil
+	}
+	data, err := os.ReadFile(p.path)
+	if err != nil {
+		return frontMatter{}, err
+	}
+	updated, err := updateFrontMatter(data, edits)
+	switch {
+	case errors.Is(err, errNoFrontMatter):
+		updated = newFrontMatter(data, edits)
+	case err != nil:
+		return frontMatter{}, fmt.Errorf("%s: %w", p.relPath, err)
+	}
+	if change.logHeading != "" {
+		updated = appendLogEntry(updated, change.logHeading, change.logBody)
+	}
+	front, err = decodeFrontMatter(updated)
+	if err != nil {
+		return frontMatter{}, fmt.Errorf("%s: %w", p.relPath, err)
+	}
+	if err := writePlanFile(p.path, updated); err != nil {
+		return frontMatter{}, err
+	}
+	return front, nil
 }
 
 func writePlanFile(path string, data []byte) error {
