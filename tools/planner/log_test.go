@@ -82,6 +82,18 @@ func TestLogKeepsCRLFAndReplacesNote(t *testing.T) {
 	}
 }
 
+func TestLogEmptyNote(t *testing.T) {
+	root, path := logRoot(t, "# Title\n")
+	deps, _ := testDependencies("", true, 0)
+	if err := run(t, deps, "log", "--root", root, "widgets-plan", "Progress", "--note", ""); err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Replace(bumpedFront, "StatusNote: \"Old note.\"", "StatusNote: \"\"", 1) + "# Title\n\n## Progress log\n\n### 2026-09-29: Progress\n"
+	if got := readFile(t, path); got != want {
+		t.Errorf("content:\n%s", got)
+	}
+}
+
 func TestLogRejectsBadInput(t *testing.T) {
 	root, path := logRoot(t, "# Title\n")
 	legacy := filepath.Join(root, "github.com", "acme", "widgets", "260911120000-legacy.md")

@@ -62,6 +62,18 @@ func TestStatusNoteOnly(t *testing.T) {
 	}
 }
 
+func TestStatusEmptyNote(t *testing.T) {
+	root, path := statusRoot(t)
+	deps, _ := testDependencies("", true, 0)
+	if err := run(t, deps, "set", "status", "--root", root, "widgets-plan", "--note", ""); err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Replace(statusFixture, "StatusChecked: 2026-09-01\nStatusNote: \"Old note.\"", "StatusChecked: 2026-09-29\nStatusNote: \"\"", 1)
+	if got := readFile(t, path); got != want {
+		t.Errorf("content:\n%s", got)
+	}
+}
+
 func TestStatusNoteFile(t *testing.T) {
 	root, path := statusRoot(t)
 	noteFile := filepath.Join(t.TempDir(), "note.md")
@@ -212,6 +224,8 @@ func TestMetadataWriteFailureKeepsPlan(t *testing.T) {
 		args := []string{"set", "status", "--root", root, "widgets-plan", "--note", "Updated."}
 		if os.Getenv("PLANNER_TEST_WRITE_KIND") == "issue" {
 			args = []string{"set", "issue", "--root", root, "widgets-plan", "https://example.com/ticket/1"}
+		} else if os.Getenv("PLANNER_TEST_WRITE_KIND") == "log" {
+			args = []string{"log", "--root", root, "widgets-plan", "Progress", "--note", "Updated.", "--issue", jiraA, "--pr", prA}
 		}
 		deps, _ := testDependencies("", true, 0)
 		if err := run(t, deps, args...); err == nil || !strings.Contains(err.Error(), "file too large") {
@@ -219,7 +233,7 @@ func TestMetadataWriteFailureKeepsPlan(t *testing.T) {
 		}
 		return
 	}
-	for _, kind := range []string{"status", "issue"} {
+	for _, kind := range []string{"status", "issue", "log"} {
 		root, path := statusRoot(t)
 		cmd := exec.Command(os.Args[0], "-test.run=^TestMetadataWriteFailureKeepsPlan$")
 		cmd.Env = append(os.Environ(), "PLANNER_TEST_WRITE_ROOT="+root, "PLANNER_TEST_WRITE_KIND="+kind)

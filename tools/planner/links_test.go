@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -69,12 +70,23 @@ func TestUpdatePRAndIssueAppendAndDedupe(t *testing.T) {
 	if out := io.stdout.String(); out != "Pull Requests:\n  "+prA+"\n  "+prB+"\n" {
 		t.Errorf("output:\n%s", out)
 	}
+	before, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
 	deps, _ = testDependencies("", true, 0)
 	if err := run(t, deps, "set", "pr", "--root", root, "widgets-plan", prB); err != nil {
 		t.Fatal(err)
 	}
 	if got := readFile(t, path); got != want {
 		t.Errorf("a repeated URL changed the file:\n%s", got)
+	}
+	after, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(before, after) {
+		t.Error("a repeated URL replaced the file")
 	}
 	deps, io = testDependencies("", true, 0)
 	if err := run(t, deps, "set", "issue", "--root", root, "widgets-plan", jiraA, ghIssue); err != nil {
