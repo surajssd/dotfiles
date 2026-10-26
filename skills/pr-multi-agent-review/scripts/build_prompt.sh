@@ -7,8 +7,8 @@
 #
 # Prints to stdout: the instruction body (everything after the PROMPT-START
 # sentinel in the template) followed by the PR context embedded inline as fenced
-# blocks (changed files, commits, PR description, unresolved threads, and — unless
-# --no-diff — the diff).
+# blocks (changed files, commits, PR description, standards, spec, unresolved
+# threads, and the diff unless --no-diff is set).
 #
 # --no-diff omits the diff block. run_reviewer.sh uses this because it delivers the
 # diff itself: it appends the full diff to this prompt and feeds the whole thing to
@@ -111,6 +111,8 @@ echo "# PR CONTEXT (everything you need is below — read repo files only for ex
 emit_block "Changed files" "changed-files.txt"
 emit_block "Commit messages" "commits.txt"
 emit_block "PR description (author intent — a claim about the diff, not ground truth)" "pr-description.md"
+emit_block "Applicable coding standards" "standards.md"
+emit_block "Requirements and acceptance criteria" "spec.md"
 emit_block "Unresolved GitHub review threads" "unresolved-threads.md"
 if [ "${INCLUDE_DIFF}" -eq 1 ]; then
     emit_block "The diff (ground truth — what actually changed)" "diff.patch"

@@ -14,6 +14,39 @@ err() {
     echo "$*" >&2
 }
 
+select_pr() {
+    local candidate="$1" head_name head_sha
+    printf '%s\n' "$candidate" | jq -e 'type == "object" and (.number | type == "number") and (.baseRefName | type == "string" and length > 0) and (.headRefName | type == "string") and (.headRefOid | type == "string")' >/dev/null 2>&1 || return 1
+    head_name="$(printf '%s\n' "$candidate" | jq -r '.headRefName')"
+    head_sha="$(printf '%s\n' "$candidate" | jq -r '.headRefOid')"
+    [[ "$head_name" == "$CURRENT_BRANCH" ]] || return 1
+    if [[ "$head_sha" != "$HEAD_SHA" ]]; then
+        git merge-base --is-ancestor "$HEAD_SHA" "$head_sha" 2>/dev/null || return 1
+        err "ℹ️ PR head is newer than local HEAD; reviewing local ${HEAD_SHA}."
+    fi
+    PR_JSON="$candidate"
+}
+
+resolve_pr() {
+    PR_JSON=""
+    command -v gh >/dev/null 2>&1 && command -v jq >/dev/null 2>&1 || return 0
+    local fields pr_number candidate candidates
+    fields=number,url,title,body,author,labels,additions,deletions,baseRefName,headRefName,headRefOid
+    pr_number="$(git config "branch.${CURRENT_BRANCH}.prNumber" 2>/dev/null || true)"
+    if [[ -n "$pr_number" ]]; then
+        select_pr "$(gh pr view "$pr_number" --json "$fields" 2>/dev/null || true)" || true
+    fi
+    if [[ -z "$PR_JSON" ]]; then
+        select_pr "$(gh pr view --json "$fields" 2>/dev/null || true)" || true
+    fi
+    if [[ -z "$PR_JSON" ]]; then
+        candidates="$(gh pr list --head "$CURRENT_BRANCH" --state all --json "$fields" 2>/dev/null || true)"
+        while IFS= read -r candidate; do
+            if select_pr "$candidate"; then break; fi
+        done < <(printf '%s\n' "$candidates" | jq -c --arg head "$HEAD_SHA" 'sort_by(.headRefOid != $head)[]' 2>/dev/null || true)
+    fi
+}
+
 # --- Resolve the base/feature branch (shared by both modes) -------------------
 detect_branches() {
     # The orchestrator calls this script twice (once --preflight-only, once for
@@ -33,26 +66,42 @@ detect_branches() {
     if [ -z "${DEFAULT_BRANCH}" ] && git show-ref --verify --quiet refs/heads/master; then
         DEFAULT_BRANCH=master
     fi
-    if [ -z "${DEFAULT_BRANCH}" ]; then
-        err "❌ Could not determine the default branch (tried origin HEAD, main, master)."
+    REPO_ROOT="$(git rev-parse --show-toplevel)"
+    HEAD_SHA="$(git rev-parse HEAD)"
+    CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+    if [[ "$CURRENT_BRANCH" == HEAD ]]; then
+        err "❌ Detached HEAD does not identify a feature branch."
         exit 1
     fi
 
-    CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-    if [ "${CURRENT_BRANCH}" = "${DEFAULT_BRANCH}" ] || [ "${CURRENT_BRANCH}" = "HEAD" ]; then
-        err "❌ You appear to be on ${DEFAULT_BRANCH} (or detached HEAD), not a feature branch. Nothing to review."
+    resolve_pr
+    BASE_BRANCH="$DEFAULT_BRANCH"
+    if [[ -n "$PR_JSON" ]]; then
+        BASE_BRANCH="$(printf '%s\n' "$PR_JSON" | jq -r '.baseRefName')"
+    fi
+    if [[ -z "$BASE_BRANCH" ]]; then
+        err "❌ Could not determine the PR base or default branch (tried origin HEAD, main, master)."
+        exit 1
+    fi
+    if [[ "$CURRENT_BRANCH" == "$BASE_BRANCH" ]]; then
+        err "❌ You are on the base branch ${BASE_BRANCH}, not a feature branch."
         exit 1
     fi
 
     # Prefer the remote base — local branches drift.
-    if git show-ref --verify --quiet "refs/remotes/origin/${DEFAULT_BRANCH}"; then
-        BASE="origin/${DEFAULT_BRANCH}"
+    if git show-ref --verify --quiet "refs/remotes/origin/${BASE_BRANCH}"; then
+        BASE="origin/${BASE_BRANCH}"
     else
-        BASE="${DEFAULT_BRANCH}"
+        BASE="${BASE_BRANCH}"
+        err "ℹ️ Using local base ${BASE}; no matching origin ref is available."
     fi
-
-    if [ -z "$(git log "${BASE}..HEAD" --oneline 2>/dev/null)" ]; then
-        err "❌ No commits found between ${BASE} and HEAD. Make sure you are on a feature branch with commits ahead of ${DEFAULT_BRANCH}."
+    if ! BASE_SHA="$(git rev-parse --verify "${BASE}^{commit}" 2>/dev/null)"; then
+        err "❌ Base ${BASE} is unavailable; fetch the PR target before reviewing."
+        exit 1
+    fi
+    MERGE_BASE="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
+    if git diff --quiet "$MERGE_BASE" "$HEAD_SHA"; then
+        err "❌ No changes found between the merge base of ${BASE} and HEAD."
         exit 1
     fi
 }
@@ -67,6 +116,7 @@ if [ "${1:-}" = "--preflight-only" ]; then
     printf 'DEFAULT_BRANCH=%q\n' "${DEFAULT_BRANCH}"
     printf 'CURRENT_BRANCH=%q\n' "${CURRENT_BRANCH}"
     printf 'BASE=%q\n' "${BASE}"
+    printf 'BASE_BRANCH=%q\n' "${BASE_BRANCH}"
     exit 0
 fi
 
@@ -83,9 +133,9 @@ CTX="${WORKDIR}/context"
 mkdir -p "${CTX}" "${WORKDIR}/reviews"
 
 # Diff, commits, changed files — the ground truth of the change.
-git diff "${BASE}...HEAD" >"${CTX}/diff.patch"
-git log "${BASE}..HEAD" --format="%h %an %s%n%b%n---" >"${CTX}/commits.txt"
-git diff "${BASE}...HEAD" --name-status >"${CTX}/changed-files.txt"
+git diff "$MERGE_BASE" "$HEAD_SHA" >"${CTX}/diff.patch"
+git log "${BASE_SHA}..${HEAD_SHA}" --format="%h %an %s%n%b%n---" >"${CTX}/commits.txt"
+git diff "$MERGE_BASE" "$HEAD_SHA" --name-status >"${CTX}/changed-files.txt"
 
 # --- PR description + unresolved threads (best-effort; needs gh + a PR) --------
 OWNER="" REPO="" PR_NUMBER="" PR_URL=""
@@ -114,8 +164,8 @@ elif ! command -v jq >/dev/null 2>&1; then
     # but *before* the PR description and threads — a half-populated workspace. Guard
     # here so a missing jq degrades to best-effort, exactly like a missing gh.
     write_no_pr "jq not found — install jq for PR description and review-thread context."
-elif ! PR_JSON="$(gh pr view --json number,url,title,body,author,labels,additions,deletions 2>/dev/null)"; then
-    write_no_pr "No GitHub PR is associated with branch '${CURRENT_BRANCH}' yet."
+elif [[ -z "$PR_JSON" ]]; then
+    write_no_pr "No matching GitHub PR was found for branch '${CURRENT_BRANCH}' and its local history."
 else
     PR_NUMBER="$(echo "${PR_JSON}" | jq -r '.number')"
     PR_URL="$(echo "${PR_JSON}" | jq -r '.url')"
@@ -211,6 +261,11 @@ fi
     printf 'PR_NUMBER=%q\n' "${PR_NUMBER}"
     printf 'PR_URL=%q\n' "${PR_URL}"
     printf 'BASE=%q\n' "${BASE}"
+    printf 'BASE_BRANCH=%q\n' "${BASE_BRANCH}"
+    printf 'BASE_SHA=%q\n' "${BASE_SHA}"
+    printf 'MERGE_BASE=%q\n' "${MERGE_BASE}"
+    printf 'HEAD_SHA=%q\n' "${HEAD_SHA}"
+    printf 'REPO_ROOT=%q\n' "${REPO_ROOT}"
     printf 'CURRENT_BRANCH=%q\n' "${CURRENT_BRANCH}"
     printf 'DEFAULT_BRANCH=%q\n' "${DEFAULT_BRANCH}"
 } >"${CTX}/meta.env"
