@@ -1,0 +1,20 @@
+## Conversation
+The user asked to start vendoring mattpocock/skills/skills/engineering/improve-codebase-architecture, then asked to commit the completed change and merge it into master. The requested skill requires codebase-design, so both skills were included. Publication was not requested and the user prohibits posting to GitHub.
+
+## Actions
+Read the existing vendoring registry, shared helpers, installer, repository guidance, relevant commit notes, and the two upstream skill directories. Created the vendor-improve-codebase-architecture worktree with wta from master 79ece2d to keep existing review-skill edits separate. Added both skills to the fetch registry and documented the dependency in CLAUDE.md. Ran the registry fetch in an isolated temporary repository layout, then copied only the two new skill directories into this worktree. Both came from mattpocock/skills at 5beb35b040e3de97e54fa9e386d7e42d15c295c2. Compared all seven files with upstream; only the standard license and author metadata differ. Ran shellfmt.sh successfully. Ran make install-skills with a temporary HOME, checked both agent destinations, and installed only the two new skills in the real agent directories. Verified the referenced grilling and domain-modeling skills exist. Audited the complete diff and untracked files: nine files, 406 additions and one deletion, consisting of two edited repository files and seven vendored upstream files, with no generated build artifacts. Before committing, fast-forwarded the worktree to local master e1a9ae7, which contains the unrelated review-skill changes, and confirmed the vendoring diff remained isolated. Re-ran shellfmt.sh and the staged whitespace check successfully. The commit message passed the conventional-commits validator with zero problems and zero warnings. Created this signed, signed-off commit with invocation-scoped hooks disabled and attached this note immediately afterward.
+
+## Errors & Mistakes
+An exploratory wc command included the upstream agents directories and reported Is a directory; enumerating files with rg resolved the count. The first installer assertion compared symlink text without the trailing slash that link_tree emits, so it exited 1 even though make install-skills succeeded. Comparing resolved paths passed. Temporary cleanup with rm -rf was rejected with "rm -f style commands are not permitted. Use a safer approach"; rm -r removed the task-owned temporary directory successfully. A hook search included an absent configs/gitconfig path and exited 2; the active hook was found in .git/hooks/post-commit and local-bin/git-autopush-post-commit. No implementation or signing failure occurred.
+
+## Dead Ends
+Did not run the fetch target directly against the working repository because it refreshes every fetch-mode skill and would introduce unrelated updates. The isolated fetch exercised the complete existing registry while allowing only the requested skills to be copied back.
+
+## Hints for Future Agents
+The post-commit hook automatically pushes master. Use git -c core.hooksPath=/dev/null for local commits and integration when publishing is prohibited. Re-run make install-skills from master after integration so the new links point at master rather than this worktree. The vendored files must stay identical to upstream except for attribution inserted by the existing helper; do not rewrite their prose or drop the agents metadata. Both new registry entries use fetch mode, so future make update runs refresh them.
+
+## Codebase Discoveries
+improve-codebase-architecture requires codebase-design for shared vocabulary and interface exploration; grilling and domain-modeling were already vendored. The complete new upstream content is seven files and 397 lines before six attribution lines are inserted. The installer includes trailing slashes in directory symlink targets and flattens skill directory names. The architecture skill disables implicit invocation in both its front matter and agents/openai.yaml.
+
+## Open Questions
+None. No implementation follow-up work is deferred. Local integration into master remains the next operation, and nothing has been pushed by this task.
