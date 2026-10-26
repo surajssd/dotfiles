@@ -18,3 +18,5 @@ improve-codebase-architecture requires codebase-design for shared vocabulary and
 
 ## Open Questions
 None. No implementation follow-up work is deferred. Local integration into master remains the next operation, and nothing has been pushed by this task.
+
+Post-commit integration completed: local master was fast-forwarded from e1a9ae7 to this commit with hooks disabled. Ran make install-skills from the main checkout and verified both new skills resolve there from both ~/.claude/skills and ~/.agents/skills. Confirmed the GPG signature is good, the main working tree is clean, and master matches vendor-improve-codebase-architecture. Nothing was pushed. No work remains for this request.
