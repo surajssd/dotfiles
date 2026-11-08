@@ -1,0 +1,20 @@
+## Conversation
+The user asked to commit the existing changes under skills/ and first inspect similar vendored-skill commits. No content edits or publication were requested.
+
+## Actions
+Read the Conventional Commits skill, Rex guidance, vendoring registry and helpers, active auto-push hook, prior vendoring commits, and notes on the commits that last touched the affected files. Fetched origin and confirmed local master matched origin/master before committing. Cloned mattpocock/skills and deepened its history to locate 7739eaed7f8f3915437a8def198a6d0d7206dbc7, which introduced the fresh-context instructions. Compared all three complete local files against that revision, removing only the expected injected license and author metadata for comparison; every file matched. Inspected the complete diff against the merge base with origin/master, staged only the three existing changes, and audited the staged diff and untracked-file inventory. The scope is three vendored Markdown files with three additions and three deletions. No generated files are included. The commit message passed commitlint with zero problems and zero warnings. The staged whitespace check passed. Created this signed, signed-off commit with invocation-scoped hooks disabled and attached this note immediately afterward.
+
+## Errors & Mistakes
+The first combined history read exceeded the output limit. Re-read the relevant history in smaller calls. Raw diffs against upstream returned exit status 1 for the expected attribution metadata; normalized full-file comparisons passed. An initial temporary path pointer used a fixed /tmp filename rather than mktemp; it was not needed for subsequent commands and was removed during cleanup.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+The active post-commit hook automatically pushes master and can rebase it. Use git -c core.hooksPath=/dev/null for local commits when publication is prohibited. Prior refresh commits use docs(skills), describe the imported change, and cite the upstream revision. The vendoring helper injects license: MIT and metadata.author: github.com/mattpocock; preserve those lines.
+
+## Codebase Discoveries
+The upstream fresh-context change affects codebase-design/DESIGN-IT-TWICE.md, grilling/SKILL.md, and improve-codebase-architecture/SKILL.md in this repository. All three match upstream commit 7739eaed7f8f3915437a8def198a6d0d7206dbc7 after accounting for attribution metadata. The verified index tree is d71cbb8abe092550acde0b8669334b6fba73864a. No executable changes or test changes were needed.
+
+## Open Questions
+None. No follow-up work is deferred. Nothing was pushed.
