@@ -26,6 +26,8 @@ Darwin)
     GHOSTTY_DIR="$HOME/Library/Application Support/com.mitchellh.ghostty"
     mkdir -p "${GHOSTTY_DIR}"
     ln -sf "${CONFIGS_DIR}"/ghostty/config.ghostty "${GHOSTTY_DIR}/config.ghostty"
+
+    "${SCRIPT_DIR}/install-herdr-app.sh"
     ;;
 *)
     ln -sf "${CONFIGS_DIR}"/bashrc ~/.bashrc
