@@ -1,0 +1,20 @@
+## Conversation
+The user wanted repeatable Herdr desktop shortcuts in the dotfiles repository, based on their former Ghostty and Herdr setup. The user later narrowed the request to worktree creation with Cmd+Shift+N and opening an existing worktree with Cmd+O. The user then requested a commit and a local merge into master. Publishing is prohibited.
+
+## Actions
+Read the existing Herdr TUI configuration, the user's Ghostty article, installer patterns, Herdr desktop 0.1.16 documentation and API types, relevant commit notes, and the automatic push hook. Used wta to create the herdr-app-shortcuts worktree. Added a complete desktop keymap containing the installed defaults plus the two worktree shortcuts, two helper mods that open Herdr's built-in dialogs, a dedicated installer invoked by the macOS config installer, setup documentation, and ignore rules for Herdr-generated editor files. Both helper mods passed herdr-app check. Both changed shell scripts passed shellfmt.sh, ShellCheck, and shell syntax checks. Isolated installer checks passed for fresh installation, repeated installation, preservation of unrelated files, and keymap backup. Verified that the other bindings match the backed-up desktop keymap. Installed the helpers and visually verified that the actual Cmd+O and Cmd+Shift+N shortcuts open the correct dialogs, then closed the dialogs. Herdr reported no errors. Reviewed the complete staged diff: nine source and configuration files, 191 additions, no generated files. The commit message passed commitlint with zero problems and warnings. Created a signed, signed-off commit with invocation-scoped hooks disabled and attached this note immediately afterward.
+
+## Errors & Mistakes
+An initial jq comparison had an extra parenthesis and reported a compile error; corrected the comparison and it passed. An initial installer test compared raw symlink targets without allowing the trailing slash from link_tree; changed the assertions to compare realpath results and all checks passed. Immediately after installing into the running app, mod.open returned {"error":"no mod folder \"dotfiles-open-worktree\""}; retrying after the app discovered the new mod succeeded, and the actual keyboard shortcuts also succeeded. No source change was needed for that discovery delay.
+
+## Dead Ends
+Full desktop shortcut parity and numbered agent selection were investigated but not implemented after the user narrowed the scope. No agent-panel or layout changes are included.
+
+## Hints for Future Agents
+Disable hooks per invocation for local commits and merges: the repository's post-commit hook automatically pushes master and can rebase it. Herdr treats keys.json as the complete keymap, so the file includes the other macOS defaults. Herdr does not automatically add new defaults after a personal keymap is installed. Custom mods open the built-in worktree dialog with the active space, focused terminal folder, and action new or open; the built-in dialog handles remote machines. Herdr-generated gpui-kit.d.ts and jsconfig.json files appear inside the symlinked mod directories and are intentionally ignored. After merging, reinstall from the main checkout to remove the active symlinks' dependency on this worktree.
+
+## Codebase Discoveries
+The TUI uses configs/herdr/config.toml and the desktop uses ~/.config/herdr-app/keys.json. They do not share configuration. The installed app has mod.open but no direct worktree creation or opening commands, so each shortcut needs a helper mod. Custom directory mods work through symlinks. The dedicated installer honors HERDR_APP_HOME, backs up a regular keys.json, and uses the existing link_tree helper for mod directories.
+
+## Open Questions
+The requested local master merge and reinstallation from the main checkout remain to be completed. No implementation follow-up work is deferred. Nothing was pushed.
