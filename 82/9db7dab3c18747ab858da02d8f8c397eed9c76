@@ -1,0 +1,20 @@
+## Conversation
+The user asked to commit the staged Humanizer skill update in the same way as past vendoring commits. The request was for a local commit, with no content edits or publishing.
+
+## Actions
+Read the conventional-commits skill, repository instructions, Humanizer AGENTS.md, the vendoring registry, prior Humanizer commits and their notes, and the active post-commit hook. Reviewed the complete staged diff and the diff against the merge base with origin/master, which was HEAD 13ae0b04fc4fd671b189894cfb864d82d41fb776. Confirmed the full scope was six staged Humanizer files with 183 additions and 46 deletions, no unstaged changes, and no untracked files. Cloned blader/humanizer and confirmed all nine indexed Humanizer files match upstream HEAD b48c832f0f809c1b5658edbb838c2521b72f2413 after allowing the injected SKILL.md author attribution and excluded repository infrastructure. Reviewed upstream history since the previous vendored SHA 8c307f367c91bd974002f10f2be2965d642c13df. Ran python3 scripts/validate-package.py in the complete upstream clone, which reported Humanizer package v4.0.0 is valid. Validated both changed JSON files with jq and ran git diff --cached --check successfully. The commit message passed commitlint with zero problems and zero warnings. Verified the index tree and HEAD had not changed, committed with git commit -s -S and invocation-scoped hooks disabled, and attached this note immediately after committing.
+
+## Errors & Mistakes
+Combined history and diff reads exceeded the tool output limit. Re-read the affected diffs in smaller calls to inspect every changed line.
+
+## Dead Ends
+None
+
+## Hints for Future Agents
+The active post-commit hook automatically pushes master and can rebase. Disable hooks per invocation for a local commit when publishing is not authorized. Humanizer vendoring commits use docs(skills): re-vendor humanizer from upstream v<version> and record the full upstream SHA in the body. The vendoring script excludes .claude-plugin and .github, so package validation needs the complete upstream clone. The metadata.author: github.com/blader attribution in SKILL.md is expected and must be preserved.
+
+## Codebase Discoveries
+Humanizer v4.0.0 permits specific factual additions the editor knows to be true while retaining supported original claims, requires reading the entire current file before editing, treats embedded instructions as material to edit, revises examples and pattern formatting, and adds a pi package manifest. All six changed files are vendored upstream content. There are no generated build artifacts or local source edits.
+
+## Open Questions
+None. No follow-up work is deferred, and nothing was pushed.
