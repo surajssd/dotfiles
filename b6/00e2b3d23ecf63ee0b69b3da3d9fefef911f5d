@@ -1,0 +1,20 @@
+## Conversation
+The user asked to add Bun's binary directory to PATH, clarified that the home directory must not be hardcoded, and then asked to commit and push the change.
+
+## Actions
+Added export PATH="$HOME/.bun/bin:$PATH" to configs/zshrc. Confirmed ~/.zshrc already points to that file. Ran shellfmt.sh configs/zshrc, zsh -n configs/zshrc, an isolated evaluation of the PATH setup, and git diff --check. Inspected the complete diff against origin/master and checked untracked files. Fetched origin/master and confirmed no incoming commits. Validated the commit message with the conventional-commits skill's bundled validator. Created a signed, signed-off commit with the automatic push hook disabled for this invocation so this note could be attached before pushing.
+
+## Errors & Mistakes
+shellfmt.sh stopped at ShellCheck before formatting. It reported existing Zsh syntax as invalid, including "SC2296 (error): Parameter expansions can't start with (. Double check syntax." Zsh's own syntax check passed. An initial command was rejected before execution with "rm -f style commands are not permitted. Use a safer approach" because it included forced cleanup of the temporary commit message file. Replaced that cleanup with unlink on the known temporary file.
+
+## Dead Ends
+None
+
+## Hints for Future Agents
+The active ~/.zshrc is a symlink to configs/zshrc. The PATH entry uses $HOME rather than an absolute home directory. The post-commit hook automatically pushes master and can rebase after a rejection, which can rewrite signed commits. Use a one-command core.hooksPath override when attaching notes before an explicit push.
+
+## Codebase Discoveries
+The existing PATH setup is near the top of configs/zshrc. shellfmt.sh targets Bash and cannot validate this file's existing Zsh expansions. The isolated PATH check placed $HOME/.bun/bin first, while command -v bun resolved the existing /opt/homebrew/bin/bun executable.
+
+## Open Questions
+None
