@@ -8,6 +8,7 @@ ZSHRC_DIR="${${(%):-%x}:A:h}"
 # Second contains the binaries built by local go code.
 # And the final is used by homebrew
 export PATH=$HOME/.local/bin:$HOME/go/bin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH
+export PATH="$HOME/.bun/bin:$PATH"
 
 #=================================================================
 # Container detection
