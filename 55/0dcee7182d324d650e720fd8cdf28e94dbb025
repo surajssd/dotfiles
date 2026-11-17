@@ -38,3 +38,24 @@ OpenSpec new change creates the directory and .openspec.yaml, not the proposal, 
 
 ## Open Questions
 None for the implemented feature. Local integration, global installation, and any publication have not been requested. Agent workflow instruction updates remain separate from this change.
+
+## Conversation
+The user subsequently requested merging the completed implementation into master. Publication was not requested.
+
+## Actions
+Confirmed both worktrees were clean and the feature contained only commit 550dcee. Fetched origin master and confirmed local master and origin/master were both still b600e2b. Fast-forwarded local master to 550dcee with core.hooksPath=/dev/null to prevent automatic publication. Verified that master and planner-openspec-directories have identical trees, the original commit signature remains valid, the commit note remains attached, and the master worktree is clean. The exact tree already passed automated and real CLI verification, so no tests were repeated. No push was run.
+
+## Errors & Mistakes
+None.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+Local master now includes the OpenSpec feature and is one commit ahead of origin/master. The feature branch and worktree remain available. The global installed Planner binary has not been replaced. Disable hooks for local Git integration because this repository has an automatic push hook. Push notes too if publication is ever authorized.
+
+## Codebase Discoveries
+None.
+
+## Open Questions
+None for the requested merge. Global installation and agent workflow instruction updates remain separate work.
