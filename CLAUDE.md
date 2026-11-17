@@ -57,7 +57,7 @@ make install-yt-playlist-creator
 # Build and install the Diceware Go command (skipped when go is absent)
 make install-diceware
 
-# Download external skills (mattpocock, bastos, blader) into skills/ — also run by 'make update'
+# Download external skills (mattpocock, bastos, blader, Fission-AI) into skills/, also run by 'make update'
 make fetch-external-skills
 
 # Verify vendored rules in rules/ (fetches any fetch-mode entries) — also run by 'make update'
@@ -162,6 +162,8 @@ Some skills are vendored (copied) from upstream repos rather than authored here.
 - **`preserve`**: the skill is already vendored and locally customised, so the script verifies it exists and reports its source but never overwrites it. `conventional-commits` (from [`bastos/skills`](https://github.com/bastos/skills)) uses this mode — it carries local edits (a macOS clipboard section and a `README.md`) that must not be clobbered.
 
 Fetched skills are committed to the repo. Run `make fetch-external-skills` to refresh them; the script prints the upstream commit SHA(s), which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs never fetch skills; public installers use the network only for Go module or toolchain downloads for `planner`, `asana`, `yt-playlist-creator`, and `diceware`, and only when Go is present), but `make update` runs it after `pull-master` and before `install-all`, so a full update also refreshes the vendored skills. `install-skills.sh` then symlinks the vendored directories like any other local skill.
+
+The `openspec-explore`, `openspec-propose`, `openspec-apply-change`, `openspec-verify-change`, `openspec-sync-specs`, and `openspec-archive-change` skills use `fetch` mode from [`Fission-AI/OpenSpec`](https://github.com/Fission-AI/OpenSpec). Preserve these generated upstream files. They require the `openspec` CLI. `openspec-sync-specs` supports specification updates during archiving. Invoke skills as `/openspec-propose` in Claude Code or `$openspec-propose` in Codex.
 
 ## Adding Agent Rules
 

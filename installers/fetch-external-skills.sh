@@ -29,6 +29,12 @@ SKILLS=(
     "fetch|https://github.com/mattpocock/skills|github.com/mattpocock|skills/engineering/codebase-design|codebase-design"
     "fetch|https://github.com/mattpocock/skills|github.com/mattpocock|skills/engineering/improve-codebase-architecture|improve-codebase-architecture"
     "fetch|https://github.com/blader/humanizer|github.com/blader|.|humanizer"
+    "fetch|https://github.com/Fission-AI/OpenSpec|github.com/Fission-AI|skills/openspec-explore|openspec-explore"
+    "fetch|https://github.com/Fission-AI/OpenSpec|github.com/Fission-AI|skills/openspec-propose|openspec-propose"
+    "fetch|https://github.com/Fission-AI/OpenSpec|github.com/Fission-AI|skills/openspec-apply-change|openspec-apply-change"
+    "fetch|https://github.com/Fission-AI/OpenSpec|github.com/Fission-AI|skills/openspec-verify-change|openspec-verify-change"
+    "fetch|https://github.com/Fission-AI/OpenSpec|github.com/Fission-AI|skills/openspec-sync-specs|openspec-sync-specs"
+    "fetch|https://github.com/Fission-AI/OpenSpec|github.com/Fission-AI|skills/openspec-archive-change|openspec-archive-change"
     "preserve|https://github.com/bastos/skills|github.com/bastos|conventional-commits|conventional-commits"
 )
 

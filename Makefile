@@ -36,7 +36,7 @@ install-diceware: ## Build and install the diceware Go command (skipped when go 
 install-private: ## Install the optional private dotfiles
 	@if [ -x dotfilesprivate/install.sh ]; then ./dotfilesprivate/install.sh; fi
 
-fetch-external-skills: ## Download external skills (mattpocock, bastos, blader) into skills/ — also run by 'make update'
+fetch-external-skills: ## Download external skills (mattpocock, bastos, blader, Fission-AI) into skills/, also run by 'make update'
 	./installers/fetch-external-skills.sh
 
 fetch-external-rules: ## Verify vendored rules in rules/ (fetches any fetch-mode entries) — also run by 'make update'
