@@ -1,0 +1,105 @@
+package cli
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/surajssd/dotfiles/tools/planner/internal/plan"
+	"gopkg.in/yaml.v3"
+)
+
+// planRecord is the machine-readable view of a plan for -o json and -o yaml:
+// the physical path, effective identity, and front matter as written. The
+// front matter fields are absent when the block is missing or does not
+// decode, and front_matter_error says why.
+type planRecord struct {
+	ID                   string   `json:"ID,omitempty" yaml:"ID,omitempty"`
+	Directory            string   `json:"directory,omitempty" yaml:"directory,omitempty"`
+	Name                 string   `json:"name" yaml:"name"`
+	Basename             string   `json:"basename" yaml:"basename"`
+	Path                 string   `json:"path" yaml:"path"`
+	Repo                 string   `json:"repo" yaml:"repo"`
+	Title                string   `json:"title" yaml:"title"`
+	Type                 string   `json:"Type,omitempty" yaml:"Type,omitempty"`
+	Parent               string   `json:"Parent,omitempty" yaml:"Parent,omitempty"`
+	Issues               []string `json:"Issues,omitempty" yaml:"Issues,omitempty"`
+	PullRequests         []string `json:"PullRequests,omitempty" yaml:"PullRequests,omitempty"`
+	ImplementationStatus string   `json:"ImplementationStatus,omitempty" yaml:"ImplementationStatus,omitempty"`
+	SupersededBy         string   `json:"SupersededBy,omitempty" yaml:"SupersededBy,omitempty"`
+	StatusChecked        string   `json:"StatusChecked,omitempty" yaml:"StatusChecked,omitempty"`
+	StatusNote           string   `json:"StatusNote,omitempty" yaml:"StatusNote,omitempty"`
+	FrontMatterError     string   `json:"front_matter_error,omitempty" yaml:"front_matter_error,omitempty"`
+}
+
+type planList struct {
+	Items []planRecord `json:"items" yaml:"items"`
+}
+
+func newPlanRecord(p *plan.Plan) planRecord {
+	r := planRecord{Name: p.Name, Basename: p.Basename, Path: p.Path, Repo: p.Repo, Title: p.Title}
+	if p.Directory != "" {
+		r.ID = p.Front.ID
+		r.Directory = p.Directory
+	}
+	switch {
+	case !p.HasFront:
+		r.FrontMatterError = "no front matter"
+	case p.FrontErr != nil:
+		r.FrontMatterError = strings.Join(strings.Fields(p.FrontErr.Error()), " ")
+	default:
+		r.Type = p.Front.Type
+		r.Parent = p.Front.Parent
+		r.Issues = p.Front.Issues
+		r.PullRequests = p.Front.PullRequests
+		r.ImplementationStatus = p.Front.ImplementationStatus
+		r.SupersededBy = p.Front.SupersededBy
+		r.StatusChecked = p.Front.StatusChecked
+		r.StatusNote = p.Front.StatusNote
+	}
+	return r
+}
+
+// renderRecords prints plans in the json, yaml, or name format. With single
+// set and exactly one plan the plan is printed on its own, kubectl style;
+// otherwise the plans form a list under items.
+func renderRecords(plans []*plan.Plan, format string, single bool) (string, error) {
+	if format == "name" {
+		var out strings.Builder
+		for _, p := range plans {
+			out.WriteString(p.Identity + "\n")
+		}
+		return out.String(), nil
+	}
+	records := make([]planRecord, 0, len(plans))
+	for _, p := range plans {
+		records = append(records, newPlanRecord(p))
+	}
+	var value any = planList{Items: records}
+	if single && len(records) == 1 {
+		value = records[0]
+	}
+	var buf bytes.Buffer
+	switch format {
+	case "json":
+		enc := json.NewEncoder(&buf)
+		enc.SetEscapeHTML(false)
+		enc.SetIndent("", "    ")
+		if err := enc.Encode(value); err != nil {
+			return "", err
+		}
+	case "yaml":
+		enc := yaml.NewEncoder(&buf)
+		enc.SetIndent(2)
+		if err := enc.Encode(value); err != nil {
+			return "", err
+		}
+		if err := enc.Close(); err != nil {
+			return "", err
+		}
+	default:
+		return "", fmt.Errorf("unknown output format %q", format)
+	}
+	return buf.String(), nil
+}

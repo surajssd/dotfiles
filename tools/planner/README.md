@@ -121,3 +121,28 @@ Run `planner check --help` for schema keys, status values, and validation rules.
 ## Help and completion
 
 Use `--help` on any command for all flags and output fields. The shell configs load `planner completion` when the binary is available; it completes commands, flags, plans, repositories, statuses, and formats.
+
+## Development
+
+`main.go` starts the command. The implementation uses these internal packages:
+
+| Package | Responsibility |
+| --- | --- |
+| `internal/cli` | Cobra commands, configuration, completion, output, and coordination of plan and external operations. |
+| `internal/plan` | Plan discovery, identity, references, local validation, content rendering, and file editing. |
+| `internal/github` | GitHub repository resolution and pull request state queries through Git and `gh`. |
+| `internal/openspec` | OpenSpec initialization, root verification, and change creation. |
+
+The plan, GitHub, and OpenSpec packages do not import the CLI or each other. Command integration tests and their fixtures are in `internal/cli`; parsing and editing tests are beside the plan implementation.
+
+Run these checks from `tools/planner/`:
+
+```sh
+gofmt -w main.go internal/*/*.go
+go vet ./...
+golangci-lint run
+go test ./...
+go test -race ./...
+```
+
+After an intentional output change, update the golden files with `go test ./internal/cli -update`.

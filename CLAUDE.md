@@ -176,7 +176,7 @@ Attribution for vendored rules is recorded in a hand-maintained `rules/README.md
 
 ## Planner
 
-`tools/planner/` is a flat `package main` Go module (`github.com/surajssd/dotfiles/tools/planner`, `go 1.25`) built on `cobra`, `yaml.v3`, and `x/term`. It manages a folder of Markdown plans with YAML front matter (`Type`, `ImplementationStatus`, `StatusChecked`, `StatusNote`, optional `Parent` and `SupersededBy` references, optional `Issues` and `PullRequests` URL lists), filed as `<root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md`:
+`tools/planner/` has a `package main` entry point and four internal packages: `cli` for commands and output, `plan` for discovery, validation, and editing, `github` for repository and pull request queries, and `openspec` for external change creation. It is a Go module (`github.com/surajssd/dotfiles/tools/planner`, `go 1.25`) built on `cobra`, `yaml.v3`, and `x/term`. It manages a folder of Markdown plans with YAML front matter (`Type`, `ImplementationStatus`, `StatusChecked`, `StatusNote`, optional `Parent` and `SupersededBy` references, optional `Issues` and `PullRequests` URL lists), filed as `<root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md`:
 
 `Abandoned` means a plan will not be implemented. Like `Implemented` and `Superseded`, it is inactive and hidden from the default lists; select it by name, with `--all`, or with `--status Abandoned`.
 
@@ -195,7 +195,7 @@ Directory plans use a non-symlinked `plan.md` with a required stable `ID` (`YYMM
 
 The plan root comes from `~/.planner.yaml` (`root: ~/plans`); `--root <dir>` overrides it. The repository does not ship that file.
 
-Go conventions: run `gofmt`, `go vet ./...`, `golangci-lint run`, and `go test ./...` from `tools/planner/`. Tests compare against golden files under `tools/planner/testdata/`; regenerate them with `go test ./... -update` after an intentional output change. Renovate's existing `gomod` rule covers `tools/planner/go.mod`.
+Go conventions: run `gofmt`, `go vet ./...`, `golangci-lint run`, and `go test ./...` from `tools/planner/`. Tests compare against golden files under `tools/planner/internal/cli/testdata/`; regenerate them with `go test ./internal/cli -update` after an intentional output change. Renovate's existing `gomod` rule covers `tools/planner/go.mod`.
 
 ## Asana
 
