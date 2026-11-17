@@ -22,3 +22,26 @@ Public Go commands are independent modules under tools and need dedicated rebuil
 
 ## Open Questions
 None for implementation. Complete the requested local master integration, rebuild from the main checkout, verify the notes and signatures, and remove the known temporary recovery stash. No implementation follow-up is deferred.
+
+## Conversation
+The user requested committing the completed change and merging local master after adding -s/--symbols. Publication was not requested.
+
+## Actions
+Completed both signed, signed-off commits and immediately attached their required notes. Fast-forwarded both local master branches with core.hooksPath=/dev/null. Verified both GPG signatures and required notes from master and confirmed that the merged trees match the previously tested staged trees. The public main checkout is clean. The companion main checkout retains only its pre-existing modified gitconfig and untracked tests directory; a hash over their paths and bytes is identical before and after integration.
+
+Rebuilt the installed diceware and ssd commands from the main checkout. The installed ssd hook path now points at the main public checkout instead of the feature worktree. Rebuilt ignored local ssd binaries in both checkouts. Final smoke checks verify -s and --symbols on installed and local commands, exact total length, two requested digits and two restricted symbols, help output, and rejection of zero symbols. Tests used fake pbcopy, withheld generated passwords, and did not access the real clipboard. Full tests, race tests, vet, and lint had already passed on the exact committed trees, so they were not repeated after fast-forwarding. Removed only the known implementation recovery stash e348293509b86e9a97e84c4c54d02926f175f2d2 after successful integration. No push was run.
+
+## Errors & Mistakes
+None during commit creation, signing, note attachment, local merges, preservation checks, or final smoke tests.
+
+## Dead Ends
+None.
+
+## Hints for Future Agents
+Both local master branches include the feature. Feature worktrees remain available but installed commands use the main checkout. Keep automatic push hooks disabled for local-only operations. Publication, including pushing commit notes, requires separate authorization.
+
+## Codebase Discoveries
+None.
+
+## Open Questions
+None. Implementation, verification, signed commits, local master integration, and installation are complete. No implementation follow-up is deferred.
