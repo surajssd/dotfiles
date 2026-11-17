@@ -22,6 +22,7 @@ Both repositories mirror the same structure:
 - `tools/planner/` - Go module for the `planner` command (public repo only, installed with `go install`)
 - `tools/asana/` - Go module for the `asana` task-creation command (public repo only, installed with `go install`)
 - `tools/yt-playlist-creator/` - Go module for private YouTube playlists, with its agent skill in `skill/` (public repo only, installed with `go install`)
+- `tools/diceware/` - Public Go Diceware library and standalone command with an embedded EFF word list
 - `installers/` - Installation automation scripts (public repo only)
 
 ## Common Commands
@@ -52,6 +53,9 @@ make install-asana
 
 # Build and install the playlist Go command (skipped when go is absent)
 make install-yt-playlist-creator
+
+# Build and install the Diceware Go command (skipped when go is absent)
+make install-diceware
 
 # Download external skills (mattpocock, bastos, blader) into skills/ — also run by 'make update'
 make fetch-external-skills
@@ -98,7 +102,7 @@ All shell scripts must follow these standards:
 
 ### Symlink-Based Installation
 
-Installers normally create symlinks so that `git pull` immediately updates active configs and scripts; `planner`, `asana`, and `yt-playlist-creator` are compiled Go commands that need their `make install-<command>` target after a pull. Public installers use absolute paths via `realpath` or `pwd`. The `install-all` target invokes the optional private installer once. The skills installer also links the optional private skills directly, so `make install-skills` installs both sets without running unrelated private installation steps. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
+Installers normally create symlinks so that `git pull` immediately updates active configs and scripts; `planner`, `asana`, `yt-playlist-creator`, and `diceware` are compiled Go commands that need their `make install-<command>` target after a pull. Public installers use absolute paths via `realpath` or `pwd`. The `install-all` target invokes the optional private installer once. The skills installer also links the optional private skills directly, so `make install-skills` installs both sets without running unrelated private installation steps. The shared symlink-loop logic (`link_tree`, `prune_dead_symlinks`) and the vendoring helpers (`die`, clone cache, `inject_attribution`) live in `installers/lib.sh`, sourced by `install-local-bin.sh`, `install-skills.sh`, `install-rules.sh`, and the `fetch-external-*.sh` scripts.
 
 ### OS-Specific Config Handling
 
@@ -157,7 +161,7 @@ Some skills are vendored (copied) from upstream repos rather than authored here.
 - **`fetch`**: clone the upstream repo, copy the skill directory flat into `skills/<name>/` (dropping any category nesting, excluding repo infrastructure like `.git`/`.github`/`.claude-plugin`), and merge `license: MIT` + `metadata.author` into its `SKILL.md` (idempotent and merge-aware — safe for upstreams that already carry some of these keys). The `grilling`, `domain-modeling`, `grill-with-docs`, `codebase-design`, and `improve-codebase-architecture` skills are vendored this way from [`mattpocock/skills`](https://github.com/mattpocock/skills). The `improve-codebase-architecture` skill uses `codebase-design` for its shared architecture vocabulary. The `humanizer` skill is vendored from [`blader/humanizer`](https://github.com/blader/humanizer) (its `SKILL.md` lives at the repo root, so `subpath` is `.`).
 - **`preserve`**: the skill is already vendored and locally customised, so the script verifies it exists and reports its source but never overwrites it. `conventional-commits` (from [`bastos/skills`](https://github.com/bastos/skills)) uses this mode — it carries local edits (a macOS clipboard section and a `README.md`) that must not be clobbered.
 
-Fetched skills are committed to the repo. Run `make fetch-external-skills` to refresh them; the script prints the upstream commit SHA(s), which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs never fetch skills; public installers use the network only for Go module or toolchain downloads for `planner`, `asana`, and `yt-playlist-creator`, and only when Go is present), but `make update` runs it after `pull-master` and before `install-all`, so a full update also refreshes the vendored skills. `install-skills.sh` then symlinks the vendored directories like any other local skill.
+Fetched skills are committed to the repo. Run `make fetch-external-skills` to refresh them; the script prints the upstream commit SHA(s), which should be recorded in the commit message. This script is intentionally NOT part of `install-all` (so plain installs never fetch skills; public installers use the network only for Go module or toolchain downloads for `planner`, `asana`, `yt-playlist-creator`, and `diceware`, and only when Go is present), but `make update` runs it after `pull-master` and before `install-all`, so a full update also refreshes the vendored skills. `install-skills.sh` then symlinks the vendored directories like any other local skill.
 
 ## Adding Agent Rules
 
@@ -238,6 +242,16 @@ Run `gofmt -w *.go`, `go vet ./...`, `golangci-lint run`, `go test ./...`, and `
 The agent skill lives at `tools/yt-playlist-creator/skill/SKILL.md`. `installers/install-skills.sh` links that directory after public skills and before private skills in each destination, preserving private precedence. The Go installer builds only the binary. `local-bin/essential-brew-overrides.sh` includes `yt-dlp`, which is required only for queries.
 
 Run `gofmt -w *.go`, `go vet ./...`, `golangci-lint run`, `go test ./...`, and `go test -race ./...` from the module. Use `GOTOOLCHAIN=go1.26.6` with the installed linter when its build version differs from the active toolchain. Run `shellfmt.sh` on changed shell scripts, including test fixtures.
+
+## Diceware
+
+`tools/diceware/` is a Go 1.25 module (`github.com/surajssd/dotfiles/tools/diceware`) with a root library and a Cobra command at `cmd/diceware`. `Generate(ctx, Options)` uses cryptographic randomness and has no command or clipboard side effects. `Options` contains WordCount, Length, Digits, and Symbols. Require exactly one positive WordCount or Length and nonnegative suffix counts. Commands default to six words and one appended digit and symbol, rejecting suffix counts below one.
+
+`-l/--length` selects an exact total character length, including the suffix. Reserve suffix space, select words uniformly from entries that fit the remaining space, and fill the remainder with random letters and digits only when no word fits. The standalone `-n/--num` and private positional word count remain available when no length is given; reject mixing explicit word-count and length controls. `-d/--digits` and `-s/--symbols` select suffix counts. Symbols use only `!@#$%&*_-`. There is no replacement feature or separate maximum-length flag. SIGINT and SIGTERM cancel generation cooperatively. Print only the password and one newline on success and diagnostics on stderr on failure.
+
+The 7,776-row EFF asset is embedded unchanged. Preserve its checksum and attribution in `NOTICE.md`; the data uses CC BY 4.0 while the Go code uses MIT. Do not introduce Python or another generator subprocess.
+
+Run `gofmt -w *.go cmd/diceware/*.go`, `go vet ./...`, `golangci-lint run`, `go test ./...`, and `go test -race ./...` from the module. Use `GOTOOLCHAIN=go1.26.6` with the installed linter when its build version differs from the active toolchain. Run `shellfmt.sh` on the installer. `make install-diceware` builds `./cmd/diceware` into `$(go env GOPATH)/bin`; `make install-all` includes it and skips only when Go is absent. The module must build independently of the optional private checkout.
 
 ## Important Notes
 

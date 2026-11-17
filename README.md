@@ -6,7 +6,7 @@ Personal shell configurations, utility scripts, and installation automation for 
 
 ## Quick Setup
 
-Install with `make`. Go is optional; when it is available, installation also builds `planner`, `asana`, and `yt-playlist-creator`.
+Install with `make`. Go is optional; when it is available, installation also builds `planner`, `asana`, `yt-playlist-creator`, and `diceware`.
 
 ```bash
 cd ~/code
@@ -30,10 +30,11 @@ Use individual targets to install only what you need. Run `make help` for all ta
 | `make install-planner` | The [Planner command](tools/planner/) into `$(go env GOPATH)/bin`. |
 | `make install-asana` | The [Asana command](tools/asana/) into `$(go env GOPATH)/bin`. |
 | `make install-yt-playlist-creator` | The [playlist command](tools/yt-playlist-creator/) into `$(go env GOPATH)/bin`. |
+| `make install-diceware` | The [Diceware command](tools/diceware/) into `$(go env GOPATH)/bin`. |
 
 Skills come from `skills/`, `tools/yt-playlist-creator/skill/`, and, when present, `dotfilesprivate/skills/`. Private skills take precedence when names match. The `~/.agents/skills/` path is shared by Codex, Gemini, opencode, and Copilot CLI.
 
-Planner, Asana, and yt-playlist-creator are compiled Go commands. Their installers skip the build when Go is absent. Builds may download Go modules or a toolchain; a build failure stops `make install-all`. Rebuild them with their install targets after changing Go code.
+Planner, Asana, yt-playlist-creator, and Diceware are compiled Go commands. Their installers skip the build when Go is absent. Builds may download Go modules or a toolchain; a build failure stops `make install-all`. Rebuild them with their install targets after changing Go code.
 
 Installation scripts live in [installers/](installers/).
 
@@ -50,6 +51,7 @@ This pulls the public repository and the private clone when present, refreshes v
 - [Planner](tools/planner/) manages Markdown plans and implementation status.
 - [Asana](tools/asana/) manages tasks and private project aliases from the terminal.
 - [YouTube playlist creator](tools/yt-playlist-creator/) creates private playlists from ordered video references or song queries.
+- [Diceware](tools/diceware/) provides a public Go library and command for passwords from EFF words.
 
 ### Claude Code with LiteLLM
 

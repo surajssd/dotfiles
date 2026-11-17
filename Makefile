@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
 # Symlink installers (delegate to scripts)
-.PHONY: install-configs install-local-bin install-skills install-rules install-planner install-asana install-yt-playlist-creator install-private fetch-external-skills fetch-external-rules
+.PHONY: install-configs install-local-bin install-skills install-rules install-planner install-asana install-yt-playlist-creator install-diceware install-private fetch-external-skills fetch-external-rules
 # Orchestration / maintenance
 .PHONY: install install-all update pull-master clone-private help
 
@@ -30,6 +30,9 @@ install-asana: ## Build and install the asana Go command (skipped when go is abs
 install-yt-playlist-creator: ## Build and install the playlist Go command (skipped when go is absent)
 	./installers/install-yt-playlist-creator.sh
 
+install-diceware: ## Build and install the diceware Go command (skipped when go is absent)
+	./installers/install-diceware.sh
+
 install-private: ## Install the optional private dotfiles
 	@if [ -x dotfilesprivate/install.sh ]; then ./dotfilesprivate/install.sh; fi
 
@@ -41,7 +44,7 @@ fetch-external-rules: ## Verify vendored rules in rules/ (fetches any fetch-mode
 
 install: install-all ## Alias for install-all
 
-install-all: install-configs install-local-bin install-skills install-rules install-planner install-asana install-yt-playlist-creator ## Install everything
+install-all: install-configs install-local-bin install-skills install-rules install-planner install-asana install-yt-playlist-creator install-diceware ## Install everything
 	$(MAKE) install-private
 
 update: pull-master fetch-external-skills fetch-external-rules install-all ## Pull latest, refresh external skills + rules, then reinstall
