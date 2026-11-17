@@ -362,7 +362,7 @@ func TestNewParentAcceptsShortName(t *testing.T) {
 	root := t.TempDir()
 	parentFixture(t, root)
 	deps, io := testDependencies("", true, 0)
-	if err := run(t, deps, "create", "--root", root, "--parent", "parent-plan", "short"); err != nil {
+	if err := run(t, deps, "create", "--no-openspec", "--root", root, "--parent", "parent-plan", "short"); err != nil {
 		t.Fatal(err)
 	}
 	if got := readFile(t, strings.TrimSpace(io.stdout.String())); !strings.Contains(got, "\nParent: \"[[260901000000-parent-plan]]\"\n") {

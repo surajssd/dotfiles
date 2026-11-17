@@ -90,17 +90,17 @@ func isUndumpedReference(value string) bool {
 }
 
 // parentChain follows wikilink parents from p and reports whether the chain
-// returns to p. The returned chain lists basenames from p to the repeated plan.
+// returns to p. The returned chain lists effective identities from p to the repeated plan.
 func parentChain(c *corpus, p *plan) (chain []string, cycle bool) {
 	seen := map[*plan]bool{p: true}
-	chain = []string{p.basename}
+	chain = []string{p.identity}
 	current := p
 	for {
 		next, ok := resolveParentPlan(c, current)
 		if !ok {
 			return chain, false
 		}
-		chain = append(chain, next.basename)
+		chain = append(chain, next.identity)
 		if next == p {
 			return chain, true
 		}

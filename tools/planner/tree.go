@@ -156,7 +156,7 @@ func runGet(deps dependencies, root string, opts listOptions, names []string) er
 			if plans[i].repo != plans[j].repo {
 				return plans[i].repo < plans[j].repo
 			}
-			return plans[i].basename < plans[j].basename
+			return plans[i].identity < plans[j].identity
 		})
 	}
 	output := ""
@@ -300,10 +300,10 @@ func buildForest(c *corpus) (roots, all []*node) {
 	}
 	sort.Slice(roots, func(i, j int) bool { return lessRoot(roots[i], roots[j]) })
 	for _, n := range plans {
-		sort.Slice(n.children, func(i, j int) bool { return n.children[i].plan.basename < n.children[j].plan.basename })
+		sort.Slice(n.children, func(i, j int) bool { return n.children[i].plan.identity < n.children[j].plan.identity })
 	}
 	for _, g := range groups {
-		sort.Slice(g.children, func(i, j int) bool { return g.children[i].plan.basename < g.children[j].plan.basename })
+		sort.Slice(g.children, func(i, j int) bool { return g.children[i].plan.identity < g.children[j].plan.identity })
 	}
 	return roots, plans
 }
@@ -318,7 +318,7 @@ func lessRoot(a, b *node) bool {
 	if a.plan.repo != b.plan.repo {
 		return a.plan.repo < b.plan.repo
 	}
-	return a.plan.basename < b.plan.basename
+	return a.plan.identity < b.plan.identity
 }
 
 func markVisible(n *node, opts listOptions) bool {

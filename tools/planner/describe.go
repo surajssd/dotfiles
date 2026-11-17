@@ -65,6 +65,10 @@ func describePlan(out *strings.Builder, p *plan, children []*plan, findings []fi
 	field("Name", p.name)
 	field("Title", p.title)
 	field("File", displayPath(p.path, home))
+	if p.directory != "" {
+		field("ID", p.front.ID)
+		field("Directory", displayPath(p.directory, home))
+	}
 	field("Repo", p.repo)
 	field("Type", p.front.Type)
 	field("Status", p.front.ImplementationStatus)

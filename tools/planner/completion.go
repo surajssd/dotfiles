@@ -45,12 +45,12 @@ func (c completer) plans(cmd *cobra.Command, args []string, toComplete string) (
 	for _, p := range corp.plans {
 		name := p.name
 		if counts[name] > 1 {
-			name = p.basename
+			name = p.identity
 			if len(corp.lookup(name)) > 1 {
 				name = p.path
 			}
 		}
-		if given[p.basename] || given[p.name] || !strings.HasPrefix(name, toComplete) {
+		if given[p.identity] || given[p.name] || !strings.HasPrefix(name, toComplete) {
 			continue
 		}
 		out = append(out, name+"\t"+p.title)

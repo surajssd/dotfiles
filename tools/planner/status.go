@@ -58,7 +58,7 @@ parent is a hand edit that planner check validates.
 
 <ref> takes the forms --parent accepts on planner create: a dumped plan (as
 [[wikilink]], basename, or the short name shown by planner get), a file path,
-or a URL. A plan under the root is stored as the wikilink of its basename, a
+or a URL. A plan under the root is stored as the wikilink of its effective identity, a
 file outside the root as a path, and a URL as is. A plan cannot be its own
 parent, and the new parent cannot be one of the plan's descendants.
 
@@ -128,7 +128,7 @@ func runStatus(deps dependencies, root string, args []string, opts statusOptions
 		if err != nil {
 			return fmt.Errorf("SupersededBy: %w", err)
 		}
-		if successor == "[["+p.basename+"]]" {
+		if successor == "[["+p.identity+"]]" {
 			return errors.New("a plan cannot supersede itself")
 		}
 		change.supersededBy = successor
@@ -227,7 +227,7 @@ func runSetParent(deps dependencies, root string, args []string) error {
 	if err != nil {
 		return err
 	}
-	if value == "[["+p.basename+"]]" {
+	if value == "[["+p.identity+"]]" {
 		return errors.New("a plan cannot be its own parent")
 	}
 	if chain := parentCycle(c, p, value); chain != nil {
@@ -251,9 +251,9 @@ func parentCycle(c *corpus, p *plan, value string) []string {
 		return nil
 	}
 	chain, _ := parentChain(c, matches[0])
-	for i, basename := range chain {
-		if basename == p.basename {
-			return append([]string{p.basename}, chain[:i+1]...)
+	for i, identity := range chain {
+		if identity == p.identity {
+			return append([]string{p.identity}, chain[:i+1]...)
 		}
 	}
 	return nil

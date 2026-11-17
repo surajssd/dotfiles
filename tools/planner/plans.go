@@ -15,6 +15,7 @@ import (
 )
 
 type frontMatter struct {
+	ID                   string   `yaml:"ID"`
 	Type                 string   `yaml:"Type"`
 	Parent               string   `yaml:"Parent"`
 	Issues               []string `yaml:"Issues"`
@@ -28,6 +29,7 @@ type frontMatter struct {
 // knownKeys are the front matter keys the schema defines; check reports every
 // other key as an advisory.
 var knownKeys = map[string]bool{
+	"ID":                   true,
 	"Type":                 true,
 	"Parent":               true,
 	"Issues":               true,
@@ -40,6 +42,8 @@ var knownKeys = map[string]bool{
 
 type plan struct {
 	path        string
+	directory   string
+	identity    string
 	relPath     string
 	repo        string
 	basename    string
@@ -94,15 +98,41 @@ func (p *plan) hasPullRequest(url string) bool {
 type corpus struct {
 	root       string
 	plans      []*plan
-	byBasename map[string][]*plan
+	byIdentity map[string][]*plan
 	byPath     map[string]*plan
 }
 
-func (c *corpus) lookup(basename string) []*plan {
-	return c.byBasename[basename]
+func (c *corpus) lookup(identity string) []*plan {
+	return c.byIdentity[identity]
 }
 
 var planPrefixRE = regexp.MustCompile(`^[0-9]{12}-`)
+var directoryIDRE = regexp.MustCompile(`^[0-9]{12}-[^\s/\\#|\[\]]+$`)
+var idKeyRE = regexp.MustCompile(`(?m)^[ \t]*['"]?ID['"]?[ \t]*:`)
+
+func declaresID(block string) bool {
+	var fields map[string]yaml.Node
+	if err := yaml.Unmarshal([]byte(block), &fields); err == nil {
+		_, present := fields["ID"]
+		return present
+	}
+	var document yaml.Node
+	if err := yaml.Unmarshal([]byte(block), &document); err == nil && len(document.Content) > 0 {
+		mapping := document.Content[0]
+		if mapping.Kind == yaml.MappingNode {
+			for i := 0; i < len(mapping.Content); i += 2 {
+				if mapping.Content[i].Value == "ID" {
+					return true
+				}
+			}
+		}
+	}
+	return idKeyRE.MatchString(block)
+}
+
+func validDirectoryID(id string) bool {
+	return directoryIDRE.MatchString(id) && !strings.HasSuffix(id, ".md")
+}
 
 func isPlanStyle(basename string) bool {
 	return planPrefixRE.MatchString(basename) && len(basename) > 13
@@ -113,6 +143,17 @@ func shortName(basename string) string {
 		return basename[13:]
 	}
 	return basename
+}
+
+func openSpecLocation(rel string) (inside, tracking bool) {
+	parts := strings.Split(filepath.ToSlash(rel), "/")
+	if len(parts) < 4 || parts[0] != "github.com" || parts[3] != "openspec" {
+		return false, false
+	}
+	tail := parts[4:]
+	tracking = len(tail) == 3 && tail[0] == "changes" && tail[1] != "archive" && tail[2] == "plan.md"
+	tracking = tracking || len(tail) == 4 && tail[0] == "changes" && tail[1] == "archive" && tail[3] == "plan.md"
+	return true, tracking
 }
 
 func loadCorpus(root string) (*corpus, error) {
@@ -130,31 +171,75 @@ func loadCorpus(root string) (*corpus, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := &corpus{root: root, byBasename: map[string][]*plan{}, byPath: map[string]*plan{}}
+	c := &corpus{root: root, byIdentity: map[string][]*plan{}, byPath: map[string]*plan{}}
+	add := func(p *plan) {
+		c.plans = append(c.plans, p)
+		c.byIdentity[p.identity] = append(c.byIdentity[p.identity], p)
+		c.byPath[p.path] = p
+		if p.directory != "" {
+			c.byPath[p.directory] = p
+		}
+	}
 	err = filepath.WalkDir(root, func(filePath string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if filePath == root {
-			return nil
-		}
 		name := entry.Name()
-		if strings.HasPrefix(name, ".") {
+		if filePath != root && strings.HasPrefix(name, ".") {
 			if entry.IsDir() {
 				return fs.SkipDir
 			}
 			return nil
 		}
-		if entry.IsDir() || entry.Type()&fs.ModeSymlink != 0 || !strings.HasSuffix(name, ".md") {
+		rel, err := filepath.Rel(root, filePath)
+		if err != nil {
+			return err
+		}
+		inside, tracking := openSpecLocation(rel)
+		if inside {
+			if !entry.IsDir() && !tracking {
+				return nil
+			}
+			if entry.IsDir() {
+				_, tracksDirectory := openSpecLocation(filepath.Join(rel, "plan.md"))
+				structural := len(strings.Split(filepath.ToSlash(rel), "/")) == 4 || name == "changes" || name == "archive"
+				if !tracksDirectory && !structural {
+					return fs.SkipDir
+				}
+			}
+		}
+		if entry.IsDir() {
+			metadata := filepath.Join(filePath, "plan.md")
+			info, err := os.Lstat(metadata)
+			if err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return err
+			}
+			if err == nil && info.Mode().IsRegular() {
+				p, err := loadPlan(root, metadata)
+				if err != nil {
+					return err
+				}
+				if p.directory != "" {
+					add(p)
+					return fs.SkipDir
+				}
+			}
+			if inside {
+				_, tracksDirectory := openSpecLocation(filepath.Join(rel, "plan.md"))
+				if tracksDirectory {
+					return fs.SkipDir
+				}
+			}
+			return nil
+		}
+		if entry.Type()&fs.ModeSymlink != 0 || !strings.HasSuffix(name, ".md") {
 			return nil
 		}
 		p, err := loadPlan(root, filePath)
 		if err != nil {
 			return err
 		}
-		c.plans = append(c.plans, p)
-		c.byBasename[p.basename] = append(c.byBasename[p.basename], p)
-		c.byPath[p.path] = p
+		add(p)
 		return nil
 	})
 	if err != nil {
@@ -180,7 +265,7 @@ func loadPlan(root, filePath string) (*plan, error) {
 		repo:     repoLabel(path.Dir(relSlash)),
 		basename: strings.TrimSuffix(path.Base(relSlash), ".md"),
 	}
-	p.name = shortName(p.basename)
+	p.identity = p.basename
 	block, body, hasFront, frontErr := splitFrontMatter(string(data))
 	p.hasFront = hasFront
 	p.frontErr = frontErr
@@ -192,6 +277,24 @@ func loadPlan(root, filePath string) (*plan, error) {
 			p.noteLinks = scanLinks(p.front.StatusNote)
 		}
 	}
+	tracking := declaresID(block)
+	if frontErr != nil {
+		tracking = idKeyRE.Match(data)
+	}
+	inside, reserved := openSpecLocation(rel)
+	if p.basename == "plan" && tracking && !inside || reserved {
+		p.directory = filepath.Dir(filePath)
+		if p.front.ID != "" {
+			p.identity = p.front.ID
+		} else {
+			p.identity = p.relPath
+		}
+		parts := strings.Split(relSlash, "/")
+		if len(parts) > 4 && parts[0] == "github.com" {
+			p.repo = strings.Join(parts[1:3], "/")
+		}
+	}
+	p.name = shortName(p.identity)
 	p.title, p.hasTitle, p.links = scanBody(body)
 	if !p.hasTitle {
 		p.title = p.name

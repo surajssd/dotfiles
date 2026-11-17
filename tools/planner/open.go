@@ -7,7 +7,7 @@ import (
 	"os/exec"
 )
 
-const openHelp = `Open a plan file in VS Code using the code command on PATH.
+const openHelp = `Open a plan file or managed directory in VS Code using the code command on PATH.
 
 <plan> is a path under the root, a [[wikilink]], a basename, the short NAME
 shown by planner get, or a URL the plan lists. The reference must match
@@ -27,7 +27,11 @@ func runOpen(ctx context.Context, deps dependencies, root, ref string) error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.CommandContext(ctx, "code", p.path)
+	target := p.path
+	if p.directory != "" {
+		target = p.directory
+	}
+	cmd := exec.CommandContext(ctx, "code", target)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = deps.stdin, deps.stdout, deps.stderr
 	if err := cmd.Run(); err != nil {
 		if errors.Is(err, exec.ErrNotFound) {

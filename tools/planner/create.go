@@ -23,6 +23,8 @@ const (
 )
 
 type createOptions struct {
+	noOpenSpec   bool
+	id           string
 	parent       string
 	status       string
 	note         string
@@ -39,7 +41,7 @@ func (o createOptions) links(key string) []string {
 	return o.issues
 }
 
-func runCreate(deps dependencies, root string, args []string, opts createOptions) error {
+func runCreate(ctx context.Context, deps dependencies, root string, args []string, opts createOptions) error {
 	name, err := planName(args)
 	if err != nil {
 		return err
@@ -61,10 +63,16 @@ func runCreate(deps dependencies, root string, args []string, opts createOptions
 			}
 		}
 	}
+	now := deps.now()
+	if !opts.noOpenSpec {
+		return createOpenSpec(ctx, deps, root, name, opts, now)
+	}
 	repo, err := resolveRepo(deps)
 	if err != nil {
 		return err
 	}
+	dir := filepath.Join(root, "github.com", filepath.FromSlash(repo))
+	planPath := filepath.Join(dir, now.Format(timestampLayout)+"-"+name+".md")
 	parentValue := ""
 	if opts.parent != "" {
 		parentValue, err = canonicalReference(root, opts.parent)
@@ -72,9 +80,6 @@ func runCreate(deps dependencies, root string, args []string, opts createOptions
 			return err
 		}
 	}
-	now := deps.now()
-	dir := filepath.Join(root, "github.com", filepath.FromSlash(repo))
-	planPath := filepath.Join(dir, now.Format(timestampLayout)+"-"+name+".md")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
@@ -143,10 +148,25 @@ func planContent(deps dependencies, parentValue string, opts createOptions, now 
 	if err != nil {
 		return nil, err
 	}
+	var idEdits []fieldEdit
+	if opts.id != "" {
+		front, err := decodeFrontMatter(content)
+		if err != nil {
+			return nil, fmt.Errorf("piped front matter: %w", err)
+		}
+		block, _, _, _ := splitFrontMatter(string(content))
+		if declaresID(block) && front.ID != opts.id {
+			return nil, errors.New("piped front matter has a conflicting ID")
+		}
+		if front.ID == "" {
+			idEdits = append(idEdits, fieldEdit{"ID", "ID: " + quoteYAML(opts.id)})
+		}
+	}
 	edits, err := linkEdits(content, opts)
 	if err != nil {
 		return nil, err
 	}
+	edits = append(idEdits, edits...)
 	if opts.status != "" || opts.noteSet {
 		edits = append(edits, statusEdits(opts.status, opts.note, opts.noteSet, now.Format(dateLayout))...)
 	}
@@ -186,7 +206,11 @@ func generatedFrontMatter(parentValue string, opts createOptions, now time.Time)
 		note = opts.note
 	}
 	var out bytes.Buffer
-	out.WriteString("---\nType: plan\n")
+	out.WriteString("---\n")
+	if opts.id != "" {
+		out.WriteString("ID: " + quoteYAML(opts.id) + "\n")
+	}
+	out.WriteString("Type: plan\n")
 	if parentValue != "" {
 		out.WriteString(parentLine(parentValue) + "\n")
 	}
@@ -250,14 +274,14 @@ func canonicalReference(root, ref string) (string, error) {
 		if _, statErr := os.Stat(root); !errors.Is(statErr, fs.ErrNotExist) {
 			return "", err
 		}
-		c = &corpus{root: root, byBasename: map[string][]*plan{}, byPath: map[string]*plan{}}
+		c = &corpus{root: root, byIdentity: map[string][]*plan{}, byPath: map[string]*plan{}}
 	}
 	if kind != parentPath {
 		p, err := findPlan(c, ref)
 		if err != nil {
 			return "", fmt.Errorf("parent: %w", err)
 		}
-		return "[[" + p.basename + "]]", nil
+		return "[[" + p.identity + "]]", nil
 	}
 	expanded, err := expandHome(ref)
 	if err != nil {
@@ -275,10 +299,10 @@ func canonicalReference(root, ref string) (string, error) {
 		return "", err
 	}
 	if p, ok := c.byPath[resolved]; ok {
-		if matches := c.lookup(p.basename); len(matches) != 1 {
+		if matches := c.lookup(p.identity); len(matches) != 1 {
 			return "", ambiguousReference(ref, matches)
 		}
-		return "[[" + p.basename + "]]", nil
+		return "[[" + p.identity + "]]", nil
 	}
 	if strings.HasPrefix(ref, "~") || filepath.IsAbs(ref) {
 		return ref, nil

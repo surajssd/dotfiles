@@ -188,7 +188,7 @@ func TestNewIssueAndPRFlags(t *testing.T) {
 	initRepo(t, "upstream", "https://github.com/acme/widgets")
 	root := t.TempDir()
 	deps, io := testDependencies("", true, 0)
-	if err := run(t, deps, "create", "--root", root, "--issue", jiraA, "--pr", prA, "--pr", prB, "--pr", prA, "linked"); err != nil {
+	if err := run(t, deps, "create", "--no-openspec", "--root", root, "--issue", jiraA, "--pr", prA, "--pr", prB, "--pr", prA, "linked"); err != nil {
 		t.Fatal(err)
 	}
 	want := "---\nType: plan\nIssues:\n  - " + jiraA + "\nPullRequests:\n  - " + prA + "\n  - " + prB + "\nImplementationStatus: NotImplemented\nStatusChecked: 2026-09-29\nStatusNote: \"Implementation has not started.\"\n---\n\n"
@@ -198,7 +198,7 @@ func TestNewIssueAndPRFlags(t *testing.T) {
 
 	piped := "---\nType: plan\nPullRequests:\n  - " + prA + "\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: \"Mine.\"\n---\n\n# Piped\n"
 	deps, io = testDependencies(piped, false, 0)
-	if err := run(t, deps, "create", "--root", root, "--pr", prB, "--issue", ghIssue, "piped links"); err != nil {
+	if err := run(t, deps, "create", "--no-openspec", "--root", root, "--pr", prB, "--issue", ghIssue, "piped links"); err != nil {
 		t.Fatal(err)
 	}
 	want = "---\nType: plan\nPullRequests:\n  - " + prA + "\n  - " + prB + "\nImplementationStatus: InProgress\nStatusChecked: 2026-09-01\nStatusNote: \"Mine.\"\nIssues:\n  - " + ghIssue + "\n---\n\n# Piped\n"
@@ -208,7 +208,7 @@ func TestNewIssueAndPRFlags(t *testing.T) {
 
 	before := listFiles(t, root)
 	deps, _ = testDependencies("", true, 0)
-	err := run(t, deps, "create", "--root", root, "--pr", ghIssue, "rejected")
+	err := run(t, deps, "create", "--no-openspec", "--root", root, "--pr", ghIssue, "rejected")
 	if err == nil || !strings.Contains(err.Error(), "pull request") {
 		t.Fatalf("error = %v", err)
 	}

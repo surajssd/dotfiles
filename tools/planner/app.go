@@ -53,7 +53,7 @@ var (
 )
 
 const getHelp = `Print the plans under the root as a table: NAME, REPO, STATUS, CHECKED, and
-TITLE, one row per plan, sorted by repository then filename.
+TITLE, one row per plan, sorted by repository then effective identity.
 
 Without --all only active plans (every ImplementationStatus except
 Implemented, Superseded, and Abandoned) are shown. --all also lists plans
@@ -75,7 +75,9 @@ file are lowercase: name, basename, path, repo, title, and
 front_matter_error, which appears only when the block is missing or does not
 decode. The front matter keys keep their spelling: Type, Parent, Issues,
 PullRequests, ImplementationStatus, SupersededBy, StatusChecked, and
-StatusNote; an empty one is left out. -o name prints one basename per line.
+StatusNote; an empty one is left out. Directory plans add ID and directory;
+basename remains plan and path points to plan.md. -o name prints effective
+identities (directory IDs or single-file basenames).
 --no-headers drops the header row.
 
 With plan names (a path, [[wikilink]], basename, or the short NAME shown in
@@ -100,7 +102,8 @@ only output format is -o wide. --pr is available only for planner get.`
 const describeHelp = `Print one block per named plan, kubectl describe style: the name, title,
 file (home shown as ~), repository, type, status, checked date and age, parent,
 successor, children, issues, pull requests, the full status note, and the
-planner check findings for that plan.
+planner check findings for that plan. Directory plans also show their ID
+and managed directory.
 
 --github asks gh pr view for the state of every listed pull request and
 prints it after the URL (OPEN, CLOSED, or MERGED, or the reason gh gave
@@ -111,8 +114,22 @@ gh on PATH, logged in, and network access.
 get, or a URL the plan lists. A name that matches no plan is reported after
 the others and the exit status is 1.`
 
-const createHelp = `Create <root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md and print its
-absolute path.
+const createHelp = `Create an OpenSpec change under
+<root>/github.com/<org>/<repo>/openspec/changes/<name>/ and add plan.md.
+Print the absolute metadata path after both operations succeed.
+
+OpenSpec is the default and needs openspec on PATH. Planner creates the
+external repository directory under the plan root when needed. If its
+OpenSpec tree is missing or incomplete, Planner initializes it with
+openspec init --tools none --no-animation, without agent integrations.
+Planner checks the selected root with openspec list --json, then invokes
+openspec new change <name> --json from the repository's directory under the
+plan root. OpenSpec change names use lowercase letters, numbers, and single
+hyphens. Each CLI call has a 30-second timeout. Failed creation can leave an
+OpenSpec change; inspect it before retrying.
+
+--no-openspec creates the standalone
+<root>/github.com/<org>/<repo>/<YYMMDDHHMMSS>-<name>.md file without OpenSpec.
 
 The words of <name> are joined with hyphens; a trailing .md is dropped. The
 repository comes from the upstream remote, then from gh repo view on the
@@ -124,7 +141,7 @@ already starts with a --- front matter block, which is kept as is.
 
 --parent accepts a dumped plan (as [[wikilink]], basename, or the short name
 shown by planner get), a file path, or a URL. A plan under the root is stored
-as the wikilink of its basename; a file outside the root is stored as a path;
+as the wikilink of its effective identity; a file outside the root is stored as a path;
 a URL is stored as is.
 
 --status sets ImplementationStatus (default NotImplemented; any case, with
@@ -149,7 +166,7 @@ func newCommand(deps dependencies) *cobra.Command {
   planner get repos            every repository that has plans
   planner tree [<plan>...]     the same as an effort tree, or the named subtrees
   planner describe <plan>...   every field of a plan, its children, its findings
-  planner open <plan>          open a plan file in VS Code
+  planner open <plan>          open a plan file or directory in VS Code
   planner check [<plan>...]    front matter and link findings; exit 1 on errors
   planner check --github       also compare StatusNote with GitHub's PR states
   planner create <name...>     create a plan for the current repository
@@ -159,10 +176,11 @@ func newCommand(deps dependencies) *cobra.Command {
   planner set pr|issue         add pull request or tracker URLs to a plan
   planner version              build information of this binary
 
-Plans are Markdown files named <YYMMDDHHMMSS>-<name>.md under
+Plans include standalone Markdown files named <YYMMDDHHMMSS>-<name>.md under
 <root>/github.com/<org>/<repo>/ with a YAML front matter block that holds
 Type, ImplementationStatus, StatusChecked, and StatusNote, and optionally
-Parent, SupersededBy, Issues, and PullRequests. The plan root comes from
+Parent, SupersededBy, Issues, and PullRequests. Directory plans use plan.md
+with a stable ID instead of the filename for references. The plan root comes from
 --root or from the root key in ~/.planner.yaml:
 
   root: ~/plans
@@ -261,7 +279,7 @@ completes commands, flags, plan names, repositories, and statuses.`,
 
 	open := &cobra.Command{
 		Use:               "open <plan>",
-		Short:             "Open a plan file in VS Code",
+		Short:             "Open a plan file or directory in VS Code",
 		Long:              openHelp,
 		Args:              cobra.ExactArgs(1),
 		ValidArgsFunction: complete.planFirst,
@@ -303,9 +321,10 @@ completes commands, flags, plan names, repositories, and statuses.`,
 				return err
 			}
 			newOpts.noteSet = cmd.Flags().Changed("note")
-			return runCreate(deps, rootDir, args, newOpts)
+			return runCreate(cmd.Context(), deps, rootDir, args, newOpts)
 		},
 	}
+	create.Flags().BoolVar(&newOpts.noOpenSpec, "no-openspec", false, "create a standalone Markdown plan without invoking OpenSpec")
 	create.Flags().StringVar(&newOpts.parent, "parent", "", "parent plan: [[wikilink]], basename, file path, or URL")
 	create.Flags().StringVar(&newOpts.status, "status", "", "initial ImplementationStatus (needs --note)")
 	create.Flags().StringVar(&newOpts.note, "note", "", "initial StatusNote")

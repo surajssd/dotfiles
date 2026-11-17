@@ -51,7 +51,8 @@ marked below. It needs gh on PATH, logged in, and network access.
 Front matter keys: Type, ImplementationStatus, StatusChecked, and
 StatusNote are required; Parent, SupersededBy, Issues, and PullRequests
 are optional. Parent and SupersededBy hold a "[[wikilink]]", a path, or a
-URL; Issues and PullRequests hold lists of URLs.
+URL; Issues and PullRequests hold lists of URLs. Directory plans also require
+ID (twelve digits, a hyphen, and a reference-safe name).
 
 Recognised ImplementationStatus values:
 
@@ -59,6 +60,9 @@ Recognised ImplementationStatus values:
   Implemented, Superseded, Abandoned
 
 Rules:
+
+  invalid-id            error     a directory plan has a missing or invalid ID
+  duplicate-id          error     an effective identity identifies several plans
 
   no-front-matter       advisory  the first line is not ---
   invalid-front-matter  error     no closing --- or the YAML does not decode
@@ -154,7 +158,11 @@ func runCheck(deps dependencies, root string, names []string, opts checkOptions)
 		if repo == "" {
 			repo = emptyCell
 		}
-		table = append(table, []string{filepath.Base(f.plan.relPath), repo, f.severity.String(), f.rule, f.detail})
+		file := filepath.Base(f.plan.relPath)
+		if f.plan.directory != "" {
+			file = f.plan.relPath
+		}
+		table = append(table, []string{file, repo, f.severity.String(), f.rule, f.detail})
 		if f.severity == failure {
 			errorCount++
 		} else {
@@ -202,6 +210,12 @@ func checkCorpus(c *corpus) []finding {
 			add(p, "invalid-front-matter", failure, strings.Join(strings.Fields(p.frontErr.Error()), " "))
 		default:
 			checkFields(c, p, add)
+		}
+		if p.directory != "" && !validDirectoryID(p.front.ID) {
+			add(p, "invalid-id", failure, "directory plan requires ID: twelve digits, a hyphen, and a reference-safe name")
+		}
+		if matches := c.lookup(p.identity); len(matches) > 1 && slices.ContainsFunc(matches, func(match *plan) bool { return match.directory != "" }) {
+			add(p, "duplicate-id", failure, fmt.Sprintf("%q identifies %d plans", p.identity, len(matches)))
 		}
 		checkLinks(c, p, add)
 	}

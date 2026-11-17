@@ -10,10 +10,12 @@ import (
 )
 
 // planRecord is the machine-readable view of a plan for -o json and -o yaml:
-// the identity derived from the path, then the front matter as written. The
+// the physical path, effective identity, and front matter as written. The
 // front matter fields are absent when the block is missing or does not
 // decode, and front_matter_error says why.
 type planRecord struct {
+	ID                   string   `json:"ID,omitempty" yaml:"ID,omitempty"`
+	Directory            string   `json:"directory,omitempty" yaml:"directory,omitempty"`
 	Name                 string   `json:"name" yaml:"name"`
 	Basename             string   `json:"basename" yaml:"basename"`
 	Path                 string   `json:"path" yaml:"path"`
@@ -36,6 +38,10 @@ type planList struct {
 
 func newPlanRecord(p *plan) planRecord {
 	r := planRecord{Name: p.name, Basename: p.basename, Path: p.path, Repo: p.repo, Title: p.title}
+	if p.directory != "" {
+		r.ID = p.front.ID
+		r.Directory = p.directory
+	}
 	switch {
 	case !p.hasFront:
 		r.FrontMatterError = "no front matter"
@@ -61,7 +67,7 @@ func renderRecords(plans []*plan, format string, single bool) (string, error) {
 	if format == "name" {
 		var out strings.Builder
 		for _, p := range plans {
-			out.WriteString(p.basename + "\n")
+			out.WriteString(p.identity + "\n")
 		}
 		return out.String(), nil
 	}
