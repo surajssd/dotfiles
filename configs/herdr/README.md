@@ -38,3 +38,11 @@ Renamed spaces show only their custom name in the sidebar. Unnamed spaces keep t
 With Herdr running, the installer clones the bundled `spaces` mod as `dotfiles-spaces` and the `main` layout as `dotfiles-main`, preserving the layout sizes and other layout adjustments. It hides the sidebar Git details when `w.named` is true, checks the mod, and selects the custom layout. If Herdr is closed, open it and rerun `./installers/install-herdr-app.sh` to complete the sidebar setup.
 
 The clones stay in `~/.config/herdr-app` and survive restarts. Repeated installation preserves the clones and reapplies the sidebar change. Herdr does not update clones after an app upgrade. Switch back to `main` through the layout picker to restore the bundled sidebar.
+
+## macOS agent notifications
+
+The `dotfiles-main` layout sends a macOS notification when Herdr shows an alert for an agent that finishes or needs input. Clicking the banner or its entry in Notification Center brings Herdr forward and selects that agent. The in-app alert also opens the agent.
+
+Install `terminal-notifier` with `brew install terminal-notifier`. With Herdr open, run `./installers/install-herdr-app.sh`. Rerun the installer after a Herdr update to refresh the bundled toast used by the custom mod.
+
+To test, start an agent task and switch to another app before it finishes. Allow notifications from **terminal-notifier** when macOS asks. Click the new **Herdr** banner to return to the agent. To change banner settings, open **System Settings > Notifications > terminal-notifier**.

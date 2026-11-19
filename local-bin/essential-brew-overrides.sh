@@ -49,6 +49,7 @@ mac_packages=(
     pstree
     python
     rsync
+    terminal-notifier
     tmux
     tree
     virtualenv
