@@ -1,6 +1,8 @@
-package main
+package cli
 
 import (
+	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -18,8 +20,8 @@ type dependencies struct {
 	apiBaseURL string
 }
 
-func realDependencies() dependencies {
-	return dependencies{
+func Run(ctx context.Context, args []string) int {
+	deps := dependencies{
 		stdin:      os.Stdin,
 		stdout:     os.Stdout,
 		stderr:     os.Stderr,
@@ -27,6 +29,20 @@ func realDependencies() dependencies {
 		httpClient: &http.Client{Timeout: 30 * time.Second},
 		apiBaseURL: "https://app.asana.com/api/1.0",
 	}
+	return run(ctx, deps, args)
+}
+
+func run(ctx context.Context, deps dependencies, args []string) int {
+	if args == nil {
+		args = []string{}
+	}
+	cmd := newCommand(deps)
+	cmd.SetArgs(args)
+	if err := cmd.ExecuteContext(ctx); err != nil {
+		_, _ = fmt.Fprintln(deps.stderr, "error:", err)
+		return 1
+	}
+	return 0
 }
 
 func newCommand(deps dependencies) *cobra.Command {

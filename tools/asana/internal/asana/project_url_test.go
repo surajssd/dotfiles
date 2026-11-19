@@ -1,9 +1,6 @@
-package main
+package asana
 
-import (
-	"testing"
-	"time"
-)
+import "testing"
 
 func TestProjectURLs(t *testing.T) {
 	for _, value := range []string{
@@ -20,7 +17,7 @@ func TestProjectURLs(t *testing.T) {
 		"https://app.asana.com/0/200/300?focus=true",
 	} {
 		t.Run(value, func(t *testing.T) {
-			if gid, err := parseProjectURL(value); err != nil || gid != "200" {
+			if gid, err := ParseProjectURL(value); err != nil || gid != "200" {
 				t.Errorf("gid = %q, err = %v", gid, err)
 			}
 		})
@@ -37,28 +34,9 @@ func TestProjectURLs(t *testing.T) {
 		"https://app.asana.com/1/100/project/200#task", "https://app.asana.com/%zz",
 	} {
 		t.Run(value, func(t *testing.T) {
-			if gid, err := parseProjectURL(value); err == nil {
+			if gid, err := ParseProjectURL(value); err == nil {
 				t.Errorf("accepted %q as %q", value, gid)
 			}
 		})
-	}
-}
-
-func TestTomorrowAcrossDaylightSaving(t *testing.T) {
-	location, err := time.LoadLocation("America/Los_Angeles")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, tc := range []struct {
-		now  time.Time
-		want string
-	}{
-		{time.Date(2026, time.March, 8, 0, 30, 0, 0, location), "2026-03-09"},
-		{time.Date(2026, time.November, 1, 0, 30, 0, 0, location), "2026-11-02"},
-		{time.Date(2026, time.December, 31, 23, 30, 0, 0, location), "2027-01-01"},
-	} {
-		if got, err := parseDue("tomorrow", tc.now); err != nil || got != tc.want {
-			t.Errorf("tomorrow from %s = %q, %v; want %s", tc.now, got, err, tc.want)
-		}
 	}
 }

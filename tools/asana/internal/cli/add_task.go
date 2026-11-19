@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/surajssd/dotfiles/tools/asana/internal/asana"
+	"github.com/surajssd/dotfiles/tools/asana/internal/config"
 )
 
 func newAddTaskCommand(deps dependencies, configPath *string) *cobra.Command {
@@ -33,18 +35,18 @@ after a transport error, because the task may already exist.`,
 			if strings.TrimSpace(args[0]) == "" {
 				return errors.New("title must not be blank")
 			}
-			cfg, err := readConfig(*configPath)
+			cfg, err := config.Read(*configPath)
 			if err != nil {
 				return err
 			}
 			if !cmd.Flags().Changed("project") {
 				project = cfg.DefaultProject
 			}
-			gid, err := resolveProject(cfg, project)
+			gid, err := cfg.ResolveProject(project)
 			if err != nil {
 				return err
 			}
-			task := taskInput{Name: args[0], Projects: []string{gid}, Assignee: "me", Notes: description}
+			task := asana.TaskInput{Name: args[0], Projects: []string{gid}, Assignee: "me", Notes: description}
 			task.DueOn, err = parseDue(due, deps.now())
 			if err != nil {
 				return err
@@ -55,11 +57,12 @@ after a transport error, because the task may already exist.`,
 					return fmt.Errorf("read description: %w", err)
 				}
 			}
-			token, err := lookupToken(cmd.Context(), cfg.TokenCommand)
+			token, err := cfg.Token(cmd.Context())
 			if err != nil {
 				return err
 			}
-			permalink, err := createTask(cmd.Context(), deps, token, task)
+			client := asana.NewClient(deps.httpClient, deps.apiBaseURL, token)
+			permalink, err := client.CreateTask(cmd.Context(), task)
 			if err != nil {
 				return err
 			}

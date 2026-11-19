@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"errors"
@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/surajssd/dotfiles/tools/asana/internal/config"
 )
 
 func assertConfigText(t *testing.T, path, want string) {
@@ -58,7 +60,7 @@ func TestProjectConfigPreservation(t *testing.T) {
 	if !strings.HasPrefix(string(data), original) {
 		t.Errorf("comments, key order, or existing values changed: %s", data)
 	}
-	cfg, err := readConfig(f.configPath)
+	cfg, err := config.Read(f.configPath)
 	if err != nil || cfg.Projects["# next: 世界"] != projectPermalink || cfg.DefaultProject != "work" {
 		t.Fatalf("config = %#v, error = %v", cfg, err)
 	}
@@ -79,7 +81,7 @@ func TestProjectInitialConfigAndTaskReuse(t *testing.T) {
 			if code := f.execute("add", "project", "Research", "--alias", "research"); code != 0 {
 				t.Fatalf("exit = %d, stderr = %q", code, &f.stderr)
 			}
-			cfg, err := readConfig(f.configPath)
+			cfg, err := config.Read(f.configPath)
 			if err != nil || cfg.DefaultProject != "" || cfg.Projects["research"] != projectPermalink {
 				t.Fatalf("config = %#v, error = %v", cfg, err)
 			}
@@ -194,7 +196,7 @@ func TestProjectConfigMergedMappings(t *testing.T) {
 			if code := f.execute("add", "project", "Research", "--alias", "research"); code != 0 {
 				t.Fatalf("exit = %d, stderr = %q", code, &f.stderr)
 			}
-			cfg, err := readConfig(f.configPath)
+			cfg, err := config.Read(f.configPath)
 			if err != nil || cfg.DefaultProject != "work" || cfg.Projects["work"] != "https://app.asana.com/1/100/project/200" || cfg.Projects["research"] != projectPermalink || len(cfg.Projects) != 2 {
 				t.Fatalf("config = %#v, error = %v", cfg, err)
 			}

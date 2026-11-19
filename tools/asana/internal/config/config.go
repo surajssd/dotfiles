@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"bytes"
@@ -7,12 +7,14 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
+	"github.com/surajssd/dotfiles/tools/asana/internal/asana"
 	"gopkg.in/yaml.v3"
 )
 
-type config struct {
+type Config struct {
 	TokenCommand   []string          `yaml:"token_command"`
 	DefaultProject string            `yaml:"default_project"`
 	Projects       map[string]string `yaml:"projects"`
@@ -20,8 +22,8 @@ type config struct {
 	document       yaml.Node
 }
 
-func readConfig(path string) (config, error) {
-	var cfg config
+func Read(path string) (Config, error) {
+	var cfg Config
 	if path == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -55,7 +57,7 @@ func readConfig(path string) (config, error) {
 		if strings.TrimSpace(alias) == "" {
 			return cfg, errors.New("config project aliases must not be blank")
 		}
-		if _, err := parseProjectURL(projectURL); err != nil {
+		if _, err := asana.ParseProjectURL(projectURL); err != nil {
 			return cfg, fmt.Errorf("config project %q: %w", alias, err)
 		}
 	}
@@ -65,4 +67,26 @@ func readConfig(path string) (config, error) {
 		}
 	}
 	return cfg, nil
+}
+
+func (cfg *Config) Path() string {
+	return cfg.path
+}
+
+func (cfg *Config) ResolveProject(value string) (string, error) {
+	if projectURL, ok := cfg.Projects[value]; ok {
+		return asana.ParseProjectURL(projectURL)
+	}
+	if gid, err := asana.ParseProjectURL(value); err == nil {
+		return gid, nil
+	}
+	aliases := make([]string, 0, len(cfg.Projects))
+	for alias := range cfg.Projects {
+		aliases = append(aliases, alias)
+	}
+	slices.Sort(aliases)
+	if value == "" {
+		return "", fmt.Errorf("no project selected: set default_project or pass --project; configured aliases: %s", strings.Join(aliases, ", "))
+	}
+	return "", fmt.Errorf("unknown project %q: use a configured alias or an Asana project URL; configured aliases: %s", value, strings.Join(aliases, ", "))
 }

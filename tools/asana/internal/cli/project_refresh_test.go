@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"encoding/json"
@@ -10,6 +10,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/surajssd/dotfiles/tools/asana/internal/config"
 )
 
 const membershipProject = `{"gid":"500","name":"Research: #1","permalink_url":"https://app.asana.com/1/100/project/500","members":[{"gid":"999"},{"gid":"123"}]}`
@@ -50,7 +52,7 @@ func TestRefreshProjectMemberships(t *testing.T) {
 					t.Errorf("request = %#v, want query %s", r, want.Encode())
 				}
 			}
-			cfg, err := readConfig(f.configPath)
+			cfg, err := config.Read(f.configPath)
 			wantProjects := map[string]string{"work": "https://app.asana.com/1/100/project/200", "personal": "https://app.asana.com/0/300/list", "Research: #1": projectPermalink}
 			if err != nil || !reflect.DeepEqual(cfg.Projects, wantProjects) || cfg.DefaultProject != "work" {
 				t.Fatalf("config = %#v, error = %v", cfg, err)

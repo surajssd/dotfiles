@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"fmt"
@@ -10,13 +10,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type configWrite struct {
-	target   string
-	file     *os.File
-	document *yaml.Node
+type Writer struct {
+	target string
+	file   *os.File
+	config *Config
 }
 
-func prepareConfigWrite(cfg *config) (*configWrite, error) {
+func (cfg *Config) PrepareWrite() (*Writer, error) {
 	target, err := filepath.EvalSymlinks(cfg.path)
 	if err != nil {
 		return nil, fmt.Errorf("prepare config: %w", err)
@@ -29,21 +29,21 @@ func prepareConfigWrite(cfg *config) (*configWrite, error) {
 	if err != nil {
 		return nil, fmt.Errorf("prepare config: %w", err)
 	}
-	write := &configWrite{target: target, file: file, document: &cfg.document}
+	write := &Writer{target: target, file: file, config: cfg}
 	if err := file.Chmod(info.Mode().Perm()); err != nil {
-		write.close()
+		write.Close()
 		return nil, fmt.Errorf("prepare config: %w", err)
 	}
 	return write, nil
 }
 
-func (w *configWrite) close() {
+func (w *Writer) Close() {
 	_ = w.file.Close()
 	_ = os.Remove(w.file.Name())
 }
 
-func (w *configWrite) save(projects map[string]string) error {
-	root := w.document.Content[0]
+func (w *Writer) Save() error {
+	root := w.config.document.Content[0]
 	var projectNode *yaml.Node
 	for i := 0; i < len(root.Content); i += 2 {
 		if root.Content[i].Value == "projects" {
@@ -66,16 +66,16 @@ func (w *configWrite) save(projects map[string]string) error {
 	for i := 0; i < len(projectNode.Content); i += 2 {
 		existing[projectNode.Content[i].Value] = true
 	}
-	for _, alias := range slices.Sorted(maps.Keys(projects)) {
+	for _, alias := range slices.Sorted(maps.Keys(w.config.Projects)) {
 		if !existing[alias] {
 			projectNode.Content = append(projectNode.Content,
 				&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: alias},
-				&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: projects[alias]})
+				&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: w.config.Projects[alias]})
 		}
 	}
 	encoder := yaml.NewEncoder(w.file)
 	encoder.SetIndent(2)
-	if err := encoder.Encode(w.document); err != nil {
+	if err := encoder.Encode(&w.config.document); err != nil {
 		return fmt.Errorf("save config: %w", err)
 	}
 	if err := encoder.Close(); err != nil {

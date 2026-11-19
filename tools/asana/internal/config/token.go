@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"context"
@@ -11,16 +11,16 @@ import (
 	"unicode"
 )
 
-func lookupToken(ctx context.Context, command []string) (string, error) {
+func (cfg *Config) Token(ctx context.Context) (string, error) {
 	if token := os.Getenv("ASANA_ACCESS_TOKEN"); token != "" {
 		return token, nil
 	}
-	if len(command) == 0 {
+	if len(cfg.TokenCommand) == 0 {
 		return "", errors.New("set ASANA_ACCESS_TOKEN or configure token_command")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, command[0], command[1:]...)
+	cmd := exec.CommandContext(ctx, cfg.TokenCommand[0], cfg.TokenCommand[1:]...)
 	cmd.WaitDelay = time.Second
 	var stderr strings.Builder
 	cmd.Stderr = &stderr

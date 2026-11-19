@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"errors"
@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+	"github.com/surajssd/dotfiles/tools/asana/internal/asana"
+	"github.com/surajssd/dotfiles/tools/asana/internal/config"
 )
 
 func newAddProjectCommand(deps dependencies, configPath *string) *cobra.Command {
@@ -27,26 +29,27 @@ and print only the project URL. The default project stays unchanged.`,
 			if strings.TrimSpace(alias) == "" {
 				return errors.New("--alias is required; alias must not be blank")
 			}
-			if cmd.Flags().Changed("workspace") && !isGID(workspace) {
+			if cmd.Flags().Changed("workspace") && !asana.IsGID(workspace) {
 				return errors.New("workspace must be a nonempty numeric GID")
 			}
-			cfg, err := readConfig(*configPath)
+			cfg, err := config.Read(*configPath)
 			if err != nil {
 				return err
 			}
 			if _, exists := cfg.Projects[alias]; exists {
 				return fmt.Errorf("project alias %q already exists", alias)
 			}
-			write, err := prepareConfigWrite(&cfg)
+			write, err := cfg.PrepareWrite()
 			if err != nil {
 				return err
 			}
-			defer write.close()
-			token, err := lookupToken(cmd.Context(), cfg.TokenCommand)
+			defer write.Close()
+			token, err := cfg.Token(cmd.Context())
 			if err != nil {
 				return err
 			}
-			_, workspaces, err := fetchUser(cmd.Context(), deps, token)
+			client := asana.NewClient(deps.httpClient, deps.apiBaseURL, token)
+			_, workspaces, err := client.FetchUser(cmd.Context())
 			if err != nil {
 				return err
 			}
@@ -54,13 +57,13 @@ and print only the project URL. The default project stays unchanged.`,
 			if err != nil {
 				return err
 			}
-			permalink, err := createProject(cmd.Context(), deps, token, args[0], workspace)
+			permalink, err := client.CreateProject(cmd.Context(), args[0], workspace)
 			if err != nil {
 				return err
 			}
 			cfg.Projects[alias] = permalink
-			if err := write.save(cfg.Projects); err != nil {
-				return fmt.Errorf("%w; project created at %s but alias %q was not saved; register the URL manually in %s; do not repeat project creation", err, permalink, alias, cfg.path)
+			if err := write.Save(); err != nil {
+				return fmt.Errorf("%w; project created at %s but alias %q was not saved; register the URL manually in %s; do not repeat project creation", err, permalink, alias, cfg.Path())
 			}
 			if _, err := fmt.Fprintln(deps.stdout, permalink); err != nil {
 				return fmt.Errorf("write project URL: %w; project was created at %s and saved as alias %q", err, permalink, alias)

@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"context"
@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/surajssd/dotfiles/tools/asana/internal/config"
 )
 
 const projectPermalink = "https://app.asana.com/1/100/project/500"
@@ -99,7 +101,7 @@ func TestAddProject(t *testing.T) {
 			if !reflect.DeepEqual(body, want) {
 				t.Errorf("body = %#v, want %#v", body, want)
 			}
-			cfg, err := readConfig(f.configPath)
+			cfg, err := config.Read(f.configPath)
 			if err != nil || cfg.Projects["release: #1"] != projectPermalink || cfg.DefaultProject != "work" || len(cfg.Projects) != 3 {
 				t.Fatalf("config = %#v, error = %v", cfg, err)
 			}

@@ -1,4 +1,4 @@
-package main
+package asana
 
 import (
 	"bytes"
@@ -10,7 +10,19 @@ import (
 	"strings"
 )
 
-type taskInput struct {
+type Client struct {
+	httpClient *http.Client
+	baseURL    string
+	token      string
+}
+
+func NewClient(httpClient *http.Client, baseURL, token string) *Client {
+	client := *httpClient
+	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
+	return &Client{httpClient: &client, baseURL: baseURL, token: token}
+}
+
+type TaskInput struct {
 	Name     string   `json:"name"`
 	Projects []string `json:"projects"`
 	Assignee string   `json:"assignee"`
@@ -18,22 +30,20 @@ type taskInput struct {
 	DueOn    string   `json:"due_on,omitempty"`
 }
 
-func createTask(ctx context.Context, deps dependencies, token string, task taskInput) (string, error) {
+func (c *Client) CreateTask(ctx context.Context, task TaskInput) (string, error) {
 	body, err := json.Marshal(struct {
-		Data taskInput `json:"data"`
+		Data TaskInput `json:"data"`
 	}{Data: task})
 	if err != nil {
 		return "", err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, deps.apiBaseURL+"/tasks?opt_fields=permalink_url", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/tasks?opt_fields=permalink_url", bytes.NewReader(body))
 	if err != nil {
 		return "", fmt.Errorf("prepare task request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Authorization", "Bearer "+c.token)
 	req.Header.Set("Content-Type", "application/json")
-	client := *deps.httpClient
-	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
-	resp, err := client.Do(req)
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("create task: %w; the task may exist; check Asana before retrying", err)
 	}
@@ -92,22 +102,21 @@ func apiStatusError(resp *http.Response, forbidden, notFound string) error {
 	return fmt.Errorf("asana HTTP %d: %s", resp.StatusCode, message)
 }
 
-type taskProject struct {
+type TaskProject struct {
 	GID  string `json:"gid"`
 	Name string `json:"name"`
 }
 
-type task struct {
+type Task struct {
 	GID          string        `json:"gid"`
 	Name         string        `json:"name"`
 	DueOn        *string       `json:"due_on"`
 	DueAt        *string       `json:"due_at"`
 	PermalinkURL string        `json:"permalink_url"`
-	Projects     []taskProject `json:"projects"`
-	dueDate      string
+	Projects     []TaskProject `json:"projects"`
 }
 
-func fetchUser(ctx context.Context, deps dependencies, token string) (string, []string, error) {
+func (c *Client) FetchUser(ctx context.Context) (string, []string, error) {
 	var result struct {
 		Data struct {
 			GID        string `json:"gid"`
@@ -116,7 +125,7 @@ func fetchUser(ctx context.Context, deps dependencies, token string) (string, []
 			} `json:"workspaces"`
 		} `json:"data"`
 	}
-	if err := getAsana(ctx, deps, token, "/users/me?opt_fields=workspaces", &result); err != nil {
+	if err := c.get(ctx, "/users/me?opt_fields=workspaces", &result); err != nil {
 		return "", nil, err
 	}
 	if result.Data.Workspaces == nil {
@@ -124,7 +133,7 @@ func fetchUser(ctx context.Context, deps dependencies, token string) (string, []
 	}
 	workspaces := make([]string, 0, len(result.Data.Workspaces))
 	for _, workspace := range result.Data.Workspaces {
-		if !isGID(workspace.GID) {
+		if !IsGID(workspace.GID) {
 			return "", nil, fmt.Errorf("user response has invalid workspace GID %q", workspace.GID)
 		}
 		workspaces = append(workspaces, workspace.GID)
@@ -132,21 +141,21 @@ func fetchUser(ctx context.Context, deps dependencies, token string) (string, []
 	return result.Data.GID, workspaces, nil
 }
 
-func fetchTasks(ctx context.Context, deps dependencies, token, workspace string) ([]task, error) {
+func (c *Client) FetchTasks(ctx context.Context, workspace string) ([]Task, error) {
 	query := url.Values{
 		"assignee": {"me"}, "workspace": {workspace}, "completed_since": {"now"}, "limit": {"100"},
 		"opt_fields": {"name,due_on,due_at,permalink_url,projects.name"},
 	}
-	var tasks []task
+	var tasks []Task
 	offsets := make(map[string]bool)
 	for {
 		var result struct {
-			Data     []task `json:"data"`
+			Data     []Task `json:"data"`
 			NextPage *struct {
 				Offset string `json:"offset"`
 			} `json:"next_page"`
 		}
-		if err := getAsana(ctx, deps, token, "/tasks?"+query.Encode(), &result); err != nil {
+		if err := c.get(ctx, "/tasks?"+query.Encode(), &result); err != nil {
 			return nil, err
 		}
 		if result.Data == nil {
@@ -168,17 +177,15 @@ func fetchTasks(ctx context.Context, deps dependencies, token, workspace string)
 	}
 }
 
-func getAsana(ctx context.Context, deps dependencies, token, endpoint string, result any) error {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, deps.apiBaseURL+endpoint, nil)
+func (c *Client) get(ctx context.Context, endpoint string, result any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+endpoint, nil)
 	if err != nil {
 		return fmt.Errorf("prepare listing request: %w", err)
 	}
 	// A reused connection lets net/http retry a GET after a transport failure.
 	req.Close = true
-	req.Header.Set("Authorization", "Bearer "+token)
-	client := *deps.httpClient
-	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
-	resp, err := client.Do(req)
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("read Asana: %w", err)
 	}

@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"encoding/json"
@@ -10,6 +10,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/spf13/cobra"
+	"github.com/surajssd/dotfiles/tools/asana/internal/asana"
+	"github.com/surajssd/dotfiles/tools/asana/internal/config"
 )
 
 func newGetProjectCommand(deps dependencies, configPath *string) *cobra.Command {
@@ -37,36 +39,37 @@ when the account has several. --workspace requires --refresh.`,
 				if !refresh {
 					return errors.New("--workspace requires --refresh")
 				}
-				if !isGID(workspace) {
+				if !asana.IsGID(workspace) {
 					return errors.New("workspace must be a nonempty numeric GID")
 				}
 			}
-			cfg, err := readConfig(*configPath)
+			cfg, err := config.Read(*configPath)
 			if err != nil {
 				return err
 			}
 			if refresh {
-				write, err := prepareConfigWrite(&cfg)
+				write, err := cfg.PrepareWrite()
 				if err != nil {
 					return err
 				}
-				defer write.close()
-				token, err := lookupToken(cmd.Context(), cfg.TokenCommand)
+				defer write.Close()
+				token, err := cfg.Token(cmd.Context())
 				if err != nil {
 					return err
 				}
-				user, workspaces, err := fetchUser(cmd.Context(), deps, token)
+				client := asana.NewClient(deps.httpClient, deps.apiBaseURL, token)
+				user, workspaces, err := client.FetchUser(cmd.Context())
 				if err != nil {
 					return err
 				}
-				if !isGID(user) {
+				if !asana.IsGID(user) {
 					return fmt.Errorf("user response has invalid user GID %q", user)
 				}
 				workspace, err = selectWorkspace(workspaces, workspace)
 				if err != nil {
 					return err
 				}
-				projects, err := fetchProjects(cmd.Context(), deps, token, workspace)
+				projects, err := client.FetchProjects(cmd.Context(), workspace)
 				if err != nil {
 					return err
 				}
@@ -75,7 +78,7 @@ when the account has several. --workspace requires --refresh.`,
 					return err
 				}
 				if len(cfg.Projects) != count {
-					if err := write.save(cfg.Projects); err != nil {
+					if err := write.Save(); err != nil {
 						return err
 					}
 				}
@@ -90,10 +93,10 @@ when the account has several. --workspace requires --refresh.`,
 	return cmd
 }
 
-func registerMemberships(aliases map[string]string, projects []project, user string) error {
+func registerMemberships(aliases map[string]string, projects []asana.Project, user string) error {
 	known := make(map[string]bool)
 	for _, projectURL := range aliases {
-		gid, err := parseProjectURL(projectURL)
+		gid, err := asana.ParseProjectURL(projectURL)
 		if err != nil {
 			return err
 		}
@@ -110,7 +113,7 @@ func registerMemberships(aliases map[string]string, projects []project, user str
 		if !member || known[project.GID] {
 			continue
 		}
-		gid, err := parseProjectURL(project.PermalinkURL)
+		gid, err := asana.ParseProjectURL(project.PermalinkURL)
 		if err != nil {
 			return fmt.Errorf("project %q (%s): %w", project.Name, project.GID, err)
 		}
@@ -134,7 +137,7 @@ func writeProjects(deps dependencies, projects map[string]string, output string,
 	}
 	items := make([]item, 0, len(projects))
 	for _, alias := range slices.Sorted(maps.Keys(projects)) {
-		gid, err := parseProjectURL(projects[alias])
+		gid, err := asana.ParseProjectURL(projects[alias])
 		if err != nil {
 			return err
 		}

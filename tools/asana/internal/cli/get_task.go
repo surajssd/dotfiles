@@ -1,4 +1,4 @@
-package main
+package cli
 
 import (
 	"cmp"
@@ -10,7 +10,14 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/surajssd/dotfiles/tools/asana/internal/asana"
+	"github.com/surajssd/dotfiles/tools/asana/internal/config"
 )
+
+type listedTask struct {
+	asana.Task
+	dueDate string
+}
 
 func newGetTaskCommand(deps dependencies, configPath *string) *cobra.Command {
 	var due, output string
@@ -42,50 +49,52 @@ Results are sorted by local due date, undated last, then name and GID.`,
 			if err != nil {
 				return err
 			}
-			cfg, err := readConfig(*configPath)
+			cfg, err := config.Read(*configPath)
 			if err != nil {
 				return err
 			}
 			selected := make(map[string]bool, len(projects))
 			for _, project := range projects {
-				gid, err := resolveProject(cfg, project)
+				gid, err := cfg.ResolveProject(project)
 				if err != nil {
 					return err
 				}
 				selected[gid] = true
 			}
-			token, err := lookupToken(cmd.Context(), cfg.TokenCommand)
+			token, err := cfg.Token(cmd.Context())
 			if err != nil {
 				return err
 			}
-			_, workspaces, err := fetchUser(cmd.Context(), deps, token)
+			client := asana.NewClient(deps.httpClient, deps.apiBaseURL, token)
+			_, workspaces, err := client.FetchUser(cmd.Context())
 			if err != nil {
 				return err
 			}
-			tasks := make([]task, 0)
+			tasks := make([]listedTask, 0)
 			for _, workspace := range workspaces {
-				workspaceTasks, err := fetchTasks(cmd.Context(), deps, token, workspace)
+				workspaceTasks, err := client.FetchTasks(cmd.Context(), workspace)
 				if err != nil {
 					return fmt.Errorf("list tasks in workspace %s: %w", workspace, err)
 				}
 				for _, task := range workspaceTasks {
+					var dueDate string
 					if task.DueOn != nil {
-						task.dueDate = *task.DueOn
+						dueDate = *task.DueOn
 					}
 					if task.DueAt != nil {
 						dueAt, err := time.Parse(time.RFC3339, *task.DueAt)
 						if err != nil {
 							return fmt.Errorf("task %s has invalid due_at: %w", task.GID, err)
 						}
-						task.dueDate = dueAt.In(now.Location()).Format(time.DateOnly)
+						dueDate = dueAt.In(now.Location()).Format(time.DateOnly)
 					}
 					matchesDue := true
 					switch cutoff {
 					case "any":
 					case "none":
-						matchesDue = task.dueDate == ""
+						matchesDue = dueDate == ""
 					default:
-						matchesDue = task.dueDate != "" && task.dueDate <= cutoff
+						matchesDue = dueDate != "" && dueDate <= cutoff
 					}
 					if !matchesDue {
 						continue
@@ -96,13 +105,13 @@ Results are sorted by local due date, undated last, then name and GID.`,
 					}
 					if matches {
 						if task.Projects == nil {
-							task.Projects = []taskProject{}
+							task.Projects = []asana.TaskProject{}
 						}
-						tasks = append(tasks, task)
+						tasks = append(tasks, listedTask{Task: task, dueDate: dueDate})
 					}
 				}
 			}
-			slices.SortFunc(tasks, func(a, b task) int {
+			slices.SortFunc(tasks, func(a, b listedTask) int {
 				if a.dueDate == "" && b.dueDate != "" {
 					return 1
 				}
@@ -139,12 +148,12 @@ func parseGetDue(value string, now time.Time) (string, error) {
 	}
 }
 
-func writeTasks(deps dependencies, tasks []task, output string, noHeaders bool) error {
+func writeTasks(deps dependencies, tasks []listedTask, output string, noHeaders bool) error {
 	if output == "json" {
 		encoder := json.NewEncoder(deps.stdout)
 		encoder.SetEscapeHTML(false)
 		return encoder.Encode(struct {
-			Items []task `json:"items"`
+			Items []listedTask `json:"items"`
 		}{Items: tasks})
 	}
 	if len(tasks) == 0 {
