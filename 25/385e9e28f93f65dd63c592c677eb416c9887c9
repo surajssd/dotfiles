@@ -1,0 +1,20 @@
+## Conversation
+The user requested Cmd+R or Cmd+Shift+R for the Rename action shown in the Herdr desktop Spaces sidebar. They then requested the commit and push.
+
+## Actions
+Checked the installed keymap and its history. Both proposed shortcuts were free. Added Cmd+R for space.rename, documented it, and checked the installed binding with jq. Herdr reported an empty errors list. Reviewed the full diff and untracked files, checked whitespace, and validated the commit title with commitlint. Confirmed that the remote master and notes refs matched the local refs before committing. Signed and signed off the commit with the automatic post-commit push suppressed so that master and the note could be pushed together.
+
+## Errors & Mistakes
+An initial status query produced "Cannot index string with string (\"name\")" because Herdr returns the active space as a string ID. Reading the space field directly succeeded.
+
+## Dead Ends
+The keyboard test checked that Herdr was frontmost and that macOS permitted event posting. The check skipped dispatch, so keyboard interaction was not observed.
+
+## Hints for Future Agents
+The installed desktop keys.json is a symlink to configs/herdr/app/keys.json. Test both the action and the keymap section. Global space.rename is the Spaces sidebar action. The existing Shift+F2 invokes the same action, whereas F2 renames a tab.
+
+## Codebase Discoveries
+The desktop shortcut table lives in configs/herdr/README.md. The separate configs/herdr/config.toml configures the TUI.
+
+## Open Questions
+None.
