@@ -1,0 +1,113 @@
+--- main.js
++++ main.js
+@@ -88,4 +88,5 @@
+     } catch { this.reconnecting = {}; }
+     try { this.folded = new Set(JSON.parse(localStorage.getItem("machines.folded") ?? "[]")); } catch { this.folded = new Set(); }
++    try { this.foldedRepos = new Set(JSON.parse(localStorage.getItem("worktrees.folded") ?? "[]")); } catch { this.foldedRepos = new Set(); }
+     this.refreshMachines(cx);
+     cx.timer.every(15000, cx => this.refreshMachines(cx));
+@@ -294,22 +295,46 @@
+     return this.ordering && now - this.ordering.at >= 1000
+       && this.ordering.machines.every(name => machines().some(m => m.name === name && m.layout === "ready"));
++  }
++
++  setWorktreesFolded(repo, folded) {
++    if (folded) this.foldedRepos.add(repo);
++    else if (!this.foldedRepos.delete(repo)) return;
++    localStorage.setItem("worktrees.folded", JSON.stringify([...this.foldedRepos]));
+   }
+
+   // Spaces in order, each worktree space moved under its main checkout's.
+-  ordered() {
++  ordered(compact) {
+     const sp = spaces(), ps = panes();
+     const ready = (w) => this.shown.has(w.id) || where(w, ps) in this.git || Date.now() - (this.born[w.id] ??= Date.now()) > 1500;
+     for (const w of sp) if (!this.shown.has(w.id) && ready(w)) this.shown.add(w.id);
+     const list = sp.map((w, i) => ({ w, i, g: this.git[where(w, ps)] ?? null }));
++    const selected = list.find(r => r.w.active);
++    if (selected && selected.w.id !== this.lastActiveSpace) {
++      this.pendingWorktreeReveal = this.lastActiveSpace ? selected.w.id : null;
++      this.lastActiveSpace = selected.w.id;
++    }
+     const mains = new Set(list.filter((r) => r.g && !r.g.linked).map((r) => r.g.repo));
+     const nested = (r) => r.g?.linked && mains.has(r.g.repo);
+     const out = [];
++    const hidden = new Set();
+     const placed = new Set(); // repos whose worktrees are listed (under the first of its spaces)
+     for (const r of list) {
+       if (nested(r)) continue;
+-      out.push({ ...r, tree: null });
++      const parent = { ...r, tree: null };
++      out.push(parent);
+       if (!r.g || r.g.linked || placed.has(r.g.repo)) continue;
+       placed.add(r.g.repo);
+       const kids = list.filter((k) => nested(k) && k.g.repo === r.g.repo);
++      if (kids.length && this.shown.has(r.w.id)) {
++        if (selected?.w.id === this.pendingWorktreeReveal && selected?.g?.repo === r.g.repo) {
++          this.pendingWorktreeReveal = null;
++          this.setWorktreesFolded(r.g.repo, false);
++        }
++        if (!compact) {
++          const folded = this.foldedRepos.has(r.g.repo);
++          parent.worktrees = { folded, activeChild: folded && kids.some(k => k.w.active) };
++          if (folded) kids.forEach(k => hidden.add(k.w.id));
++        }
++      }
+       kids.forEach((k, n) => out.push({ ...k, tree: n === kids.length - 1 ? "└─" : "├─" }));
+     }
+@@ -333,10 +358,11 @@
+       this.ordering.machines = [...moved];
+     }
+-    return out.filter(r => this.shown.has(r.w.id));
++    return out.filter(r => this.shown.has(r.w.id) && !hidden.has(r.w.id));
+   }
+
+   // The rows, under a header per machine once one isn't this computer.
+   grouped(t, collapsed) {
+-    const rows = this.ordered();
++    const rows = this.ordered(collapsed);
++    const activeRow = r => r.w.active || r.worktrees?.activeChild;
+     const draw = (r) => (collapsed ? this.compact(r, t) : this.row(r, t));
+     // Where the active space's row lands among the children this returns: the list scrolls by its direct
+@@ -353,5 +379,5 @@
+     if (!remote.length) {
+       if (loading(null) && !rows.length) return [loadingRow(null)];
+-      this.activeAt = rows.findIndex(r => r.w.active);
++      this.activeAt = rows.findIndex(activeRow);
+       return rows.map(draw);
+     }
+@@ -412,5 +438,5 @@
+             .child(this.copiedLogin === login ? "Copied" : "Copy")))] : [];
+       const items = [cell(head), ...guidance, ...(folded ? [] : mine.length ? mine.map(draw) : [loading(m) ? loadingRow(m) : cell(empty)])];
+-      const first = folded ? -1 : mine.findIndex(r => r.w.active);
++      const first = folded ? -1 : mine.findIndex(activeRow);
+       if (first >= 0) this.activeAt = before + 1 + guidance.length + first;
+       before += items.length;
+@@ -442,6 +468,6 @@
+   }
+
+-  row({ w, i, g, tree }, t) {
+-    const on = w.active;
++  row({ w, i, g, tree, worktrees }, t) {
++    const on = w.active || worktrees?.activeChild;
+     const fromIndex = this.pressed === null ? -1 : spaces().findIndex(s => s.id === this.pressed);
+     const colors = shared("space.colors") ?? {};
+@@ -495,5 +521,17 @@
+           .when(!tree, el => el.child(h_flex().size(18).flex_none().rounded(5).bg(fill).items_center().justify_center().text_size(10.5).font_bold().text_color("#ffffff").child([...w.name][0]?.toUpperCase() ?? "?")))
+           .child(div().flex_initial().min_w(SIDE_MIN).truncate().text_color(t.foreground).child(w.name))
+-          .child(g && !w.named ? this.gitTail(g, tree, w.name, t) : div().flex_1()),
++          .child(g && !w.named ? this.gitTail(g, tree, w.name, t) : div().flex_1())
++          .when(Boolean(worktrees), el => el.child(
++            div().id(`worktrees-fold-${w.id}`).size(20).flex_none().flex().items_center().justify_center()
++              .rounded(4).text_color(t.dim).cursor_pointer().hover(s => s.bg(t.raised).text_color(t.foreground))
++              .tooltip(worktrees.folded ? "Expand worktrees" : "Collapse worktrees")
++              .on_mouse_down("left", (_e, cx) => cx.stop_propagation())
++              .on_click((_e, cx) => {
++                cx.stop_propagation();
++                this.setWorktreesFolded(g.repo, !this.foldedRepos.has(g.repo));
++                cx.notify();
++              })
++              .child(svg(`mods/workspace-chrome/chevron-${worktrees.folded ? "right" : "down"}.svg`).size(11)),
++          )),
+       );
+   }

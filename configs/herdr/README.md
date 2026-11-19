@@ -31,13 +31,15 @@ Before replacing a regular `keys.json`, the installer saves it as `keys.json.bef
 
 `app/keys.json` contains the macOS defaults from Herdr 0.1.16 plus the space rename and worktree shortcuts, with Cmd+W unbound. Herdr treats this file as a complete keymap. After an app upgrade, add any desired new default shortcuts to this file.
 
-## Desktop sidebar names
+## Desktop Spaces sidebar
 
 Renamed spaces show only their custom name in the sidebar. Unnamed spaces keep their Git details. The bottom status bar keeps its branch name.
 
-With Herdr running, the installer clones the bundled `spaces` mod as `dotfiles-spaces` and the `main` layout as `dotfiles-main`, preserving the layout sizes and other layout adjustments. It hides the sidebar Git details when `w.named` is true, checks the mod, and selects the custom layout. If Herdr is closed, open it and rerun `./installers/install-herdr-app.sh` to complete the sidebar setup.
+In the expanded sidebar, click the chevron at the right of a repository space to hide or show its worktree spaces. Navigating to the repository or one of its worktrees expands the group. You can collapse the group again while a worktree is active. Its terminal stays visible and the repository row is highlighted. Herdr remembers each group's setting across restarts. The compact sidebar shows every worktree.
 
-The clones stay in `~/.config/herdr-app` and survive restarts. Repeated installation preserves the clones and reapplies the sidebar change. Herdr does not update clones after an app upgrade. Switch back to `main` through the layout picker to restore the bundled sidebar.
+With Herdr running, the installer clones the bundled `spaces` mod as `dotfiles-spaces` and the `main` layout as `dotfiles-main`, preserving the layout sizes and other layout adjustments. It applies the sidebar changes, checks the mod, and selects the custom layout. If Herdr is closed, open it and rerun `./installers/install-herdr-app.sh` to complete the sidebar setup.
+
+The clones stay in `~/.config/herdr-app` and survive restarts. Repeated installation preserves the clones and reapplies the sidebar changes. Herdr does not update clones after an app upgrade. Switch back to `main` through the layout picker to restore the bundled sidebar.
 
 ## macOS agent notifications
 

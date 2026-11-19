@@ -57,7 +57,15 @@ if command -v herdr-app >/dev/null 2>&1 && herdr-app status >/dev/null 2>&1; the
 ' "${MOD_DIR}/main.js" >"${MOD_TEMP}"; then
         die "Herdr Spaces code has changed. Review dotfiles-spaces/main.js before applying sidebar names."
     fi
-    cat "${MOD_TEMP}" >"${MOD_DIR}/main.js"
+    SPACES_PATCH="${CONFIG_DIR}/spaces-fold.patch"
+    if patch --posix -s -F 0 -N --dry-run "${MOD_TEMP}" <"${SPACES_PATCH}" >/dev/null 2>&1; then
+        patch --posix -s -F 0 -N "${MOD_TEMP}" <"${SPACES_PATCH}"
+    elif ! patch --posix -s -F 0 -R --dry-run "${MOD_TEMP}" <"${SPACES_PATCH}" >/dev/null 2>&1; then
+        die "Herdr Spaces code has changed. Review dotfiles-spaces/main.js before adding worktree folding."
+    fi
+    if ! cmp -s "${MOD_TEMP}" "${MOD_DIR}/main.js"; then
+        cat "${MOD_TEMP}" >"${MOD_DIR}/main.js"
+    fi
     herdr-app check "${MOD_DIR}"
 
     toast_mod=""
@@ -96,7 +104,7 @@ if command -v herdr-app >/dev/null 2>&1 && herdr-app status >/dev/null 2>&1; the
     cat "${LAYOUT_TEMP}" >"${LAYOUT_FILE}"
     herdr-app "do" layout.switch '{"name":"dotfiles-main"}'
 
-    echo "✅ Herdr sidebar shows only the custom name for renamed spaces"
+    echo "✅ Herdr sidebar names and worktree folding configured"
 else
     echo "ℹ️ Open Herdr and rerun installers/install-herdr-app.sh to configure the desktop layout."
 fi
