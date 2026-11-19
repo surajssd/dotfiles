@@ -1,0 +1,20 @@
+## Conversation
+The user wanted macOS notifications for Herdr Desktop and reported that clicking the first implementation opened Script Editor. The user confirmed that the replacement focused the correct tab and requested a commit and push.
+
+## Actions
+Checked the installed desktop app, its notification mod, the layout, the installer, and prior commit notes. Added the macOS toast wrapper and terminal-notifier to the macOS package list. Installed and checked the mod. Tested completion and needs-input events with temporary background tabs. Verified a real notification click in the system log, the frontmost application, and the selected Herdr terminal. Removed the test tabs. Validated shell syntax, ShellCheck, shell formatting, shell quoting, and the commit message. Reviewed all four files against origin/master and signed and signed off the commit. Suppressed the automatic post-commit push for this invocation so the branch and its note could be sent together.
+
+## Errors & Mistakes
+The initial osascript implementation displayed a banner but sent clicks to Script Editor. The first terminal-notifier request failed with "Could not request notification permission: Notifications are not allowed for this application". Registering the Homebrew application bundle with Launch Services allowed macOS to request permission. The installer now performs that registration.
+
+## Dead Ends
+Herdr rejected importing the stock toast from outside the custom mod directory, including through a symlink to the stock module. The installer copies the bundled toast into the custom mod so the wrapper can inherit its in-app behavior.
+
+## Hints for Future Agents
+Herdr's built-in agent alerts carry the agent.focus action and its target terminal address. Keep that address with the individual notification because another agent can become active before the user clicks. The click command runs through /bin/sh with its own environment. Quote the arguments and pass the app home explicitly.
+
+## Codebase Discoveries
+The desktop app uses the dotfiles-main layout. Its toast setting is independent of the TUI configuration. macOS attributes the banners to terminal-notifier. Herdr-generated editor files and the installed copy of the bundled toast are outside this commit.
+
+## Open Questions
+None.
