@@ -45,7 +45,7 @@ services:
       - litellm-copilot-data:/root/.config/litellm/github_copilot
 
   db:
-    image: postgres:16@sha256:3950ad7c3148ca2175ef1b6c36c9efbf78957ae8fbe8b3a5d7c35af50500382f
+    image: postgres:19@sha256:aaa10f7ba7328b4a221a6c3184d83eef885bd16bf1f6de864757863156b0a4d1
     container_name: litellm-db
     restart: unless-stopped
     environment:
